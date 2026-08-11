@@ -179,6 +179,7 @@
       <a href="#case">談判論點</a>
       <a href="#tracker">實際追蹤</a>
       <a href="#sensitivity">敏感度分析</a>
+      <a href="#margin">毛利平衡點</a>
     </nav>
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="切換深色/淺色主題" title="切換深色/淺色主題">◐</button>
   </div>
@@ -318,6 +319,36 @@
     </div>
   </section>
 
+  <section class="card" id="margin">
+    <h2>六、毛利與行銷投入平衡點</h2>
+    <p class="sub">業績成長不等於獲利成長——以阿爾法餐飲整體毛利率估算「毛利額」，對比投入 MOMO 渠道的行銷預算，找出獲利與行銷投入是否平衡，避免業績翻倍的同時實際上是虧本衝量。</p>
+    <div class="card-body">
+      <div class="field-grid" style="max-width:340px;">
+        <div class="field">
+          <label for="in-margin">阿爾法餐飲預估毛利率</label>
+          <div class="range-row">
+            <input type="range" id="in-margin" min="0" max="15" step="0.5">
+            <output id="out-margin">8.0%</output>
+          </div>
+          <span class="hint">依阿爾法餐飲整體毛利結構估算，範圍 0%–15%</span>
+        </div>
+      </div>
+      <div class="kpi-grid" id="marginKpis" style="margin-top:18px;"></div>
+      <div class="legend" id="marginLegend" style="margin-top:18px;"></div>
+      <div class="scrollwrap"><div class="chart-shell"><svg class="chart" id="chartMargin" viewBox="0 0 900 380" role="img" aria-label="每月毛利額與行銷投入對照長條圖"></svg></div></div>
+      <div class="scrollwrap" style="margin-top:18px;">
+        <table id="tblMargin">
+          <thead><tr>
+            <th>月份</th><th class="num">預估銷售額</th><th class="num">毛利額</th>
+            <th class="num">行銷投入</th><th class="num">毛利－行銷差額</th><th class="num">累積差額</th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <footer>
     資料來源：《MOMO 渠道合作深化與行銷提案報告》（提案部門：專案發展部/業務部，2026年8月11日）。本工具所有預估數字皆為基於歷史資料之推估模型，實際成效將視行銷素材轉換率與市場環境波動而異；請於每月談判與檢討會議中以「實際追蹤」區塊之數據校正假設。
   </footer>
@@ -337,7 +368,16 @@
     reinvestPct: 200,
     growth: 1.5,
     months: 5,
+    marginRatePct: 8,
     actual: []
+  };
+
+  // The report's literal proposal (100% / 1:1 reinvestment) — kept separate from
+  // DEFAULTS so "restore report assumptions" stays accurate even after the
+  // working default above was raised to model a more aggressive 1:2 reinvestment.
+  var REPORT_DEFAULTS = {
+    baseLabel: "2026-07", baseRevenue: 40687, oldRatePct: 26.5, newRatePct: 10.0,
+    reinvestPct: 100, growth: 1.5, months: 5
   };
 
   function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -882,6 +922,170 @@
     });
   }
 
+  // ---------- gross margin balance point ----------
+  function marginBreakevenRate(){
+    return (state.oldRatePct - state.newRatePct) * (state.reinvestPct / 100);
+  }
+  function marginBreakevenReinvestPct(){
+    var delta = state.oldRatePct - state.newRatePct;
+    if (delta <= 0) return Infinity;
+    return (state.marginRatePct / delta) * 100;
+  }
+  function marginRows(){
+    var rows = projectionRows();
+    var marginRate = state.marginRatePct / 100;
+    var cum = 0;
+    return rows.map(function(r){
+      var profit = r.revenue * marginRate;
+      var diff = profit - r.pool;
+      cum += diff;
+      return { label: r.label, revenue: r.revenue, profit: profit, spend: r.pool, diff: diff, cum: cum };
+    });
+  }
+
+  function renderMarginKPIs(){
+    var wrap = document.getElementById("marginKpis");
+    clear(wrap);
+    var beRate = marginBreakevenRate();
+    var beReinvest = marginBreakevenReinvestPct();
+    var rows = marginRows();
+    var totalDiff = rows.length ? rows[rows.length - 1].cum : 0;
+    var delta = state.oldRatePct - state.newRatePct;
+    var coverageRatio = delta > 0 ? (state.marginRatePct / (delta * (state.reinvestPct / 100))) * 100 : null;
+
+    var items = [
+      {
+        label: "打平所需毛利率（現行回投比例下）",
+        value: beRate > 999 ? "—" : fmtPct(beRate, 1),
+        delta: state.marginRatePct >= beRate ? "▲ 目前毛利率高於打平門檻" : ("▼ 目前毛利率低於打平門檻 " + fmtNum(beRate - state.marginRatePct, 1) + " 個百分點"),
+        cls: state.marginRatePct >= beRate ? "good" : "bad"
+      },
+      {
+        label: "現行毛利率下可承受之回投比例上限",
+        value: isFinite(beReinvest) ? fmtPct(beReinvest, 0) : "—",
+        delta: state.reinvestPct <= beReinvest ? "▲ 目前設定在安全範圍內" : ("▼ 目前設定 " + fmtNum(state.reinvestPct, 0) + "% 已超出上限"),
+        cls: state.reinvestPct <= beReinvest ? "good" : "bad"
+      },
+      {
+        label: "毛利涵蓋行銷投入比例",
+        value: coverageRatio == null ? "—" : fmtPct(coverageRatio, 0),
+        delta: "毛利額 ÷ 行銷投入，100% 以上代表打平有餘",
+        cls: coverageRatio != null && coverageRatio >= 100 ? "good" : "bad"
+      },
+      {
+        label: rows.length + " 個月累積毛利－行銷差額",
+        value: (totalDiff >= 0 ? "+" : "") + fmtMoney(totalDiff),
+        delta: totalDiff >= 0 ? "累積獲利，行銷投入具財務效益" : "累積虧損，行銷投入侵蝕獲利",
+        cls: totalDiff >= 0 ? "good" : "bad"
+      }
+    ];
+
+    items.forEach(function(it){
+      var el = document.createElement("div");
+      el.className = "kpi";
+      el.innerHTML =
+        '<div class="label">' + it.label + '</div>' +
+        '<div class="value num">' + it.value + '</div>' +
+        '<div class="delta ' + it.cls + '">' + it.delta + '</div>';
+      wrap.appendChild(el);
+    });
+  }
+
+  function renderMarginTable(){
+    var rows = marginRows();
+    var tbody = document.querySelector("#tblMargin tbody");
+    var tfoot = document.querySelector("#tblMargin tfoot");
+    clear(tbody); clear(tfoot);
+    var totalRevenue = 0, totalProfit = 0, totalSpend = 0;
+    rows.forEach(function(r){
+      totalRevenue += r.revenue; totalProfit += r.profit; totalSpend += r.spend;
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + r.label + "</td>" +
+        '<td class="num">' + fmtMoney(r.revenue) + "</td>" +
+        '<td class="num">' + fmtMoney(r.profit) + "</td>" +
+        '<td class="num">' + fmtMoney(r.spend) + "</td>" +
+        '<td class="num ' + (r.diff >= 0 ? "tag-good" : "tag-bad") + '">' + (r.diff >= 0 ? "+" : "") + fmtMoney(r.diff) + "</td>" +
+        '<td class="num ' + (r.cum >= 0 ? "tag-good" : "tag-bad") + '">' + (r.cum >= 0 ? "+" : "") + fmtMoney(r.cum) + "</td>";
+      tbody.appendChild(tr);
+    });
+    var last = rows[rows.length - 1];
+    var trf = document.createElement("tr");
+    trf.innerHTML = "<td>總計</td>" +
+      '<td class="num">' + fmtMoney(totalRevenue) + "</td>" +
+      '<td class="num">' + fmtMoney(totalProfit) + "</td>" +
+      '<td class="num">' + fmtMoney(totalSpend) + "</td>" +
+      '<td class="num">' + (totalProfit - totalSpend >= 0 ? "+" : "") + fmtMoney(totalProfit - totalSpend) + "</td>" +
+      '<td class="num">' + (last ? ((last.cum >= 0 ? "+" : "") + fmtMoney(last.cum)) : "—") + "</td>";
+    tfoot.appendChild(trf);
+
+    var legend = document.getElementById("marginLegend");
+    legend.innerHTML =
+      '<span class="item"><span class="swatch" style="background:var(--accent)"></span>毛利額</span>' +
+      '<span class="item"><span class="swatch" style="background:var(--pool)"></span>行銷投入</span>';
+  }
+
+  function renderMarginChart(){
+    var svg = document.getElementById("chartMargin");
+    clear(svg);
+    var rows = marginRows();
+    var W = 900, H = 380;
+    var margin = { top: 34, right: 16, bottom: 34, left: 46 };
+    var plotW = W - margin.left - margin.right, plotH = H - margin.top - margin.bottom;
+    var baseline = margin.top + plotH;
+    var maxVal = Math.max.apply(null, rows.map(function(r){ return Math.max(r.profit, r.spend); })) * 1.2;
+    if (!isFinite(maxVal) || maxVal <= 0) maxVal = 1;
+    var scale = plotH / maxVal;
+    var accentColor = cssVar("--accent"), poolColor = cssVar("--pool"), faint = cssVar("--ink-faint"), border = cssVar("--border");
+
+    var steps = 4;
+    for (var s = 0; s <= steps; s++){
+      var val = (maxVal / steps) * s;
+      var y = baseline - val * scale;
+      svg.appendChild(svgEl("line", { x1: margin.left, x2: W - margin.right, y1: y, y2: y, stroke: border, "stroke-width": 1 }));
+      var t = svgEl("text", { x: margin.left - 8, y: y + 4, "text-anchor": "end", "font-size": 10.5, fill: faint, "font-family": "var(--font-mono)" });
+      t.textContent = s === 0 ? "0" : fmtAxisMoney(val);
+      svg.appendChild(t);
+    }
+
+    var n = rows.length;
+    var groupW = plotW / n;
+    var barW = Math.min(30, groupW * 0.24);
+    var gapBetween = 6;
+
+    rows.forEach(function(r, i){
+      var cx = margin.left + groupW * i + groupW / 2;
+      var xProfit = cx - barW - gapBetween / 2;
+      var xSpend = cx + gapBetween / 2;
+
+      var hProfit = Math.max(0, r.profit * scale), hSpend = Math.max(0, r.spend * scale);
+      svg.appendChild(svgEl("path", { d: roundedTopPath(xProfit, baseline - hProfit, barW, hProfit, 3), fill: accentColor }));
+      svg.appendChild(svgEl("path", { d: roundedTopPath(xSpend, baseline - hSpend, barW, hSpend, 3), fill: poolColor }));
+
+      var lbl = svgEl("text", { x: cx, y: H - 10, "text-anchor": "middle", "font-size": 11.5, fill: faint });
+      lbl.textContent = r.label;
+      svg.appendChild(lbl);
+
+      var hit = svgEl("rect", { x: margin.left + groupW * i, y: margin.top, width: groupW, height: plotH, fill: "transparent" });
+      hit.addEventListener("mousemove", function(ev){
+        var html = '<div class="t-title">' + r.label + '</div>' +
+          '<div class="t-row"><span><span class="dot" style="background:' + accentColor + '"></span>毛利額</span><span class="num">' + fmtMoney(r.profit) + '</span></div>' +
+          '<div class="t-row"><span><span class="dot" style="background:' + poolColor + '"></span>行銷投入</span><span class="num">' + fmtMoney(r.spend) + '</span></div>' +
+          '<div class="t-row"><span>差額</span><span class="num">' + (r.diff >= 0 ? "+" : "") + fmtMoney(r.diff) + '</span></div>';
+        showTooltip(ev.clientX, ev.clientY, html);
+      });
+      hit.addEventListener("mouseleave", hideTooltip);
+      svg.appendChild(hit);
+    });
+
+    svg.appendChild(svgEl("line", { x1: margin.left, x2: W - margin.right, y1: baseline, y2: baseline, stroke: cssVar("--ink-muted"), "stroke-width": 1.5 }));
+  }
+
+  function renderMargin(){
+    renderMarginKPIs();
+    renderMarginTable();
+    renderMarginChart();
+  }
+
   // ---------- wire up ----------
   function renderAll(){
     renderKPIs();
@@ -889,6 +1093,7 @@
     renderCase();
     renderTracker();
     renderSensitivity();
+    renderMargin();
   }
 
   function syncInputs(){
@@ -901,6 +1106,8 @@
     document.getElementById("out-reinvest").textContent = fmtNum(state.reinvestPct,0) + "%";
     document.getElementById("in-growth").value = Math.round(state.growth * 100);
     document.getElementById("out-growth").textContent = fmtNum(state.growth,2) + "x";
+    document.getElementById("in-margin").value = state.marginRatePct;
+    document.getElementById("out-margin").textContent = fmtNum(state.marginRatePct,1) + "%";
   }
 
   function bindInputs(){
@@ -930,8 +1137,13 @@
       document.getElementById("out-growth").textContent = fmtNum(state.growth,2) + "x";
       saveState(); renderAll();
     });
+    document.getElementById("in-margin").addEventListener("input", function(e){
+      state.marginRatePct = parseFloat(e.target.value);
+      document.getElementById("out-margin").textContent = fmtNum(state.marginRatePct,1) + "%";
+      saveState(); renderAll();
+    });
     document.getElementById("btnResetAssumptions").addEventListener("click", function(){
-      ["baseLabel","baseRevenue","oldRatePct","newRatePct","reinvestPct","growth","months"].forEach(function(k){ state[k] = DEFAULTS[k]; });
+      ["baseLabel","baseRevenue","oldRatePct","newRatePct","reinvestPct","growth","months"].forEach(function(k){ state[k] = REPORT_DEFAULTS[k]; });
       normalizeActual(state); saveState(); syncInputs(); renderAll();
     });
     document.getElementById("btnClearActual").addEventListener("click", function(){
@@ -967,7 +1179,7 @@
       renderAll();
     });
 
-    window.addEventListener("resize", function(){ renderProjection(); renderTrackerChart(); });
+    window.addEventListener("resize", function(){ renderProjection(); renderTrackerChart(); renderMarginChart(); });
   }
 
   syncInputs();
