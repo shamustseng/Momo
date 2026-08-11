@@ -224,10 +224,10 @@
         <div class="field">
           <label for="in-reinvest">差額回投行銷比例</label>
           <div class="range-row">
-            <input type="range" id="in-reinvest" min="0" max="100" step="5">
-            <output id="out-reinvest">100%</output>
+            <input type="range" id="in-reinvest" min="0" max="200" step="5">
+            <output id="out-reinvest">200%</output>
           </div>
-          <span class="hint">報告承諾 1:1（100%）全數回投</span>
+          <span class="hint">報告承諾 1:1（100%）全數回投；上限 1:2（200%）代表額外加碼投放</span>
         </div>
         <div class="field">
           <label for="in-growth">假設月成長倍數</label>
@@ -334,7 +334,7 @@
     baseRevenue: 40687,
     oldRatePct: 26.5,
     newRatePct: 10.0,
-    reinvestPct: 100,
+    reinvestPct: 200,
     growth: 1.5,
     months: 5,
     actual: []
@@ -652,9 +652,14 @@
 
     var narrative = document.getElementById("caseNarrative");
     var span = rows[0].label + " 至 " + rows[rows.length-1].label;
+    var reinvestPhrase = state.reinvestPct === 100
+      ? "全數回投聯合行銷"
+      : (state.reinvestPct > 100
+        ? ("加碼至 <b>" + fmtNum(state.reinvestPct,0) + "%</b>（即額外自籌部分預算）投入聯合行銷")
+        : ("依 <b>" + fmtNum(state.reinvestPct,0) + "%</b> 比例回投聯合行銷"));
     narrative.innerHTML =
       "若 MOMO 同意將平台抽成自 <b>" + fmtNum(state.oldRatePct,1) + "%</b> 調降至 <b>" + fmtNum(state.newRatePct,1) + "%</b>，" +
-      "並將 <b>" + fmtNum(state.oldRatePct - state.newRatePct,1) + "%</b> 差額依 <b>" + fmtNum(state.reinvestPct,0) + "%</b> 比例全數回投聯合行銷，" +
+      "並將 <b>" + fmtNum(state.oldRatePct - state.newRatePct,1) + "%</b> 差額" + reinvestPhrase + "，" +
       "測算顯示：只要 " + span + " 期間月均成長率達到 <b>" + (isFinite(be) ? "+" + fmtNum(bePct,1) + "%" : "—") + "</b> 以上（損益兩平門檻），" +
       "MOMO 收到的抽成「金額」就不會低於「抽成維持 " + fmtNum(state.oldRatePct,1) + "%、業績持平不變」的現狀情境。" +
       "本提案採用假設為每月成長 <b>+" + fmtNum(growthPct,0) + "%</b>，" +
