@@ -1,0 +1,972 @@
+<title>MOMO 渠道談判測算器｜抽成調整與行銷效益追蹤</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+    --border:#DDD6C7; --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+    --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+    --momo:#D6316B; --momo-soft:#FBE3EC; --momo-ink:#7A1A3D;
+    --pool:#B5730A; --pool-soft:#F6E8D2; --pool-ink:#6B4507;
+    --good:#2F9E44; --bad:#C4362F;
+    --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+    --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+      --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+      --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+      --momo:#D9527F; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+      --pool:#B67F2E; --pool-soft:#3A2D16; --pool-ink:#F0D19C;
+      --good:#4CAF6B; --bad:#E2665F;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+    --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+    --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+    --momo:#D9527F; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+    --pool:#B67F2E; --pool-soft:#3A2D16; --pool-ink:#F0D19C;
+    --good:#4CAF6B; --bad:#E2665F;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+    font-size:14.5px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; scroll-behavior:auto !important; } }
+  a{ color:var(--accent); }
+  h1,h2,h3{ text-wrap:balance; font-weight:800; letter-spacing:-0.01em; margin:0; }
+  .num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  button{ font:inherit; }
+  input[type="number"], input[type="month"], input[type="range"]{ font:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .topbar{
+    position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .topbar-inner{ max-width:1180px; margin:0 auto; padding:14px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; }
+  .brand{ display:flex; flex-direction:column; gap:2px; margin-right:auto; }
+  .brand .eyebrow{ font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
+  .brand h1{ font-size:19px; }
+  .tabs{ display:flex; gap:4px; overflow-x:auto; padding-bottom:2px; }
+  .tabs a{
+    flex:0 0 auto; text-decoration:none; color:var(--ink-muted); font-size:13px; font-weight:600;
+    padding:7px 12px; border-radius:999px; white-space:nowrap;
+  }
+  .tabs a:hover{ background:var(--surface-2); color:var(--ink); }
+  .theme-toggle{
+    border:1px solid var(--border); background:var(--surface); color:var(--ink-muted);
+    border-radius:999px; width:32px; height:32px; cursor:pointer; display:grid; place-items:center;
+    flex:0 0 auto;
+  }
+  .theme-toggle:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+  .page{ max-width:1180px; margin:0 auto; padding:26px 20px 90px; display:flex; flex-direction:column; gap:22px; }
+
+  .hero p{ max-width:66ch; color:var(--ink-muted); margin:8px 0 0; }
+  .hero .source{ font-size:12.5px; color:var(--ink-faint); margin-top:10px; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; }
+  .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
+  .kpi .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:700; }
+  .kpi .value{ font-size:25px; font-weight:700; margin-top:6px; display:flex; align-items:baseline; gap:6px; }
+  .kpi .delta{ font-size:12.5px; margin-top:6px; color:var(--ink-muted); display:flex; align-items:center; gap:4px; }
+  .kpi .delta.good{ color:var(--good); } .kpi .delta.bad{ color:var(--bad); }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow); scroll-margin-top:76px; }
+  .card > h2{ font-size:17px; }
+  .card > .sub{ color:var(--ink-muted); font-size:13px; margin:4px 0 0; max-width:70ch; }
+  .card-body{ margin-top:18px; }
+
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px 20px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:12.5px; font-weight:700; color:var(--ink-muted); }
+  .field .hint{ font-size:11.5px; color:var(--ink-faint); }
+  .field input[type="number"], .field input[type="month"]{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:8px 10px; color:var(--ink); width:100%;
+  }
+  .field .range-row{ display:flex; align-items:center; gap:10px; }
+  .field .range-row input[type="range"]{ flex:1; accent-color:var(--accent); }
+  .field .range-row output{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:13px; min-width:64px; text-align:right; }
+  .btn-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+  .btn{
+    border:1px solid var(--border); background:var(--surface-2); color:var(--ink);
+    padding:8px 14px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600;
+  }
+  .btn:hover{ border-color:var(--ink-faint); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+  .btn.ghost{ background:transparent; }
+
+  .scrollwrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:separate; border-spacing:0; min-width:640px; }
+  th,td{ padding:9px 12px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; font-size:13.3px; }
+  th:first-child, td:first-child{ text-align:left; }
+  thead th{ background:var(--surface-2); color:var(--ink-muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tfoot td{ font-weight:700; background:var(--surface-2); border-top:2px solid var(--border); border-bottom:none; }
+  td.num, th.num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  tr.highlight td{ background:var(--accent-soft); }
+  .badge{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; letter-spacing:.02em; }
+  .badge.accent{ background:var(--accent-soft); color:var(--accent-ink); }
+  .badge.momo{ background:var(--momo-soft); color:var(--momo-ink); }
+  .tag-good{ color:var(--good); font-weight:700; }
+  .tag-bad{ color:var(--bad); font-weight:700; }
+
+  input.cell{
+    width:100px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:5px 7px; color:var(--ink); text-align:right; font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:13px;
+  }
+  input.cell::placeholder{ color:var(--ink-faint); font-family:var(--font-ui); }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:14px 20px; font-size:12.5px; color:var(--ink-muted); margin-bottom:6px; }
+  .legend .item{ display:flex; align-items:center; gap:6px; }
+  .swatch{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+  .swatch.line{ width:16px; height:2px; border-radius:0; }
+  .swatch.dashed{ background:transparent; border-top:2px dashed var(--ink-faint); width:16px; height:0; }
+  svg.chart{ width:100%; height:auto; display:block; overflow:visible; }
+  .chart-shell{ min-width:640px; }
+
+  .tooltip{
+    position:fixed; z-index:50; background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:9px 12px; font-size:12.5px; box-shadow:var(--shadow); pointer-events:none; max-width:240px;
+  }
+  .tooltip .t-title{ font-weight:700; margin-bottom:5px; }
+  .tooltip .t-row{ display:flex; justify-content:space-between; gap:14px; }
+  .tooltip .t-row + .t-row{ margin-top:2px; }
+  .tooltip .dot{ width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:5px; }
+
+  .case-narrative{ font-size:14.5px; line-height:1.85; }
+  .case-narrative b{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; background:var(--accent-soft); color:var(--accent-ink); padding:0 4px; border-radius:4px; font-weight:700; }
+  .compare-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; margin-top:16px; }
+  .compare-card{ border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .compare-card.now{ background:var(--surface-2); }
+  .compare-card.new{ background:var(--accent-soft); border-color:var(--accent); }
+  .compare-card h3{ font-size:13px; }
+  .compare-card dl{ margin:10px 0 0; display:grid; grid-template-columns:auto 1fr; gap:5px 10px; font-size:13px; }
+  .compare-card dt{ color:var(--ink-muted); }
+  .compare-card dd{ margin:0; text-align:right; font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:600; }
+
+  textarea#summaryText{
+    width:100%; min-height:140px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; color:var(--ink); font-family:var(--font-ui); font-size:13.5px; line-height:1.7; resize:vertical;
+  }
+  .copy-note{ font-size:12px; color:var(--ink-faint); margin-top:6px; min-height:14px; }
+  footer{ color:var(--ink-faint); font-size:12px; max-width:80ch; padding-top:6px; }
+</style>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">專案發展部 / 業務部　內部工具</span>
+      <h1>MOMO 渠道談判測算器</h1>
+    </div>
+    <nav class="tabs">
+      <a href="#assumptions">假設設定</a>
+      <a href="#projection">業績測算</a>
+      <a href="#case">談判論點</a>
+      <a href="#tracker">實際追蹤</a>
+      <a href="#sensitivity">敏感度分析</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="切換深色/淺色主題" title="切換深色/淺色主題">◐</button>
+  </div>
+</header>
+
+<div class="page">
+
+  <section class="hero">
+    <p>依據《MOMO 渠道合作深化與行銷提案報告》（2026/08/11）之抽成調降與行銷回投方案，重建可調整假設的測算模型，並提供每月實際數據回填，持續追蹤「行銷投入 ↔ 業績成長」的對應關係，作為與 MOMO 談判抽成條件的量化佐證。</p>
+    <p class="source">基期：2026 年 7 月渠道實績 NT$40,687｜現行抽成 26.5%｜爭取抽成 10.0%｜差額 16.5% 承諾 1:1 回投行銷。所有假設可於下方調整重新測算。</p>
+  </section>
+
+  <section class="kpi-grid" id="kpis" aria-live="polite"></section>
+
+  <section class="card" id="assumptions">
+    <h2>一、假設設定</h2>
+    <p class="sub">調整任一數值，下方所有測算、圖表與談判論點會即時重新計算。設定會自動保存在本機瀏覽器。</p>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field">
+          <label for="in-baseLabel">基期月份</label>
+          <input type="month" id="in-baseLabel">
+          <span class="hint">預估區間將從基期次月開始展開</span>
+        </div>
+        <div class="field">
+          <label for="in-baseRevenue">基期實際業績（NT$）</label>
+          <input type="number" id="in-baseRevenue" min="0" step="1">
+          <span class="hint">報告基期：2026-07，NT$40,687</span>
+        </div>
+        <div class="field">
+          <label for="in-months">預估月數</label>
+          <input type="number" id="in-months" min="1" max="12" step="1">
+          <span class="hint">報告範圍：8 月至 12 月，共 5 個月</span>
+        </div>
+        <div class="field">
+          <label for="in-oldRate">現行平台抽成（%）</label>
+          <input type="number" id="in-oldRate" min="0" max="100" step="0.1">
+        </div>
+        <div class="field">
+          <label for="in-newRate">爭取平台抽成（%）</label>
+          <input type="number" id="in-newRate" min="0" max="100" step="0.1">
+        </div>
+        <div class="field">
+          <label for="in-reinvest">差額回投行銷比例</label>
+          <div class="range-row">
+            <input type="range" id="in-reinvest" min="0" max="100" step="5">
+            <output id="out-reinvest">100%</output>
+          </div>
+          <span class="hint">報告承諾 1:1（100%）全數回投</span>
+        </div>
+        <div class="field">
+          <label for="in-growth">假設月成長倍數</label>
+          <div class="range-row">
+            <input type="range" id="in-growth" min="100" max="250" step="1">
+            <output id="out-growth">1.50x</output>
+          </div>
+          <span class="hint">報告假設：每月較前月成長 1.5 倍（+50%）</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btnResetAssumptions" type="button">還原報告原始假設</button>
+        <button class="btn ghost" id="btnClearActual" type="button">清除已輸入的實際數據</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="projection">
+    <h2>二、業績與抽成測算</h2>
+    <p class="sub">每月業績依假設成長倍數展開，並拆解為「MOMO 抽成」「回投行銷預算」「我方淨留存」三部分——三者加總即為當月總業績。</p>
+    <div class="card-body">
+      <div class="legend" id="chartLegend"></div>
+      <div class="scrollwrap"><div class="chart-shell"><svg class="chart" id="chartProjection" viewBox="0 0 900 400" role="img" aria-label="每月業績拆解堆疊長條圖"></svg></div></div>
+      <div class="scrollwrap" style="margin-top:18px;">
+        <table id="tblProjection">
+          <thead><tr>
+            <th>月份</th><th class="num">預估銷售額</th><th class="num">原抽成 (26.5%)</th>
+            <th class="num">新抽成</th><th class="num">回投行銷預算</th><th class="num">我方淨留存</th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="case">
+    <h2>三、談判論點：為何 MOMO 也划算</h2>
+    <p class="sub">降抽成不等於 MOMO 少賺——只要業績成長超過損益兩平門檻，MOMO 收到的抽成「金額」反而會比維持現狀更高。</p>
+    <div class="card-body">
+      <p class="case-narrative" id="caseNarrative"></p>
+      <div class="compare-grid" id="compareGrid"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btnGenSummary" type="button">產出談判摘要文字</button>
+      </div>
+      <div id="summaryWrap" style="margin-top:12px; display:none;">
+        <textarea id="summaryText" readonly></textarea>
+        <div class="btn-row">
+          <button class="btn" id="btnCopySummary" type="button">複製到剪貼簿</button>
+        </div>
+        <div class="copy-note" id="copyNote"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="tracker">
+    <h2>四、實際成效追蹤</h2>
+    <p class="sub">每月談判/合作啟動後，回填實際業績與實際行銷投入，用以檢驗「行銷效益」假設是否成立，並作為續談籌碼。ROAS 以「當月業績成長 ÷ 當月行銷投入」計算。</p>
+    <div class="card-body">
+      <div class="legend" id="trackerLegend"></div>
+      <div class="scrollwrap"><div class="chart-shell"><svg class="chart" id="chartTracker" viewBox="0 0 900 320" role="img" aria-label="計畫與實際業績對照折線圖"></svg></div></div>
+      <div class="scrollwrap" style="margin-top:18px;">
+        <table id="tblTracker">
+          <thead><tr>
+            <th>月份</th><th class="num">計畫銷售額</th><th class="num">實際銷售額</th><th class="num">達成率</th>
+            <th class="num">實際行銷投入</th><th class="num">邊際 ROAS</th><th class="num">實際新抽成</th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="sensitivity">
+    <h2>五、敏感度分析</h2>
+    <p class="sub">不同月成長率假設下的累計結果，用以說明目前 1.5 倍（+50%）假設相對損益兩平門檻的安全邊際。</p>
+    <div class="card-body">
+      <div class="scrollwrap">
+        <table id="tblSensitivity">
+          <thead><tr>
+            <th>假設月成長率</th><th class="num">累計業績</th><th class="num">累計新抽成 (MOMO)</th>
+            <th class="num">累計行銷預算池</th><th class="num">對比現狀不變之差額</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    資料來源：《MOMO 渠道合作深化與行銷提案報告》（提案部門：專案發展部/業務部，2026年8月11日）。本工具所有預估數字皆為基於歷史資料之推估模型，實際成效將視行銷素材轉換率與市場環境波動而異；請於每月談判與檢討會議中以「實際追蹤」區塊之數據校正假設。
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "momo_commission_calc_v2";
+
+  var DEFAULTS = {
+    baseLabel: "2026-07",
+    baseRevenue: 40687,
+    oldRatePct: 26.5,
+    newRatePct: 10.0,
+    reinvestPct: 100,
+    growth: 1.5,
+    months: 5,
+    actual: []
+  };
+
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function loadState(){
+    var s = JSON.parse(JSON.stringify(DEFAULTS));
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        for (var k in DEFAULTS){ if (parsed[k] !== undefined) s[k] = parsed[k]; }
+      }
+    }catch(e){}
+    normalizeActual(s);
+    return s;
+  }
+
+  function normalizeActual(s){
+    var arr = Array.isArray(s.actual) ? s.actual.slice(0, s.months) : [];
+    while (arr.length < s.months) arr.push({ revenue: null, spend: null });
+    for (var i = 0; i < arr.length; i++){
+      if (!arr[i]) arr[i] = { revenue: null, spend: null };
+      if (arr[i].revenue === undefined) arr[i].revenue = null;
+      if (arr[i].spend === undefined) arr[i].spend = null;
+    }
+    s.actual = arr;
+  }
+
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  var state = loadState();
+
+  // ---------- formatting ----------
+  var nfInt = new Intl.NumberFormat("zh-Hant-TW", { maximumFractionDigits: 0 });
+  function fmtMoney(n){
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    var sign = n < 0 ? "-" : "";
+    return sign + "NT$" + nfInt.format(Math.abs(Math.round(n)));
+  }
+  function fmtAxisMoney(n){
+    if (Math.abs(n) >= 10000) return (n/10000).toFixed(0) + "萬";
+    return nfInt.format(n);
+  }
+  function fmtNum(n, d){
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    return new Intl.NumberFormat("zh-Hant-TW", { maximumFractionDigits: d, minimumFractionDigits: d }).format(n);
+  }
+  function fmtPct(n, d){
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    return fmtNum(n, d === undefined ? 1 : d) + "%";
+  }
+  function addMonths(label, n){
+    var parts = label.split("-").map(Number);
+    var y = parts[0], m = parts[1];
+    var total = (m - 1) + n;
+    var yy = y + Math.floor(total / 12);
+    var mm = (total % 12 + 12) % 12 + 1;
+    return yy + "-" + String(mm).padStart(2, "0");
+  }
+
+  // ---------- core math ----------
+  function monthLabels(){
+    var labels = [];
+    for (var i = 1; i <= state.months; i++) labels.push(addMonths(state.baseLabel, i));
+    return labels;
+  }
+
+  function projectionRows(growthOverride){
+    var g = growthOverride !== undefined ? growthOverride : state.growth;
+    var oldRate = state.oldRatePct / 100, newRate = state.newRatePct / 100;
+    var reinvest = state.reinvestPct / 100;
+    var labels = monthLabels();
+    var rows = [];
+    var p = 1;
+    for (var i = 0; i < state.months; i++){
+      p *= g;
+      var revenue = state.baseRevenue * p;
+      var oldCom = revenue * oldRate;
+      var newCom = revenue * newRate;
+      var pool = revenue * (oldRate - newRate) * reinvest;
+      var net = revenue - newCom - pool;
+      rows.push({ label: labels[i], revenue: revenue, oldCom: oldCom, newCom: newCom, pool: pool, net: net });
+    }
+    return rows;
+  }
+
+  function totalsOf(rows){
+    var t = { revenue: 0, oldCom: 0, newCom: 0, pool: 0, net: 0 };
+    rows.forEach(function(r){ t.revenue += r.revenue; t.oldCom += r.oldCom; t.newCom += r.newCom; t.pool += r.pool; t.net += r.net; });
+    return t;
+  }
+
+  function flatBaseline(){
+    var oldRate = state.oldRatePct / 100;
+    return state.months * state.baseRevenue * oldRate;
+  }
+
+  function breakevenGrowth(){
+    var oldRate = state.oldRatePct / 100, newRate = state.newRatePct / 100, n = state.months, R0 = state.baseRevenue;
+    var target = n * oldRate; // newRate * sum(g^i) = n*oldRate  =>  sum(g^i) = n*oldRate/newRate
+    if (newRate <= 0) return Infinity;
+    function sumPow(g){ var s = 0, p = 1; for (var i = 0; i < n; i++){ p *= g; s += p; } return s; }
+    var lo = 1.0, hi = 4.0;
+    if (newRate * sumPow(hi) < target) return NaN;
+    for (var iter = 0; iter < 80; iter++){
+      var mid = (lo + hi) / 2;
+      if (newRate * sumPow(mid) < target) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  // ---------- DOM helpers ----------
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function svgEl(name, attrs){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function clear(node){ while (node.firstChild) node.removeChild(node.firstChild); }
+  function roundedTopPath(x, y, w, h, r){
+    if (h <= 0) return "M0,0";
+    r = Math.min(r, w / 2, h);
+    return "M" + x + "," + (y + h) +
+      " L" + x + "," + (y + r) +
+      " Q" + x + "," + y + " " + (x + r) + "," + y +
+      " L" + (x + w - r) + "," + y +
+      " Q" + (x + w) + "," + y + " " + (x + w) + "," + (y + r) +
+      " L" + (x + w) + "," + (y + h) + " Z";
+  }
+
+  var tooltip = document.getElementById("tooltip");
+  function showTooltip(x, y, html){
+    tooltip.innerHTML = html;
+    tooltip.hidden = false;
+    var pad = 14;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    tooltip.style.left = Math.min(x + pad, vw - 250) + "px";
+    tooltip.style.top = Math.min(y + pad, vh - 120) + "px";
+  }
+  function hideTooltip(){ tooltip.hidden = true; }
+
+  // ---------- KPI ----------
+  function renderKPIs(){
+    var wrap = document.getElementById("kpis");
+    clear(wrap);
+    var rows = projectionRows();
+    var t = totalsOf(rows);
+    var flatOld = flatBaseline();
+    var momoDelta = t.newCom - flatOld;
+    var be = breakevenGrowth();
+    var beMarginPts = isFinite(be) ? (state.growth - be) * 100 : null;
+
+    var items = [
+      {
+        label: "累計預估業績（" + rows[0].label + " – " + rows[rows.length-1].label + "）",
+        value: fmtMoney(t.revenue),
+        delta: "以每月 x" + fmtNum(state.growth,2) + "（+" + fmtNum((state.growth-1)*100,0) + "%）成長假設推估",
+        cls: ""
+      },
+      {
+        label: "累計可轉換行銷預算池",
+        value: fmtMoney(t.pool),
+        delta: "差額 " + fmtNum(state.oldRatePct - state.newRatePct,1) + "%，回投比例 " + fmtNum(state.reinvestPct,0) + "%",
+        cls: ""
+      },
+      {
+        label: "損益兩平所需月成長率",
+        value: isFinite(be) ? "+" + fmtNum((be-1)*100,1) + "%" : "—",
+        delta: beMarginPts !== null ? ((beMarginPts >= 0 ? "▲ 較目前假設低 " : "▼ 較目前假設高 ") + fmtNum(Math.abs(beMarginPts),1) + " 個百分點") : "",
+        cls: beMarginPts !== null ? (beMarginPts >= 0 ? "good" : "bad") : ""
+      },
+      {
+        label: "MOMO 抽成金額變化",
+        value: (momoDelta >= 0 ? "+" : "") + fmtMoney(momoDelta),
+        delta: "對比「抽成不變、業績持平」情境",
+        cls: momoDelta >= 0 ? "good" : "bad"
+      }
+    ];
+
+    items.forEach(function(it){
+      var el = document.createElement("div");
+      el.className = "kpi";
+      el.innerHTML =
+        '<div class="label">' + it.label + '</div>' +
+        '<div class="value num">' + it.value + '</div>' +
+        '<div class="delta ' + it.cls + '">' + it.delta + '</div>';
+      wrap.appendChild(el);
+    });
+  }
+
+  // ---------- projection table + chart ----------
+  function renderProjection(){
+    var rows = projectionRows();
+    var t = totalsOf(rows);
+    var tbody = document.querySelector("#tblProjection tbody");
+    var tfoot = document.querySelector("#tblProjection tfoot");
+    clear(tbody); clear(tfoot);
+    rows.forEach(function(r){
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + r.label + "</td>" +
+        '<td class="num">' + fmtMoney(r.revenue) + "</td>" +
+        '<td class="num">' + fmtMoney(r.oldCom) + "</td>" +
+        '<td class="num">' + fmtMoney(r.newCom) + "</td>" +
+        '<td class="num">' + fmtMoney(r.pool) + "</td>" +
+        '<td class="num">' + fmtMoney(r.net) + "</td>";
+      tbody.appendChild(tr);
+    });
+    var trf = document.createElement("tr");
+    trf.innerHTML = "<td>總計</td>" +
+      '<td class="num">' + fmtMoney(t.revenue) + "</td>" +
+      '<td class="num">' + fmtMoney(t.oldCom) + "</td>" +
+      '<td class="num">' + fmtMoney(t.newCom) + "</td>" +
+      '<td class="num">' + fmtMoney(t.pool) + "</td>" +
+      '<td class="num">' + fmtMoney(t.net) + "</td>";
+    tfoot.appendChild(trf);
+
+    var legend = document.getElementById("chartLegend");
+    legend.innerHTML =
+      '<span class="item"><span class="swatch" style="background:var(--momo)"></span>MOMO 抽成</span>' +
+      '<span class="item"><span class="swatch" style="background:var(--pool)"></span>回投行銷預算</span>' +
+      '<span class="item"><span class="swatch" style="background:var(--accent)"></span>我方淨留存</span>';
+
+    renderStackedChart(rows);
+  }
+
+  function renderStackedChart(rows){
+    var svg = document.getElementById("chartProjection");
+    clear(svg);
+    var W = 900, H = 400;
+    var margin = { top: 34, right: 16, bottom: 34, left: 46 };
+    var plotW = W - margin.left - margin.right;
+    var plotH = H - margin.top - margin.bottom;
+    var baseline = margin.top + plotH;
+    var maxVal = Math.max.apply(null, rows.map(function(r){ return r.revenue; })) * 1.18;
+    if (!isFinite(maxVal) || maxVal <= 0) maxVal = 1;
+    var scale = plotH / maxVal;
+
+    var momoColor = cssVar("--momo"), poolColor = cssVar("--pool"), accentColor = cssVar("--accent");
+    var faint = cssVar("--ink-faint"), ink = cssVar("--ink"), border = cssVar("--border");
+
+    // gridlines
+    var steps = 4;
+    for (var s = 0; s <= steps; s++){
+      var val = (maxVal / steps) * s;
+      var y = baseline - val * scale;
+      svg.appendChild(svgEl("line", { x1: margin.left, x2: W - margin.right, y1: y, y2: y, stroke: border, "stroke-width": 1 }));
+      var t = svgEl("text", { x: margin.left - 8, y: y + 4, "text-anchor": "end", "font-size": 10.5, fill: faint, "font-family": "var(--font-mono)" });
+      t.textContent = s === 0 ? "0" : fmtAxisMoney(val);
+      svg.appendChild(t);
+    }
+
+    var n = rows.length;
+    var groupW = plotW / n;
+    var barW = Math.min(64, groupW * 0.52);
+    var gap = 2;
+
+    rows.forEach(function(r, i){
+      var cx = margin.left + groupW * i + groupW / 2;
+      var barX = cx - barW / 2;
+
+      var yMomoTop = baseline - r.newCom * scale;
+      var yPoolTop = yMomoTop - r.pool * scale;
+      var yNetTop = yPoolTop - r.net * scale;
+
+      var momoH = Math.max(0, (baseline - yMomoTop) - gap / 2);
+      var rectMomo = svgEl("rect", { x: barX, y: yMomoTop + gap / 2, width: barW, height: momoH, fill: momoColor });
+      svg.appendChild(rectMomo);
+
+      var poolH = Math.max(0, (yMomoTop - yPoolTop) - gap);
+      var rectPool = svgEl("rect", { x: barX, y: yPoolTop + gap / 2, width: barW, height: poolH, fill: poolColor });
+      svg.appendChild(rectPool);
+
+      var netH = Math.max(0, (yPoolTop - yNetTop) - gap / 2);
+      var pathNet = svgEl("path", { d: roundedTopPath(barX, yNetTop, barW, netH, 4), fill: accentColor });
+      svg.appendChild(pathNet);
+
+      var label = svgEl("text", { x: cx, y: yNetTop - 10, "text-anchor": "middle", "font-size": 11.5, "font-weight": 700, fill: ink, "font-family": "var(--font-mono)" });
+      label.textContent = fmtMoney(r.revenue);
+      svg.appendChild(label);
+
+      var monthLbl = svgEl("text", { x: cx, y: H - 10, "text-anchor": "middle", "font-size": 11.5, fill: faint });
+      monthLbl.textContent = r.label;
+      svg.appendChild(monthLbl);
+
+      var hit = svgEl("rect", { x: margin.left + groupW * i, y: margin.top, width: groupW, height: plotH, fill: "transparent" });
+      hit.addEventListener("mousemove", function(ev){
+        var html = '<div class="t-title">' + r.label + '　' + fmtMoney(r.revenue) + '</div>' +
+          '<div class="t-row"><span><span class="dot" style="background:' + momoColor + '"></span>MOMO 抽成</span><span class="num">' + fmtMoney(r.newCom) + '</span></div>' +
+          '<div class="t-row"><span><span class="dot" style="background:' + poolColor + '"></span>行銷預算</span><span class="num">' + fmtMoney(r.pool) + '</span></div>' +
+          '<div class="t-row"><span><span class="dot" style="background:' + accentColor + '"></span>我方淨留存</span><span class="num">' + fmtMoney(r.net) + '</span></div>';
+        showTooltip(ev.clientX, ev.clientY, html);
+      });
+      hit.addEventListener("mouseleave", hideTooltip);
+      svg.appendChild(hit);
+    });
+
+    svg.appendChild(svgEl("line", { x1: margin.left, x2: W - margin.right, y1: baseline, y2: baseline, stroke: cssVar("--ink-muted"), "stroke-width": 1.5 }));
+  }
+
+  // ---------- case / negotiation narrative ----------
+  function renderCase(){
+    var rows = projectionRows();
+    var t = totalsOf(rows);
+    var flatOld = flatBaseline();
+    var momoDelta = t.newCom - flatOld;
+    var be = breakevenGrowth();
+    var growthPct = (state.growth - 1) * 100;
+    var bePct = isFinite(be) ? (be - 1) * 100 : null;
+    var marginPts = bePct !== null ? growthPct - bePct : null;
+
+    var narrative = document.getElementById("caseNarrative");
+    var span = rows[0].label + " 至 " + rows[rows.length-1].label;
+    narrative.innerHTML =
+      "若 MOMO 同意將平台抽成自 <b>" + fmtNum(state.oldRatePct,1) + "%</b> 調降至 <b>" + fmtNum(state.newRatePct,1) + "%</b>，" +
+      "並將 <b>" + fmtNum(state.oldRatePct - state.newRatePct,1) + "%</b> 差額依 <b>" + fmtNum(state.reinvestPct,0) + "%</b> 比例全數回投聯合行銷，" +
+      "測算顯示：只要 " + span + " 期間月均成長率達到 <b>" + (isFinite(be) ? "+" + fmtNum(bePct,1) + "%" : "—") + "</b> 以上（損益兩平門檻），" +
+      "MOMO 收到的抽成「金額」就不會低於「抽成維持 " + fmtNum(state.oldRatePct,1) + "%、業績持平不變」的現狀情境。" +
+      "本提案採用假設為每月成長 <b>+" + fmtNum(growthPct,0) + "%</b>，" +
+      (marginPts !== null ? ("較損益兩平門檻高出 <b>" + fmtNum(marginPts,1) + " 個百分點</b>，具備安全邊際；") : "") +
+      "在此假設下，" + span + " 累計可為 MOMO 多創造 <b>" + (momoDelta>=0?"+":"") + fmtMoney(momoDelta) + "</b> 的抽成收入，" +
+      "同時我方獲得 <b>" + fmtMoney(t.pool) + "</b> 的行銷預算池，用於雙11、雙12 等年末大檔的深度操作，形成雙方共同得利的成長飛輪。";
+
+    var grid = document.getElementById("compareGrid");
+    var nowRevenue = state.months * state.baseRevenue;
+    var nowOurs = nowRevenue - flatOld;
+    grid.innerHTML =
+      '<div class="compare-card now"><h3>現狀不變（抽成 ' + fmtNum(state.oldRatePct,1) + '%、業績持平）</h3><dl>' +
+      '<dt>累計業績</dt><dd>' + fmtMoney(nowRevenue) + '</dd>' +
+      '<dt>MOMO 抽成總額</dt><dd>' + fmtMoney(flatOld) + '</dd>' +
+      '<dt>我方淨留存</dt><dd>' + fmtMoney(nowOurs) + '</dd>' +
+      '</dl></div>' +
+      '<div class="compare-card new"><h3>新方案（抽成 ' + fmtNum(state.newRatePct,1) + '%、假設成長 +' + fmtNum(growthPct,0) + '%/月）</h3><dl>' +
+      '<dt>累計業績</dt><dd>' + fmtMoney(t.revenue) + '</dd>' +
+      '<dt>MOMO 抽成總額</dt><dd>' + fmtMoney(t.newCom) + '</dd>' +
+      '<dt>行銷預算池（我方待投入）</dt><dd>' + fmtMoney(t.pool) + '</dd>' +
+      '<dt>我方毛留存</dt><dd>' + fmtMoney(t.net + t.pool) + '</dd>' +
+      '</dl></div>';
+  }
+
+  function buildSummaryText(){
+    var rows = projectionRows();
+    var t = totalsOf(rows);
+    var flatOld = flatBaseline();
+    var momoDelta = t.newCom - flatOld;
+    var be = breakevenGrowth();
+    var span = rows[0].label + " 至 " + rows[rows.length-1].label;
+    var lines = [];
+    lines.push("【MOMO 渠道抽成調整提案｜測算摘要】");
+    lines.push("");
+    lines.push("現行抽成 " + fmtNum(state.oldRatePct,1) + "% → 爭取抽成 " + fmtNum(state.newRatePct,1) + "%，差額 " + fmtNum(state.oldRatePct-state.newRatePct,1) + "% 以 " + fmtNum(state.reinvestPct,0) + "% 比例回投聯合行銷。");
+    lines.push("基期（" + state.baseLabel + "）業績：" + fmtMoney(state.baseRevenue) + "；假設 " + span + " 期間每月成長 +" + fmtNum((state.growth-1)*100,0) + "%。");
+    lines.push("");
+    lines.push(span + " 累計預估業績：" + fmtMoney(t.revenue));
+    lines.push(span + " 累計行銷預算池：" + fmtMoney(t.pool));
+    lines.push(span + " MOMO 累計新抽成：" + fmtMoney(t.newCom) + "（現狀不變情境為 " + fmtMoney(flatOld) + "，差額 " + (momoDelta>=0?"+":"") + fmtMoney(momoDelta) + "）");
+    lines.push("損益兩平所需月成長率：" + (isFinite(be) ? "+" + fmtNum((be-1)*100,1) + "%" : "—") + "（本提案假設 +" + fmtNum((state.growth-1)*100,0) + "%，具安全邊際）");
+    lines.push("");
+    lines.push("結論：在合理成長假設下，降抽成不減少 MOMO 的實際抽成收入，且我方獲得可持續投入的行銷預算，形成業績成長飛輪。");
+    return lines.join("\n");
+  }
+
+  // ---------- tracker ----------
+  function trackerRows(){
+    var plan = projectionRows();
+    var rows = [];
+    var prevActual = state.baseRevenue;
+    for (var i = 0; i < plan.length; i++){
+      var a = state.actual[i] || { revenue: null, spend: null };
+      var achievement = (a.revenue != null) ? (a.revenue / plan[i].revenue) * 100 : null;
+      var roas = (a.revenue != null && a.spend) ? (a.revenue - prevActual) / a.spend : null;
+      var actualCom = (a.revenue != null) ? a.revenue * (state.newRatePct / 100) : null;
+      rows.push({
+        label: plan[i].label, planRevenue: plan[i].revenue,
+        actualRevenue: a.revenue, spend: a.spend,
+        achievement: achievement, roas: roas, actualCom: actualCom
+      });
+      if (a.revenue != null) prevActual = a.revenue;
+    }
+    return rows;
+  }
+
+  function renderTracker(){
+    var rows = trackerRows();
+    var tbody = document.querySelector("#tblTracker tbody");
+    var tfoot = document.querySelector("#tblTracker tfoot");
+    clear(tbody); clear(tfoot);
+
+    var sumPlan = 0, sumActual = 0, hasActual = false;
+
+    rows.forEach(function(r, i){
+      if (r.actualRevenue != null){ sumPlan += r.planRevenue; sumActual += r.actualRevenue; hasActual = true; }
+      var tr = document.createElement("tr");
+      var achCls = r.achievement == null ? "" : (r.achievement >= 100 ? "tag-good" : "tag-bad");
+      var achText = r.achievement == null ? "—" : ((r.achievement >= 100 ? "▲ " : "▼ ") + fmtPct(r.achievement, 1));
+      tr.innerHTML =
+        "<td>" + r.label + "</td>" +
+        '<td class="num">' + fmtMoney(r.planRevenue) + "</td>" +
+        '<td class="num"><input class="cell" type="number" data-idx="' + i + '" data-field="revenue" placeholder="輸入實際" value="' + (r.actualRevenue != null ? r.actualRevenue : "") + '"></td>' +
+        '<td class="num ' + achCls + '">' + achText + "</td>" +
+        '<td class="num"><input class="cell" type="number" data-idx="' + i + '" data-field="spend" placeholder="輸入投入" value="' + (r.spend != null ? r.spend : "") + '"></td>' +
+        '<td class="num">' + (r.roas == null ? "—" : fmtNum(r.roas, 2) + "x") + "</td>" +
+        '<td class="num">' + (r.actualCom == null ? "—" : fmtMoney(r.actualCom)) + "</td>";
+      tbody.appendChild(tr);
+    });
+
+    var trf = document.createElement("tr");
+    trf.innerHTML = "<td>累積（已回填月份）</td>" +
+      '<td class="num">' + fmtMoney(sumPlan) + "</td>" +
+      '<td class="num">' + (hasActual ? fmtMoney(sumActual) : "—") + "</td>" +
+      '<td class="num">' + (hasActual ? fmtPct((sumActual/sumPlan)*100,1) : "—") + "</td>" +
+      '<td class="num"></td><td class="num"></td><td class="num"></td>';
+    tfoot.appendChild(trf);
+
+    tbody.querySelectorAll("input.cell").forEach(function(input){
+      input.addEventListener("input", function(){
+        var idx = parseInt(input.getAttribute("data-idx"), 10);
+        var field = input.getAttribute("data-field");
+        var v = input.value === "" ? null : parseFloat(input.value);
+        if (!state.actual[idx]) state.actual[idx] = { revenue: null, spend: null };
+        state.actual[idx][field] = (v == null || isNaN(v)) ? null : v;
+        saveState();
+        renderTracker();
+        renderTrackerChart();
+      });
+    });
+
+    var legend = document.getElementById("trackerLegend");
+    legend.innerHTML =
+      '<span class="item"><span class="swatch dashed"></span>計畫業績</span>' +
+      '<span class="item"><span class="swatch line" style="background:var(--accent)"></span>實際業績</span>';
+
+    renderTrackerChart();
+  }
+
+  function renderTrackerChart(){
+    var svg = document.getElementById("chartTracker");
+    clear(svg);
+    var rows = trackerRows();
+    var W = 900, H = 320;
+    var margin = { top: 24, right: 20, bottom: 34, left: 46 };
+    var plotW = W - margin.left - margin.right;
+    var plotH = H - margin.top - margin.bottom;
+    var baseline = margin.top + plotH;
+
+    var allVals = rows.map(function(r){ return r.planRevenue; }).concat(rows.map(function(r){ return r.actualRevenue; }).filter(function(v){ return v != null; }));
+    var maxVal = Math.max.apply(null, allVals) * 1.15;
+    if (!isFinite(maxVal) || maxVal <= 0) maxVal = 1;
+    var scale = plotH / maxVal;
+    var n = rows.length;
+    var stepX = n > 1 ? plotW / (n - 1) : plotW;
+
+    var border = cssVar("--border"), faint = cssVar("--ink-faint"), accent = cssVar("--accent");
+
+    var steps = 4;
+    for (var s = 0; s <= steps; s++){
+      var val = (maxVal / steps) * s;
+      var y = baseline - val * scale;
+      svg.appendChild(svgEl("line", { x1: margin.left, x2: W - margin.right, y1: y, y2: y, stroke: border, "stroke-width": 1 }));
+      var t = svgEl("text", { x: margin.left - 8, y: y + 4, "text-anchor": "end", "font-size": 10.5, fill: faint, "font-family": "var(--font-mono)" });
+      t.textContent = s === 0 ? "0" : fmtAxisMoney(val);
+      svg.appendChild(t);
+    }
+
+    function xAt(i){ return margin.left + stepX * i; }
+    function yAt(v){ return baseline - v * scale; }
+
+    var planPath = rows.map(function(r,i){ return (i===0?"M":"L") + xAt(i) + "," + yAt(r.planRevenue); }).join(" ");
+    svg.appendChild(svgEl("path", { d: planPath, fill: "none", stroke: faint, "stroke-width": 2, "stroke-dasharray": "5,5" }));
+
+    var actualPts = [];
+    rows.forEach(function(r,i){ if (r.actualRevenue != null) actualPts.push({ i: i, v: r.actualRevenue }); });
+    if (actualPts.length){
+      var actualPath = actualPts.map(function(p,idx){ return (idx===0?"M":"L") + xAt(p.i) + "," + yAt(p.v); }).join(" ");
+      svg.appendChild(svgEl("path", { d: actualPath, fill: "none", stroke: accent, "stroke-width": 2.5 }));
+      actualPts.forEach(function(p){
+        var c = svgEl("circle", { cx: xAt(p.i), cy: yAt(p.v), r: 4.5, fill: accent });
+        svg.appendChild(c);
+      });
+    }
+
+    rows.forEach(function(r,i){
+      var hit = svgEl("rect", { x: xAt(i) - stepX/2, y: margin.top, width: stepX, height: plotH, fill: "transparent" });
+      hit.addEventListener("mousemove", function(ev){
+        var html = '<div class="t-title">' + r.label + '</div>' +
+          '<div class="t-row"><span>計畫</span><span class="num">' + fmtMoney(r.planRevenue) + '</span></div>' +
+          '<div class="t-row"><span>實際</span><span class="num">' + (r.actualRevenue==null?"—":fmtMoney(r.actualRevenue)) + '</span></div>' +
+          '<div class="t-row"><span>達成率</span><span class="num">' + (r.achievement==null?"—":fmtPct(r.achievement,1)) + '</span></div>';
+        showTooltip(ev.clientX, ev.clientY, html);
+      });
+      hit.addEventListener("mouseleave", hideTooltip);
+      svg.appendChild(hit);
+
+      var lbl = svgEl("text", { x: xAt(i), y: H - 10, "text-anchor": "middle", "font-size": 11.5, fill: faint });
+      lbl.textContent = r.label;
+      svg.appendChild(lbl);
+    });
+
+    svg.appendChild(svgEl("line", { x1: margin.left, x2: W - margin.right, y1: baseline, y2: baseline, stroke: cssVar("--ink-muted"), "stroke-width": 1.5 }));
+  }
+
+  // ---------- sensitivity ----------
+  function renderSensitivity(){
+    var tbody = document.querySelector("#tblSensitivity tbody");
+    clear(tbody);
+    var be = breakevenGrowth();
+    var flatOld = flatBaseline();
+
+    var steps = [1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0];
+    var extra = [];
+    if (isFinite(be) && !steps.some(function(g){ return Math.abs(g-be) < 0.02; })) extra.push({ g: be, isBE: true });
+    if (!steps.some(function(g){ return Math.abs(g-state.growth) < 0.02; }) && (!extra.length || Math.abs(extra[0].g - state.growth) > 0.02)) extra.push({ g: state.growth, isCurrent: true });
+
+    var all = steps.map(function(g){ return { g: g }; }).concat(extra);
+    all.sort(function(a,b){ return a.g - b.g; });
+
+    all.forEach(function(item){
+      var g = item.g;
+      var rows = projectionRows(g);
+      var t = totalsOf(rows);
+      var delta = t.newCom - flatOld;
+      var isCurrent = Math.abs(g - state.growth) < 0.005;
+      var isBE = isFinite(be) && Math.abs(g - be) < 0.005;
+      var tr = document.createElement("tr");
+      if (isCurrent || isBE) tr.className = "highlight";
+      var badges = "";
+      if (isCurrent) badges += ' <span class="badge accent">目前假設</span>';
+      if (isBE) badges += ' <span class="badge momo">損益兩平</span>';
+      tr.innerHTML =
+        "<td>+" + fmtNum((g-1)*100,1) + "%" + badges + "</td>" +
+        '<td class="num">' + fmtMoney(t.revenue) + "</td>" +
+        '<td class="num">' + fmtMoney(t.newCom) + "</td>" +
+        '<td class="num">' + fmtMoney(t.pool) + "</td>" +
+        '<td class="num ' + (delta>=0?"tag-good":"tag-bad") + '">' + (delta>=0?"+":"") + fmtMoney(delta) + "</td>";
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- wire up ----------
+  function renderAll(){
+    renderKPIs();
+    renderProjection();
+    renderCase();
+    renderTracker();
+    renderSensitivity();
+  }
+
+  function syncInputs(){
+    document.getElementById("in-baseLabel").value = state.baseLabel;
+    document.getElementById("in-baseRevenue").value = state.baseRevenue;
+    document.getElementById("in-months").value = state.months;
+    document.getElementById("in-oldRate").value = state.oldRatePct;
+    document.getElementById("in-newRate").value = state.newRatePct;
+    document.getElementById("in-reinvest").value = state.reinvestPct;
+    document.getElementById("out-reinvest").textContent = fmtNum(state.reinvestPct,0) + "%";
+    document.getElementById("in-growth").value = Math.round(state.growth * 100);
+    document.getElementById("out-growth").textContent = fmtNum(state.growth,2) + "x";
+  }
+
+  function bindInputs(){
+    document.getElementById("in-baseLabel").addEventListener("change", function(e){
+      state.baseLabel = e.target.value || DEFAULTS.baseLabel; saveState(); renderAll();
+    });
+    document.getElementById("in-baseRevenue").addEventListener("input", function(e){
+      var v = parseFloat(e.target.value); state.baseRevenue = isNaN(v) ? 0 : v; saveState(); renderAll();
+    });
+    document.getElementById("in-months").addEventListener("input", function(e){
+      var v = parseInt(e.target.value, 10); state.months = Math.min(12, Math.max(1, isNaN(v) ? 1 : v));
+      normalizeActual(state); saveState(); renderAll();
+    });
+    document.getElementById("in-oldRate").addEventListener("input", function(e){
+      var v = parseFloat(e.target.value); state.oldRatePct = isNaN(v) ? 0 : v; saveState(); renderAll();
+    });
+    document.getElementById("in-newRate").addEventListener("input", function(e){
+      var v = parseFloat(e.target.value); state.newRatePct = isNaN(v) ? 0 : v; saveState(); renderAll();
+    });
+    document.getElementById("in-reinvest").addEventListener("input", function(e){
+      state.reinvestPct = parseFloat(e.target.value);
+      document.getElementById("out-reinvest").textContent = fmtNum(state.reinvestPct,0) + "%";
+      saveState(); renderAll();
+    });
+    document.getElementById("in-growth").addEventListener("input", function(e){
+      state.growth = parseFloat(e.target.value) / 100;
+      document.getElementById("out-growth").textContent = fmtNum(state.growth,2) + "x";
+      saveState(); renderAll();
+    });
+    document.getElementById("btnResetAssumptions").addEventListener("click", function(){
+      ["baseLabel","baseRevenue","oldRatePct","newRatePct","reinvestPct","growth","months"].forEach(function(k){ state[k] = DEFAULTS[k]; });
+      normalizeActual(state); saveState(); syncInputs(); renderAll();
+    });
+    document.getElementById("btnClearActual").addEventListener("click", function(){
+      state.actual = state.actual.map(function(){ return { revenue: null, spend: null }; });
+      saveState(); renderAll();
+    });
+    document.getElementById("btnGenSummary").addEventListener("click", function(){
+      document.getElementById("summaryWrap").style.display = "block";
+      document.getElementById("summaryText").value = buildSummaryText();
+      document.getElementById("copyNote").textContent = "";
+    });
+    document.getElementById("btnCopySummary").addEventListener("click", function(){
+      var ta = document.getElementById("summaryText");
+      var note = document.getElementById("copyNote");
+      function done(ok){ note.textContent = ok ? "已複製到剪貼簿。" : "複製失敗，請手動選取文字複製。"; }
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(ta.value).then(function(){ done(true); }).catch(function(){ done(false); });
+      } else {
+        ta.select();
+        try{ done(document.execCommand("copy")); }catch(e){ done(false); }
+      }
+    });
+
+    var themeBtn = document.getElementById("themeToggle");
+    var savedTheme = null;
+    try{ savedTheme = localStorage.getItem("momo_calc_theme"); }catch(e){}
+    if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+    themeBtn.addEventListener("click", function(){
+      var cur = document.documentElement.getAttribute("data-theme");
+      var next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try{ localStorage.setItem("momo_calc_theme", next); }catch(e){}
+      renderAll();
+    });
+
+    window.addEventListener("resize", function(){ renderProjection(); renderTrackerChart(); });
+  }
+
+  syncInputs();
+  bindInputs();
+  renderAll();
+})();
+</script>
