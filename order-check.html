@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>訂單出貨核對｜每日核單與月報表</title>
+<title>訂單出貨核對</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <style>
@@ -214,6 +214,10 @@
     <div class="steps">
       <span>1 · 上傳兩份檔案</span><span>2 · 確認欄位對應</span><span>3 · 核對並檢視差異</span><span>4 · 存成當日紀錄</span><span>5 · 月底輸出報表</span>
     </div>
+    <div class="btn-row">
+      <button class="btn ghost" id="demoBtn">載入範例資料試跑</button>
+      <span class="note" style="margin-top:9px;">沒帶檔案也能先看它怎麼運作，範例不會存進每日紀錄。</span>
+    </div>
   </section>
 
   <section class="card" id="batch">
@@ -238,7 +242,7 @@
   <div class="upload-grid" id="upload">
     <section class="card" data-side="order">
       <h2><span class="step-no">1</span>當天全部訂單</h2>
-      <p class="sub">從後台匯出的當日訂單檔（應該要出貨的清單）。支援 .xlsx / .xls / .csv，或直接貼上。</p>
+      <p class="sub">從後台匯出的當日訂單檔（應該要出貨的清單）。支援 .xlsx / .csv，或直接貼上（舊版 .xls 請先另存新檔）。</p>
       <div class="card-body">
         <div class="drop" data-drop="order">
           <div class="big">點此選擇檔案，或把檔案拖進來</div>
@@ -1184,14 +1188,28 @@ function csvCell(v){
   var s = String(v == null ? '' : v);
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
-function downloadCSV(filename, rows){
-  var text = '﻿' + rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n');
-  var blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+/* 存檔：一般瀏覽器直接下載；在 claude.ai 線上預覽裡改走平台的存檔流程。 */
+var hostedSave = null;
+if (window.claude && typeof window.claude.use === 'function') {
+  try { window.claude.use('downloads').then(function(d){ hostedSave = d; }, function(){}); } catch (e) {}
+}
+function saveFile(filename, text, mime){
+  if (hostedSave) {
+    hostedSave.save({ filename: filename, data: text }).then(null, function(err){
+      if (err && err.code === 'declined') return;
+      alert('檔案沒有存成功：' + ((err && err.message) || '未知原因'));
+    });
+    return;
+  }
+  var blob = new Blob([text], { type: mime });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+function downloadCSV(filename, rows){
+  saveFile(filename, '﻿' + rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n'), 'text/csv;charset=utf-8;');
 }
 var STATUS_TEXT = { ok: '正確', diff: '資料不符', missing: '未出貨', extra: '多出貨' };
 
@@ -1469,6 +1487,31 @@ $('#runBtn').addEventListener('click', function(){
   $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
+var DEMO_ORDERS = [
+  ['訂單編號', '收件人', '收件人電話', '收件地址', '商品名稱', '數量', '訂單金額'],
+  ['A2601', '王小明', '0912-345-678', '台北市信義區松高路11號5樓', '雞湯大叔 火鍋湯底 500g', '2', '1000'],
+  ['A2602', '陳美玲', '0922333444', '新北市板橋區文化路一段100號', '麵屋一燈 拉麵組合', '1', '450'],
+  ['A2603', '林大同', '+886933555666', '臺中市西屯區台灣大道三段99號12樓', '賴山嶼 麻辣燙組', '3', '1200'],
+  ['A2604', '張美美', '0955111222', '高雄市前金區中正四路211號', '雞湯桑 定食組', '1', '380'],
+  ['A2605', '黃小華', '0966777888', '桃園市中壢區中央西路二段5號', '雞湯大叔 火鍋湯底 500g', '2', '1600']
+];
+var DEMO_SHIPS = [
+  ['出貨單號', '收貨人', '聯絡電話', '送貨地址', '品名', '出貨數量', '銷售金額'],
+  ['A2601', '王 小明', '(02)0912345678', '臺北市信義區松高路 11號5F', '雞湯大叔 火鍋湯底 500g', '2', '1000'],
+  ['A2602', '陳美玲', '0922333444', '新北市板橋區文化路一段100號', '麵屋一燈 拉麵組合', '2', '450'],
+  ['A2604', '張美美', '0955111999', '高雄市前金區中正四路211號', '雞湯桑 定食組', '1', '400'],
+  ['A2605', '黃小華', '0966777888', '桃園市中壢區中央西路二段5號', '雞湯大叔 火鍋湯底 500g', '2', '1600'],
+  ['A2609', '吳阿明', '0977888999', '台南市東區長榮路一段2號', '雞湯大叔 火鍋湯底 500g', '1', '500']
+];
+$('#demoBtn').addEventListener('click', function(){
+  var o = {}; o['（範例）訂單'] = DEMO_ORDERS.map(function(r){ return r.slice(); });
+  var p = {}; p['（範例）出貨'] = DEMO_SHIPS.map(function(r){ return r.slice(); });
+  setSource('order', '範例：當日訂單', o, '（範例）訂單');
+  setSource('ship', '範例：實際出貨', p, '（範例）出貨');
+  $('#batchNote').value = '範例資料';
+  $('#runBtn').click();
+});
+
 $('#resetRules').addEventListener('click', function(){
   writeRules({ name: true, phone: true, addr: true, qty: true, amount: true,
     tolQty: 0, tolAmount: 0, addrMode: 'loose', phoneMode: 'tail9', qtySource: 'sum' });
@@ -1533,12 +1576,7 @@ $('#dailyBody').addEventListener('click', function(e){
 });
 
 $('#backupBtn').addEventListener('click', function(){
-  var blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = '出貨核對備份_' + todayISO() + '.json';
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  saveFile('出貨核對備份_' + todayISO() + '.json', JSON.stringify(db, null, 2), 'application/json');
 });
 $('#restoreBtn').addEventListener('click', function(){ $('#restoreFile').click(); });
 $('#restoreFile').addEventListener('change', function(){
