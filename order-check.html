@@ -1,0 +1,1613 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>訂單出貨核對｜每日核單與月報表</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+    --border:#DDD6C7; --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+    --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+    --momo:#D6316B; --momo-soft:#FBE3EC; --momo-ink:#7A1A3D;
+    --warn:#B5730A; --warn-soft:#F6E8D2; --warn-ink:#6B4507;
+    --good:#2F9E44; --good-soft:#E3F4E7; --good-ink:#1B5E2A;
+    --bad:#C4362F; --bad-soft:#FBE5E3; --bad-ink:#7C1F1A;
+    --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+    --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+      --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+      --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+      --momo:#D9527F; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+      --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
+      --good:#4CAF6B; --good-soft:#1B3322; --good-ink:#AFE5BF;
+      --bad:#E2665F; --bad-soft:#3A1C1A; --bad-ink:#F5B9B4;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+    --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+    --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+    --momo:#D9527F; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+    --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
+    --good:#4CAF6B; --good-soft:#1B3322; --good-ink:#AFE5BF;
+    --bad:#E2665F; --bad-soft:#3A1C1A; --bad-ink:#F5B9B4;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+    font-size:14.5px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; scroll-behavior:auto !important; } }
+  a{ color:var(--accent); }
+  h1,h2,h3{ text-wrap:balance; font-weight:800; letter-spacing:-0.01em; margin:0; }
+  .num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  button{ font:inherit; }
+  input,select,textarea{ font:inherit; color:var(--ink); }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .topbar{
+    position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .topbar-inner{ max-width:1180px; margin:0 auto; padding:14px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:12px 22px; }
+  .brand{ display:flex; flex-direction:column; gap:2px; margin-right:auto; }
+  .brand .eyebrow{ font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
+  .brand h1{ font-size:19px; }
+  .tabs{ display:flex; gap:4px; overflow-x:auto; padding-bottom:2px; }
+  .tabs a{ flex:0 0 auto; text-decoration:none; color:var(--ink-muted); font-size:13px; font-weight:600; padding:7px 12px; border-radius:999px; white-space:nowrap; }
+  .tabs a:hover{ background:var(--surface-2); color:var(--ink); }
+  .theme-toggle{
+    border:1px solid var(--border); background:var(--surface); color:var(--ink-muted);
+    border-radius:999px; width:32px; height:32px; cursor:pointer; display:grid; place-items:center; flex:0 0 auto;
+  }
+  .theme-toggle:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+  .page{ max-width:1180px; margin:0 auto; padding:26px 20px 90px; display:flex; flex-direction:column; gap:22px; }
+  .page > *{ min-width:0; }
+  .hero p{ max-width:70ch; color:var(--ink-muted); margin:8px 0 0; }
+  .hero .steps{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .hero .steps span{ font-size:12.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:4px 12px; color:var(--ink-muted); }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow); scroll-margin-top:78px; }
+  .card > h2{ font-size:17px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .card > .sub{ color:var(--ink-muted); font-size:13px; margin:4px 0 0; max-width:74ch; }
+  .card-body{ margin-top:18px; }
+  .step-no{
+    display:inline-grid; place-items:center; width:22px; height:22px; border-radius:7px;
+    background:var(--accent-soft); color:var(--accent-ink); font-size:12px; font-weight:800; flex:0 0 auto;
+  }
+
+  .upload-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(430px,1fr)); gap:22px; align-items:start; }
+  .upload-grid > *{ min-width:0; }
+  @media (max-width:900px){ .upload-grid{ grid-template-columns:1fr; } }
+
+  .drop{
+    border:1.5px dashed var(--border); border-radius:12px; background:var(--surface-2);
+    padding:20px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over{ border-color:var(--accent); background:var(--accent-soft); }
+  .drop .big{ font-weight:700; font-size:14px; }
+  .drop .small{ font-size:12px; color:var(--ink-faint); margin-top:4px; }
+  .drop.loaded{ border-style:solid; border-color:var(--accent); background:var(--accent-soft); text-align:left; }
+  .file-line{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .file-line .name{ font-weight:700; word-break:break-all; }
+  .file-line .meta{ font-size:12px; color:var(--ink-muted); }
+
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:14px 18px; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12.5px; font-weight:700; color:var(--ink-muted); }
+  .field .hint{ font-size:11.5px; color:var(--ink-faint); }
+  .field input[type="number"], .field input[type="text"], .field input[type="date"], .field input[type="month"], .field select, .field textarea{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%;
+  }
+  .field select.unset{ border-color:var(--warn); }
+  .field textarea{ min-height:110px; font-family:var(--font-mono); font-size:12.5px; resize:vertical; }
+  .check-row{ display:flex; flex-wrap:wrap; gap:10px 20px; }
+  .check{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-muted); font-weight:600; }
+  .check input{ accent-color:var(--accent); width:16px; height:16px; }
+
+  .btn-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+  .btn{ border:1px solid var(--border); background:var(--surface-2); color:var(--ink); padding:8px 14px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; }
+  .btn:hover{ border-color:var(--ink-faint); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+  .btn.ghost{ background:transparent; }
+  .btn.danger{ color:var(--bad); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn.sm{ padding:4px 10px; font-size:12px; border-radius:7px; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; }
+  .kpi{ background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:13px 15px; }
+  .kpi .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); font-weight:700; }
+  .kpi .value{ font-size:24px; font-weight:800; margin-top:4px; font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .kpi .sub2{ font-size:12px; color:var(--ink-muted); }
+  .kpi.ok .value{ color:var(--good); } .kpi.bad .value{ color:var(--bad); } .kpi.warn .value{ color:var(--warn); }
+
+  .scrollwrap{ overflow-x:auto; max-width:100%; border:1px solid var(--border); border-radius:12px; }
+  table{ width:100%; border-collapse:separate; border-spacing:0; }
+  th,td{ padding:8px 12px; border-bottom:1px solid var(--border); text-align:right; font-size:13.2px; vertical-align:top; }
+  th:first-child, td:first-child{ text-align:left; }
+  th.l, td.l{ text-align:left; }
+  thead th{ background:var(--surface-2); color:var(--ink-muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tfoot td{ font-weight:800; background:var(--surface-2); border-top:2px solid var(--border); border-bottom:none; }
+  td.num, th.num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .preview table{ min-width:640px; }
+  .preview td, .preview th{ max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .badge{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .badge.ok{ background:var(--good-soft); color:var(--good-ink); }
+  .badge.diff{ background:var(--bad-soft); color:var(--bad-ink); }
+  .badge.missing{ background:var(--warn-soft); color:var(--warn-ink); }
+  .badge.extra{ background:var(--momo-soft); color:var(--momo-ink); }
+  .badge.dup{ background:var(--surface-3); color:var(--ink-muted); }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ border:1px solid var(--border); background:var(--surface-2); color:var(--ink-muted); border-radius:999px; padding:5px 13px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .toolbar{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .search{ background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:7px 11px; min-width:220px; }
+
+  tr.row-head{ cursor:pointer; }
+  tr.row-head:hover td{ background:var(--surface-2); }
+  tr.row-detail > td{ background:var(--surface-2); padding:0; }
+  .detail-inner{ padding:14px 16px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .cmp{ width:100%; max-width:100%; border:1px solid var(--border); border-radius:9px; overflow-x:auto; background:var(--surface); }
+  .cmp table{ min-width:520px; }
+  .cmp td.bad-cell{ background:var(--bad-soft); color:var(--bad-ink); font-weight:700; }
+  .cmp .field-name{ font-weight:700; color:var(--ink-muted); }
+  .wrapval{ white-space:normal; word-break:break-all; text-align:left; }
+
+  .note{ font-size:12.5px; color:var(--ink-faint); margin-top:10px; }
+  .empty{ padding:26px; text-align:center; color:var(--ink-faint); font-size:13px; }
+  .alert{ border-radius:10px; padding:10px 14px; font-size:13px; margin-top:12px; }
+  .alert.err{ background:var(--bad-soft); color:var(--bad-ink); }
+  .alert.info{ background:var(--accent-soft); color:var(--accent-ink); }
+  .alert.warn{ background:var(--warn-soft); color:var(--warn-ink); }
+  .hide{ display:none !important; }
+
+  .bar-wrap{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .bar{ height:8px; border-radius:4px; background:var(--accent); min-width:2px; }
+  .bar.bad{ background:var(--bad); }
+
+  @media print{
+    .topbar,.btn-row,.chips,.drop,.toolbar{ display:none !important; }
+    .card{ box-shadow:none; break-inside:avoid; }
+    body{ background:#fff; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">Alpha · 出貨管理</span>
+      <h1>訂單出貨核對</h1>
+    </div>
+    <nav class="tabs">
+      <a href="#upload">上傳檔案</a>
+      <a href="#rules">核對規則</a>
+      <a href="#result">核對結果</a>
+      <a href="#daily">每日紀錄</a>
+      <a href="#monthly">月報表</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" title="切換深色／淺色" aria-label="切換深色／淺色">◐</button>
+  </div>
+</div>
+
+<main class="page">
+
+  <section class="hero">
+    <h2 style="font-size:24px;">每天兩個檔案，逐張核對出貨是否正確</h2>
+    <p>左邊放當天「全部訂單」，右邊放打完單的「實際出貨明細」，系統以訂單編號逐張比對收件人、電話、地址、數量與金額，把不一致的單挑出來。核完存檔，月底直接產出當月出貨報表。</p>
+    <div class="steps">
+      <span>1 · 上傳兩份檔案</span><span>2 · 確認欄位對應</span><span>3 · 核對並檢視差異</span><span>4 · 存成當日紀錄</span><span>5 · 月底輸出報表</span>
+    </div>
+  </section>
+
+  <section class="card" id="batch">
+    <h2><span class="step-no">0</span>批次設定</h2>
+    <p class="sub">這批核對屬於哪一天。存檔後會以這個日期歸入每日紀錄與月報表。</p>
+    <div class="card-body field-grid">
+      <div class="field">
+        <label for="batchDate">出貨日期</label>
+        <input type="date" id="batchDate">
+      </div>
+      <div class="field">
+        <label for="batchNote">備註（選填）</label>
+        <input type="text" id="batchNote" placeholder="例：雙十一第一批、補出貨">
+      </div>
+      <div class="field">
+        <label for="batchChannel">通路／來源（選填）</label>
+        <input type="text" id="batchChannel" placeholder="例：MOMO、蝦皮、官網">
+      </div>
+    </div>
+  </section>
+
+  <div class="upload-grid" id="upload">
+    <section class="card" data-side="order">
+      <h2><span class="step-no">1</span>當天全部訂單</h2>
+      <p class="sub">從後台匯出的當日訂單檔（應該要出貨的清單）。支援 .xlsx / .xls / .csv，或直接貼上。</p>
+      <div class="card-body">
+        <div class="drop" data-drop="order">
+          <div class="big">點此選擇檔案，或把檔案拖進來</div>
+          <div class="small">Excel／CSV 皆可，資料不會離開這台電腦</div>
+        </div>
+        <input type="file" class="hide" data-file="order" accept=".xlsx,.csv,.txt,.tsv">
+        <div class="btn-row">
+          <button class="btn ghost sm" data-paste-toggle="order">改用貼上資料</button>
+          <button class="btn ghost sm hide" data-clear="order">清除</button>
+        </div>
+        <div class="field hide" data-paste-box="order" style="margin-top:10px;">
+          <label>貼上表格內容（可直接從 Excel 複製整片區域，含標題列）</label>
+          <textarea data-paste="order" placeholder="訂單編號&#9;收件人&#9;電話&#9;地址&#9;數量&#9;金額"></textarea>
+          <div class="btn-row"><button class="btn sm" data-paste-apply="order">讀取貼上的資料</button></div>
+        </div>
+        <div class="field-grid hide" data-sheetbox="order" style="margin-top:14px;">
+          <div class="field">
+            <label>工作表</label>
+            <select data-sheet="order"></select>
+          </div>
+          <div class="field">
+            <label>標題列在第幾列</label>
+            <input type="number" min="1" step="1" value="1" data-headerrow="order">
+            <span class="hint">若前面有標題／說明列，改成實際欄位名稱那一列</span>
+          </div>
+        </div>
+        <div class="preview scrollwrap hide" data-preview="order" style="margin-top:12px;"></div>
+        <div class="hide" data-mapbox="order" style="margin-top:16px;">
+          <h3 style="font-size:13.5px; color:var(--ink-muted);">欄位對應</h3>
+          <div class="field-grid" data-mapgrid="order" style="margin-top:10px;"></div>
+        </div>
+        <div class="alert err hide" data-err="order"></div>
+      </div>
+    </section>
+
+    <section class="card" data-side="ship">
+      <h2><span class="step-no">2</span>實際出貨明細</h2>
+      <p class="sub">打完出貨單後的檔案（實際印出貨單／交寄的清單）。欄位不同沒關係，下面對應一次就好。</p>
+      <div class="card-body">
+        <div class="drop" data-drop="ship">
+          <div class="big">點此選擇檔案，或把檔案拖進來</div>
+          <div class="small">Excel／CSV 皆可，資料不會離開這台電腦</div>
+        </div>
+        <input type="file" class="hide" data-file="ship" accept=".xlsx,.csv,.txt,.tsv">
+        <div class="btn-row">
+          <button class="btn ghost sm" data-paste-toggle="ship">改用貼上資料</button>
+          <button class="btn ghost sm hide" data-clear="ship">清除</button>
+        </div>
+        <div class="field hide" data-paste-box="ship" style="margin-top:10px;">
+          <label>貼上表格內容（可直接從 Excel 複製整片區域，含標題列）</label>
+          <textarea data-paste="ship" placeholder="訂單編號&#9;收件人&#9;電話&#9;地址&#9;數量&#9;金額"></textarea>
+          <div class="btn-row"><button class="btn sm" data-paste-apply="ship">讀取貼上的資料</button></div>
+        </div>
+        <div class="field-grid hide" data-sheetbox="ship" style="margin-top:14px;">
+          <div class="field">
+            <label>工作表</label>
+            <select data-sheet="ship"></select>
+          </div>
+          <div class="field">
+            <label>標題列在第幾列</label>
+            <input type="number" min="1" step="1" value="1" data-headerrow="ship">
+            <span class="hint">若前面有標題／說明列，改成實際欄位名稱那一列</span>
+          </div>
+        </div>
+        <div class="preview scrollwrap hide" data-preview="ship" style="margin-top:12px;"></div>
+        <div class="hide" data-mapbox="ship" style="margin-top:16px;">
+          <h3 style="font-size:13.5px; color:var(--ink-muted);">欄位對應</h3>
+          <div class="field-grid" data-mapgrid="ship" style="margin-top:10px;"></div>
+        </div>
+        <div class="alert err hide" data-err="ship"></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" id="rules">
+    <h2><span class="step-no">3</span>核對規則</h2>
+    <p class="sub">哪些欄位要比、比到多嚴，可以自己調。設定會記在這台電腦上。</p>
+    <div class="card-body">
+      <div class="check-row">
+        <label class="check"><input type="checkbox" id="chkName" checked>比對收件人</label>
+        <label class="check"><input type="checkbox" id="chkPhone" checked>比對電話</label>
+        <label class="check"><input type="checkbox" id="chkAddr" checked>比對地址</label>
+        <label class="check"><input type="checkbox" id="chkQty" checked>比對數量</label>
+        <label class="check"><input type="checkbox" id="chkAmount" checked>比對金額</label>
+      </div>
+      <div class="field-grid" style="margin-top:18px;">
+        <div class="field">
+          <label for="tolQty">數量容差</label>
+          <input type="number" id="tolQty" value="0" min="0" step="1">
+          <span class="hint">差多少以內視為相符，通常填 0</span>
+        </div>
+        <div class="field">
+          <label for="tolAmount">金額容差（元）</label>
+          <input type="number" id="tolAmount" value="0" min="0" step="1">
+          <span class="hint">四捨五入誤差可填 1</span>
+        </div>
+        <div class="field">
+          <label for="addrMode">地址比對方式</label>
+          <select id="addrMode">
+            <option value="loose">寬鬆（忽略空白、全半形、臺／台、郵遞區號）</option>
+            <option value="strict">嚴格（一字不差）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="phoneMode">電話比對方式</label>
+          <select id="phoneMode">
+            <option value="tail9">只比後 9 碼（忽略 +886、市話區碼格式）</option>
+            <option value="digits">全部數字需相同</option>
+            <option value="strict">嚴格（一字不差）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qtySource">數量比對基準</label>
+          <select id="qtySource">
+            <option value="sum">同一張單的數量加總</option>
+            <option value="item">逐項商品比對（需對應商品欄位）</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="runBtn">開始核對</button>
+        <button class="btn ghost" id="resetRules">恢復預設規則</button>
+      </div>
+      <div class="alert err hide" id="runErr"></div>
+    </div>
+  </section>
+
+  <section class="card" id="result">
+    <h2><span class="step-no">4</span>核對結果</h2>
+    <p class="sub">點任一列可以展開，逐欄看訂單檔與出貨檔的差別。</p>
+    <div class="card-body">
+      <div id="resultEmpty" class="empty">尚未核對。上傳兩份檔案並確認欄位對應後，按「開始核對」。</div>
+      <div id="resultBox" class="hide">
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="toolbar" style="margin-top:18px;">
+          <div class="chips" id="filterChips">
+            <button class="chip" data-filter="all" aria-pressed="true">全部</button>
+            <button class="chip" data-filter="issue" aria-pressed="false">只看有問題</button>
+            <button class="chip" data-filter="diff" aria-pressed="false">資料不符</button>
+            <button class="chip" data-filter="missing" aria-pressed="false">未出貨</button>
+            <button class="chip" data-filter="extra" aria-pressed="false">多出貨</button>
+            <button class="chip" data-filter="ok" aria-pressed="false">正確</button>
+          </div>
+          <input type="search" class="search" id="searchBox" placeholder="搜尋訂單編號／收件人／電話／地址">
+        </div>
+        <div class="scrollwrap">
+          <table id="resultTable">
+            <thead>
+              <tr>
+                <th class="l">狀態</th>
+                <th class="l">訂單編號</th>
+                <th class="l">收件人</th>
+                <th class="l">差異欄位</th>
+                <th class="num">訂單數量</th>
+                <th class="num">出貨數量</th>
+                <th class="num">訂單金額</th>
+                <th class="num">出貨金額</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="saveBatchBtn">存為當日紀錄</button>
+          <button class="btn" id="exportIssuesBtn">匯出差異清單 CSV</button>
+          <button class="btn" id="exportAllBtn">匯出完整核對表 CSV</button>
+          <button class="btn ghost" id="printBtn">列印／存 PDF</button>
+        </div>
+        <div class="alert info hide" id="saveMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="daily">
+    <h2><span class="step-no">5</span>每日紀錄</h2>
+    <p class="sub">每天核完存一次，這裡就是全年的出貨底稿。資料存在這台電腦的瀏覽器裡，建議定期用下面的按鈕備份。</p>
+    <div class="card-body">
+      <div class="scrollwrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="l">日期</th><th class="l">通路</th><th class="l">備註</th>
+              <th class="num">訂單張數</th><th class="num">出貨張數</th><th class="num">出貨數量</th>
+              <th class="num">出貨金額</th><th class="num">正確</th><th class="num">異常</th><th class="l">操作</th>
+            </tr>
+          </thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="backupBtn">備份全部紀錄（JSON）</button>
+        <button class="btn" id="restoreBtn">還原備份</button>
+        <input type="file" id="restoreFile" class="hide" accept=".json">
+        <button class="btn ghost danger" id="clearAllBtn">清空全部紀錄</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="monthly">
+    <h2><span class="step-no">6</span>月報表</h2>
+    <p class="sub">選一個月份，彙總當月每日出貨張數、數量、金額與異常率，可匯出 CSV 給會計或存檔。</p>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field">
+          <label for="reportMonth">月份</label>
+          <input type="month" id="reportMonth">
+        </div>
+        <div class="field">
+          <label for="reportChannel">通路篩選</label>
+          <select id="reportChannel"><option value="">全部通路</option></select>
+        </div>
+      </div>
+      <div class="kpi-grid" id="monthKpi" style="margin-top:18px;"></div>
+      <div class="scrollwrap" style="margin-top:16px;">
+        <table>
+          <thead>
+            <tr>
+              <th class="l">日期</th><th class="l">通路</th>
+              <th class="num">訂單張數</th><th class="num">出貨張數</th><th class="num">出貨數量</th>
+              <th class="num">出貨金額</th><th class="num">異常張數</th><th class="num">正確率</th><th class="l">出貨金額分布</th>
+            </tr>
+          </thead>
+          <tbody id="monthBody"></tbody>
+          <tfoot id="monthFoot"></tfoot>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="exportMonthBtn">匯出當月報表 CSV</button>
+        <button class="btn" id="exportMonthIssuesBtn">匯出當月異常明細 CSV</button>
+        <button class="btn" id="exportYearBtn">匯出全年度彙總 CSV</button>
+      </div>
+      <p class="note">CSV 皆含 UTF-8 BOM，用 Excel 直接開不會亂碼。</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- 基本工具 ---------- */
+var STORE_KEY = 'alpha-order-check-v1';
+var $ = function(sel, root){ return (root||document).querySelector(sel); };
+var $$ = function(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); };
+
+function toHalf(s){
+  return String(s == null ? '' : s)
+    .replace(/[！-～]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/　/g, ' ');
+}
+function trim(s){ return String(s == null ? '' : s).trim(); }
+function normKey(s){ return toHalf(s).replace(/\s+/g, '').toUpperCase(); }
+function normHeader(s){ return toHalf(s).replace(/\s+/g, '').replace(/[()（）\[\]{}:：*＊#]/g, '').toLowerCase(); }
+function normName(s){ return toHalf(s).replace(/\s+/g, '').replace(/[*＊·・.,]/g, '').toLowerCase(); }
+function digitsOf(s){ return toHalf(s).replace(/\D/g, ''); }
+function normPhone(s, mode){
+  if (mode === 'strict') return trim(s);
+  var d = digitsOf(s);
+  if (d.indexOf('886') === 0) d = '0' + d.slice(3);
+  if (mode === 'tail9') return d.length > 9 ? d.slice(-9) : d;
+  return d;
+}
+function normAddr(s, mode){
+  if (mode === 'strict') return trim(s);
+  var t = toHalf(s);
+  t = t.replace(/臺/g, '台');
+  t = t.replace(/^\s*\d{3,6}\s*/, '');
+  t = t.replace(/台灣省?|中華民國|R\.?O\.?C\.?/gi, '');
+  t = t.replace(/樓層?/g, 'F').replace(/之/g, '-');
+  t = t.replace(/[\s,，、。．.\-－–—_~～\/\\()（）\[\]"'`]/g, '');
+  return t.toLowerCase();
+}
+function num(s){
+  if (typeof s === 'number') return isFinite(s) ? s : 0;
+  var t = toHalf(s).replace(/[^0-9.\-]/g, '');
+  var v = parseFloat(t);
+  return isFinite(v) ? v : 0;
+}
+function isBlank(s){ return trim(s) === ''; }
+function fmtInt(n){ return (Math.round(n * 100) / 100).toLocaleString('zh-TW'); }
+function fmtMoney(n){ return Math.round(n).toLocaleString('zh-TW'); }
+function pct(a, b){ return b > 0 ? (a / b * 100).toFixed(1) + '%' : '—'; }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+  });
+}
+function todayISO(){
+  var d = new Date(), p = function(n){ return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+/* ---------- 儲存 ---------- */
+var db = { records: [], settings: {}, maps: {} };
+function loadDB(){
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      var o = JSON.parse(raw);
+      db.records = Array.isArray(o.records) ? o.records : [];
+      db.settings = o.settings || {};
+      db.maps = o.maps || {};
+    }
+  } catch (e) { /* 讀不到就用空的 */ }
+}
+function saveDB(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+  catch (e) { alert('資料存不進瀏覽器（可能空間已滿）。請先用「備份全部紀錄」匯出，再清掉舊資料。'); }
+}
+
+/* ---------- 欄位定義 ---------- */
+var FIELDS = [
+  { key: 'orderNo', label: '訂單編號', required: true,
+    alias: ['訂單編號', '訂單號碼', '訂單序號', '訂單號', '單號', '訂單代號', '出貨單號', '銷貨單號', 'orderno', 'ordernumber', 'orderid', 'order_no'] },
+  { key: 'name', label: '收件人',
+    alias: ['收件人姓名', '收件人', '收貨人', '收件者', '訂購人', '購買人', '客戶姓名', '客戶名稱', '買家姓名', '姓名', 'consignee', 'receiver', 'name'] },
+  { key: 'phone', label: '電話',
+    alias: ['收件人電話', '收件人手機', '聯絡電話', '行動電話', '手機號碼', '電話', '手機', 'tel', 'phone', 'mobile'] },
+  { key: 'addr', label: '地址',
+    alias: ['收件人地址', '收件地址', '送貨地址', '配送地址', '寄送地址', '地址', 'address', 'addr'] },
+  { key: 'item', label: '商品（選填）',
+    alias: ['商品名稱', '品名', '商品編號', '商品料號', '品號', '料號', '規格', 'sku', 'item', 'product'] },
+  { key: 'qty', label: '數量',
+    alias: ['出貨數量', '訂購數量', '配送數量', '銷售數量', '數量', '件數', 'qty', 'quantity', 'pcs'] },
+  { key: 'amount', label: '金額',
+    alias: ['訂單金額', '銷售金額', '應收金額', '商品金額', '出貨金額', '總金額', '小計', '金額', 'amount', 'total', 'subtotal'] }
+];
+
+/* ---------- 檔案讀取 ---------- */
+/* xlsx = zip + XML。用瀏覽器內建的 DecompressionStream 解，不依賴任何外部程式庫或網路。 */
+function u16(dv, o){ return dv.getUint16(o, true); }
+function u32(dv, o){ return dv.getUint32(o, true); }
+function unzip(buf){
+  var dv = new DataView(buf), eo = -1;
+  var floor = Math.max(0, buf.byteLength - 66000);
+  for (var i = buf.byteLength - 22; i >= floor; i--) {
+    if (u32(dv, i) === 0x06054b50) { eo = i; break; }
+  }
+  if (eo < 0) throw new Error('這不像是 .xlsx 檔（讀不到壓縮檔結構）。');
+  var count = u16(dv, eo + 10), p = u32(dv, eo + 16), entries = [], dec = new TextDecoder('utf-8');
+  for (var n = 0; n < count; n++) {
+    if (p + 46 > buf.byteLength || u32(dv, p) !== 0x02014b50) break;
+    var nlen = u16(dv, p + 28), elen = u16(dv, p + 30), clen = u16(dv, p + 32);
+    entries.push({
+      name: dec.decode(new Uint8Array(buf, p + 46, nlen)),
+      method: u16(dv, p + 10), csize: u32(dv, p + 20), lho: u32(dv, p + 42)
+    });
+    p += 46 + nlen + elen + clen;
+  }
+  return { buf: buf, dv: dv, entries: entries };
+}
+function zipHas(zip, name){
+  return zip.entries.some(function(e){ return e.name === name; });
+}
+function zipRead(zip, name){
+  var e = zip.entries.filter(function(x){ return x.name === name; })[0];
+  if (!e) return Promise.resolve('');
+  var lho = e.lho;
+  if (u32(zip.dv, lho) !== 0x04034b50) return Promise.reject(new Error('Excel 檔內部結構異常。'));
+  var start = lho + 30 + u16(zip.dv, lho + 26) + u16(zip.dv, lho + 28);
+  var data = new Uint8Array(zip.buf, start, e.csize);
+  if (e.method === 0) return Promise.resolve(new TextDecoder('utf-8').decode(data));
+  if (e.method !== 8) return Promise.reject(new Error('Excel 檔使用了不支援的壓縮方式，請另存新檔再試。'));
+  if (typeof DecompressionStream === 'undefined') {
+    return Promise.reject(new Error('這個瀏覽器版本無法直接讀 Excel，請改用 CSV 上傳或直接貼上資料。'));
+  }
+  var stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Response(stream).text();
+}
+function xmlDoc(text){
+  var d = new DOMParser().parseFromString(text, 'application/xml');
+  if (d.getElementsByTagName('parsererror').length) throw new Error('Excel 內容解析失敗。');
+  return d;
+}
+function colIndex(ref, fallback){
+  var m = /^([A-Z]+)/.exec(ref || '');
+  if (!m) return fallback;
+  var n = 0;
+  for (var i = 0; i < m[1].length; i++) n = n * 26 + (m[1].charCodeAt(i) - 64);
+  return n - 1;
+}
+function textOf(el, tag){
+  var t = el.getElementsByTagName(tag), s = '';
+  for (var i = 0; i < t.length; i++) s += t[i].textContent;
+  return s;
+}
+function sheetToGrid(xml, shared){
+  var doc = xmlDoc(xml), rowEls = doc.getElementsByTagName('row'), out = [], maxRow = 0;
+  var byRow = {};
+  for (var i = 0; i < rowEls.length; i++) {
+    var rEl = rowEls[i];
+    var rIdx = parseInt(rEl.getAttribute('r'), 10);
+    if (!isFinite(rIdx)) rIdx = i + 1;
+    var cells = rEl.getElementsByTagName('c'), arr = [];
+    for (var j = 0; j < cells.length; j++) {
+      var c = cells[j], idx = colIndex(c.getAttribute('r'), j), t = c.getAttribute('t'), v = '';
+      if (t === 'inlineStr') v = textOf(c, 't');
+      else {
+        var vEl = c.getElementsByTagName('v')[0];
+        var raw = vEl ? vEl.textContent : '';
+        if (t === 's') v = shared[parseInt(raw, 10)] || '';
+        else if (t === 'b') v = raw === '1' ? 'TRUE' : 'FALSE';
+        else v = raw;
+      }
+      while (arr.length < idx) arr.push('');
+      arr[idx] = v;
+    }
+    byRow[rIdx] = arr;
+    if (rIdx > maxRow) maxRow = rIdx;
+  }
+  for (var k = 1; k <= maxRow; k++) out.push(byRow[k] || []);
+  while (out.length && out[out.length - 1].every(function(x){ return trim(x) === ''; })) out.pop();
+  return out;
+}
+function parseXlsx(buf){
+  var zip = unzip(buf), shared = [], sheets = {};
+  var ssPromise = zipHas(zip, 'xl/sharedStrings.xml')
+    ? zipRead(zip, 'xl/sharedStrings.xml').then(function(xml){
+        var d = xmlDoc(xml), si = d.getElementsByTagName('si');
+        for (var i = 0; i < si.length; i++) {
+          var phon = si[i].getElementsByTagName('rPh');
+          for (var p = phon.length - 1; p >= 0; p--) phon[p].parentNode.removeChild(phon[p]);
+          shared.push(textOf(si[i], 't'));
+        }
+      })
+    : Promise.resolve();
+  return ssPromise
+    .then(function(){ return Promise.all([zipRead(zip, 'xl/workbook.xml'), zipRead(zip, 'xl/_rels/workbook.xml.rels')]); })
+    .then(function(res){
+      var rels = {};
+      if (res[1]) {
+        var rd = xmlDoc(res[1]).getElementsByTagName('Relationship');
+        for (var i = 0; i < rd.length; i++) rels[rd[i].getAttribute('Id')] = rd[i].getAttribute('Target');
+      }
+      var list = [];
+      if (res[0]) {
+        var sh = xmlDoc(res[0]).getElementsByTagName('sheet');
+        for (var j = 0; j < sh.length; j++) {
+          var rid = sh[j].getAttribute('r:id') || sh[j].getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+          var target = rels[rid] || ('worksheets/sheet' + (j + 1) + '.xml');
+          target = String(target).replace(/^\/xl\//, '').replace(/^\.\//, '');
+          list.push({ name: sh[j].getAttribute('name') || ('工作表' + (j + 1)), path: 'xl/' + target });
+        }
+      }
+      if (!list.length) list = [{ name: '工作表1', path: 'xl/worksheets/sheet1.xml' }];
+      return list.reduce(function(chain, sh){
+        return chain.then(function(){
+          if (!zipHas(zip, sh.path)) return;
+          return zipRead(zip, sh.path).then(function(xml){ sheets[sh.name] = sheetToGrid(xml, shared); });
+        });
+      }, Promise.resolve());
+    })
+    .then(function(){
+      if (!Object.keys(sheets).length) throw new Error('這個 Excel 檔沒有讀到任何工作表。');
+      return sheets;
+    });
+}
+function decodeBuf(buf){
+  var b = new Uint8Array(buf);
+  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
+  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(buf);
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^﻿/, ''); }
+  catch (e) {
+    try { return new TextDecoder('big5').decode(buf); }
+    catch (e2) { return new TextDecoder('utf-8').decode(buf).replace(/^﻿/, ''); }
+  }
+}
+function pickDelim(text){
+  var head = text.split(/\r?\n/).slice(0, 5).join('\n');
+  var counts = [
+    { d: '\t', n: (head.match(/\t/g) || []).length },
+    { d: ',',  n: (head.match(/,/g) || []).length },
+    { d: ';',  n: (head.match(/;/g) || []).length }
+  ].sort(function(a, b){ return b.n - a.n; });
+  return counts[0].n > 0 ? counts[0].d : ',';
+}
+function parseDelimited(text, delim){
+  delim = delim || pickDelim(text);
+  var rows = [], row = [], val = '', q = false, i = 0;
+  while (i < text.length) {
+    var c = text[i];
+    if (q) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { val += '"'; i += 2; continue; }
+        q = false; i++; continue;
+      }
+      val += c; i++; continue;
+    }
+    if (c === '"') { q = true; i++; continue; }
+    if (c === delim) { row.push(val); val = ''; i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { row.push(val); rows.push(row); row = []; val = ''; i++; continue; }
+    val += c; i++;
+  }
+  row.push(val); rows.push(row);
+  while (rows.length && rows[rows.length - 1].every(function(x){ return trim(x) === ''; })) rows.pop();
+  return rows;
+}
+
+/* ---------- 來源狀態 ---------- */
+var src = {
+  order: { name: '', grid: null, sheets: null, sheetName: '', headerRow: 1, headers: [], rows: [], map: {} },
+  ship:  { name: '', grid: null, sheets: null, sheetName: '', headerRow: 1, headers: [], rows: [], map: {} }
+};
+var SIDE_LABEL = { order: '訂單檔', ship: '出貨檔' };
+
+function showErr(side, msg){
+  var el = $('[data-err="' + side + '"]');
+  if (!msg) { el.classList.add('hide'); el.textContent = ''; return; }
+  el.classList.remove('hide'); el.textContent = msg;
+}
+
+function handleFile(side, file){
+  showErr(side, '');
+  var name = file.name || '';
+  if (/\.xls$/i.test(name)) {
+    showErr(side, '這是舊版 .xls 格式，讀不了。請用 Excel 另存成 .xlsx 或 CSV 再上傳。');
+    return;
+  }
+  var isExcel = /\.xlsx$/i.test(name);
+  var reader = new FileReader();
+  reader.onload = function(){
+    try {
+      if (isExcel) {
+        parseXlsx(reader.result).then(function(sheets){
+          setSource(side, name, sheets, Object.keys(sheets)[0]);
+        }).catch(function(err){ showErr(side, '讀檔失敗：' + err.message); });
+      } else {
+        var text = decodeBuf(reader.result);
+        var grid = parseDelimited(text);
+        var sheets = {}; sheets['(CSV)'] = grid;
+        setSource(side, name, sheets, '(CSV)');
+      }
+    } catch (err) {
+      showErr(side, '讀檔失敗：' + err.message);
+    }
+  };
+  reader.onerror = function(){ showErr(side, '讀檔失敗，請確認檔案沒有被其他程式鎖住。'); };
+  reader.readAsArrayBuffer(file);
+}
+
+function guessHeaderRow(grid){
+  var best = 1, bestScore = -1;
+  for (var i = 0; i < Math.min(grid.length, 15); i++) {
+    var row = grid[i] || [];
+    var filled = row.filter(function(c){ return trim(c) !== ''; }).length;
+    if (filled < 2) continue;
+    var hits = 0;
+    row.forEach(function(c){
+      var h = normHeader(c);
+      if (!h) return;
+      FIELDS.forEach(function(f){
+        f.alias.forEach(function(a){ if (h.indexOf(normHeader(a)) >= 0) hits++; });
+      });
+    });
+    var score = filled + hits * 4;
+    if (score > bestScore) { bestScore = score; best = i + 1; }
+  }
+  return best;
+}
+
+function setSource(side, name, sheets, sheetName){
+  var s = src[side];
+  s.name = name; s.sheets = sheets; s.sheetName = sheetName;
+  s.headerRow = guessHeaderRow(sheets[sheetName] || []);
+  var sel = $('[data-sheet="' + side + '"]');
+  sel.innerHTML = Object.keys(sheets).map(function(n){
+    return '<option value="' + esc(n) + '">' + esc(n) + '（' + sheets[n].length + ' 列）</option>';
+  }).join('');
+  sel.value = sheetName;
+  $('[data-headerrow="' + side + '"]').value = s.headerRow;
+  $('[data-sheetbox="' + side + '"]').classList.remove('hide');
+  applyGrid(side);
+  var drop = $('[data-drop="' + side + '"]');
+  drop.classList.add('loaded');
+  $('[data-clear="' + side + '"]').classList.remove('hide');
+}
+
+function applyGrid(side){
+  var s = src[side];
+  if (!s.sheets) return;
+  var grid = s.sheets[s.sheetName] || [];
+  var hr = Math.max(1, parseInt($('[data-headerrow="' + side + '"]').value, 10) || 1);
+  s.headerRow = hr;
+  var headerLine = grid[hr - 1] || [];
+  s.headers = headerLine.map(function(h, i){ return trim(h) || ('第 ' + (i + 1) + ' 欄'); });
+  s.rows = grid.slice(hr).filter(function(r){
+    return r && r.some(function(c){ return trim(c) !== ''; });
+  });
+  s.grid = grid;
+  renderFileLine(side);
+  renderPreview(side);
+  var sig = s.headers.join('|');
+  s.map = (db.maps && db.maps[sig]) ? Object.assign({}, db.maps[sig]) : autoMap(s.headers);
+  renderMap(side);
+}
+
+function renderFileLine(side){
+  var s = src[side];
+  var drop = $('[data-drop="' + side + '"]');
+  drop.innerHTML =
+    '<div class="file-line"><span class="badge ok">已載入</span>' +
+    '<span class="name">' + esc(s.name || '貼上的資料') + '</span>' +
+    '<span class="meta">' + s.rows.length + ' 筆資料 · ' + s.headers.length + ' 欄</span>' +
+    '<span class="meta">點此可換檔</span></div>';
+}
+
+function renderPreview(side){
+  var s = src[side];
+  var box = $('[data-preview="' + side + '"]');
+  if (!s.headers.length) { box.classList.add('hide'); return; }
+  var rows = s.rows.slice(0, 4);
+  var html = '<table><thead><tr>' + s.headers.map(function(h){ return '<th class="l">' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>';
+  html += rows.map(function(r){
+    return '<tr>' + s.headers.map(function(_, i){ return '<td class="l">' + esc(r[i] == null ? '' : r[i]) + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  html += '</tbody></table>';
+  box.innerHTML = html;
+  box.classList.remove('hide');
+}
+
+function autoMap(headers){
+  var norm = headers.map(normHeader);
+  var used = {}, map = {};
+  FIELDS.forEach(function(f){
+    var best = -1, bestScore = 0;
+    norm.forEach(function(h, i){
+      if (used[i] || !h) return;
+      var score = 0;
+      f.alias.forEach(function(a){
+        var na = normHeader(a);
+        if (h === na) score = Math.max(score, 100);
+        else if (h.indexOf(na) >= 0) score = Math.max(score, 70 - Math.min(20, h.length - na.length));
+        else if (na.indexOf(h) >= 0 && h.length >= 2) score = Math.max(score, 45);
+      });
+      if (score > bestScore) { bestScore = score; best = i; }
+    });
+    if (best >= 0 && bestScore >= 45) { map[f.key] = best; used[best] = true; }
+  });
+  return map;
+}
+
+function renderMap(side){
+  var s = src[side];
+  var grid = $('[data-mapgrid="' + side + '"]');
+  grid.innerHTML = FIELDS.map(function(f){
+    var cur = (s.map[f.key] == null) ? '' : s.map[f.key];
+    var opts = ['<option value="">（不比對）</option>'].concat(s.headers.map(function(h, i){
+      return '<option value="' + i + '"' + (String(cur) === String(i) ? ' selected' : '') + '>' + esc(h) + '</option>';
+    })).join('');
+    var unset = (f.required && cur === '') ? ' unset' : '';
+    return '<div class="field"><label>' + esc(f.label) + (f.required ? ' <span style="color:var(--bad)">*</span>' : '') + '</label>' +
+      '<select class="' + unset.trim() + '" data-mapfield="' + f.key + '" data-mapside="' + side + '">' + opts + '</select></div>';
+  }).join('');
+  $('[data-mapbox="' + side + '"]').classList.remove('hide');
+}
+
+function rememberMap(side){
+  var s = src[side];
+  if (!s.headers.length) return;
+  db.maps[s.headers.join('|')] = Object.assign({}, s.map);
+  saveDB();
+}
+
+function clearSide(side){
+  src[side] = { name: '', grid: null, sheets: null, sheetName: '', headerRow: 1, headers: [], rows: [], map: {} };
+  var drop = $('[data-drop="' + side + '"]');
+  drop.classList.remove('loaded');
+  drop.innerHTML = '<div class="big">點此選擇檔案，或把檔案拖進來</div><div class="small">Excel／CSV 皆可，資料不會離開這台電腦</div>';
+  $('[data-preview="' + side + '"]').classList.add('hide');
+  $('[data-mapbox="' + side + '"]').classList.add('hide');
+  $('[data-sheetbox="' + side + '"]').classList.add('hide');
+  $('[data-clear="' + side + '"]').classList.add('hide');
+  $('[data-file="' + side + '"]').value = '';
+  showErr(side, '');
+}
+
+/* ---------- 核對規則 ---------- */
+function readRules(){
+  return {
+    name: $('#chkName').checked,
+    phone: $('#chkPhone').checked,
+    addr: $('#chkAddr').checked,
+    qty: $('#chkQty').checked,
+    amount: $('#chkAmount').checked,
+    tolQty: num($('#tolQty').value),
+    tolAmount: num($('#tolAmount').value),
+    addrMode: $('#addrMode').value,
+    phoneMode: $('#phoneMode').value,
+    qtySource: $('#qtySource').value
+  };
+}
+function writeRules(r){
+  if (!r) return;
+  if (r.name != null) $('#chkName').checked = !!r.name;
+  if (r.phone != null) $('#chkPhone').checked = !!r.phone;
+  if (r.addr != null) $('#chkAddr').checked = !!r.addr;
+  if (r.qty != null) $('#chkQty').checked = !!r.qty;
+  if (r.amount != null) $('#chkAmount').checked = !!r.amount;
+  if (r.tolQty != null) $('#tolQty').value = r.tolQty;
+  if (r.tolAmount != null) $('#tolAmount').value = r.tolAmount;
+  if (r.addrMode) $('#addrMode').value = r.addrMode;
+  if (r.phoneMode) $('#phoneMode').value = r.phoneMode;
+  if (r.qtySource) $('#qtySource').value = r.qtySource;
+}
+
+/* ---------- 彙整成「一張單」 ---------- */
+function cell(row, idx){
+  if (idx == null || idx === '') return '';
+  var v = row[idx];
+  return v == null ? '' : String(v);
+}
+function buildIndex(s){
+  var map = s.map, idx = new Map(), blanks = 0;
+  var hasQty = map.qty != null && map.qty !== '';
+  var hasAmount = map.amount != null && map.amount !== '';
+  var hasItem = map.item != null && map.item !== '';
+  s.rows.forEach(function(r){
+    var rawNo = cell(r, map.orderNo);
+    var key = normKey(rawNo);
+    if (!key) { blanks++; return; }
+    var g = idx.get(key);
+    if (!g) {
+      g = { key: key, orderNo: trim(rawNo), name: '', phone: '', addr: '',
+            qty: 0, amount: 0, lines: 0, items: new Map() };
+      idx.set(key, g);
+    }
+    g.lines++;
+    if (isBlank(g.name)) g.name = trim(cell(r, map.name));
+    if (isBlank(g.phone)) g.phone = trim(cell(r, map.phone));
+    if (isBlank(g.addr)) g.addr = trim(cell(r, map.addr));
+    var q = hasQty ? num(cell(r, map.qty)) : 0;
+    g.qty += q;
+    if (hasAmount) g.amount += num(cell(r, map.amount));
+    if (hasItem) {
+      var it = normKey(cell(r, map.item));
+      if (it) {
+        var prev = g.items.get(it) || { label: trim(cell(r, map.item)), qty: 0 };
+        prev.qty += hasQty ? q : 1;
+        g.items.set(it, prev);
+      }
+    }
+  });
+  return { idx: idx, hasQty: hasQty, hasAmount: hasAmount, hasItem: hasItem, blanks: blanks };
+}
+
+function compareItems(a, b){
+  var keys = new Set();
+  a.items.forEach(function(_, k){ keys.add(k); });
+  b.items.forEach(function(_, k){ keys.add(k); });
+  var out = [];
+  keys.forEach(function(k){
+    var x = a.items.get(k), y = b.items.get(k);
+    var qa = x ? x.qty : 0, qb = y ? y.qty : 0;
+    out.push({ label: (x && x.label) || (y && y.label) || k, o: qa, s: qb, same: qa === qb });
+  });
+  return out.sort(function(p, q){ return (p.same === q.same) ? 0 : (p.same ? 1 : -1); });
+}
+
+var result = null;
+
+function reconcile(){
+  var rules = readRules();
+  var O = buildIndex(src.order), S = buildIndex(src.ship);
+  var notes = [];
+  if (O.blanks) notes.push('訂單檔有 ' + O.blanks + ' 列沒有訂單編號，已略過。');
+  if (S.blanks) notes.push('出貨檔有 ' + S.blanks + ' 列沒有訂單編號，已略過。');
+
+  var checks = [];
+  function addCheck(on, key, label, oOk, sOk){
+    if (!on) return;
+    if (!oOk || !sOk) { notes.push('「' + label + '」只有一邊有對應欄位，這次不比對。'); return; }
+    checks.push(key);
+  }
+  var oMap = src.order.map, sMap = src.ship.map;
+  var has = function(m, k){ return m[k] != null && m[k] !== ''; };
+  addCheck(rules.name, 'name', '收件人', has(oMap, 'name'), has(sMap, 'name'));
+  addCheck(rules.phone, 'phone', '電話', has(oMap, 'phone'), has(sMap, 'phone'));
+  addCheck(rules.addr, 'addr', '地址', has(oMap, 'addr'), has(sMap, 'addr'));
+  addCheck(rules.qty, 'qty', '數量', O.hasQty, S.hasQty);
+  addCheck(rules.amount, 'amount', '金額', O.hasAmount, S.hasAmount);
+  var itemMode = rules.qtySource === 'item' && O.hasItem && S.hasItem;
+  if (rules.qtySource === 'item' && !itemMode) notes.push('沒有對應到商品欄位，數量改用整張單加總比對。');
+
+  var rows = [], seen = new Set();
+  O.idx.forEach(function(o){
+    var s = S.idx.get(o.key);
+    if (!s) {
+      rows.push({ status: 'missing', key: o.key, orderNo: o.orderNo, name: o.name, o: o, s: null, diffs: [], items: [] });
+      return;
+    }
+    seen.add(o.key);
+    var diffs = [];
+    checks.forEach(function(k){
+      if (k === 'name') {
+        if (normName(o.name) !== normName(s.name)) diffs.push({ key: 'name', label: '收件人', o: o.name, s: s.name });
+      } else if (k === 'phone') {
+        if (normPhone(o.phone, rules.phoneMode) !== normPhone(s.phone, rules.phoneMode)) diffs.push({ key: 'phone', label: '電話', o: o.phone, s: s.phone });
+      } else if (k === 'addr') {
+        if (normAddr(o.addr, rules.addrMode) !== normAddr(s.addr, rules.addrMode)) diffs.push({ key: 'addr', label: '地址', o: o.addr, s: s.addr });
+      } else if (k === 'qty') {
+        if (Math.abs(o.qty - s.qty) > rules.tolQty) diffs.push({ key: 'qty', label: '數量', o: o.qty, s: s.qty });
+      } else if (k === 'amount') {
+        if (Math.abs(o.amount - s.amount) > rules.tolAmount) diffs.push({ key: 'amount', label: '金額', o: o.amount, s: s.amount });
+      }
+    });
+    var items = itemMode ? compareItems(o, s) : [];
+    if (itemMode) {
+      var bad = items.filter(function(i){ return !i.same; });
+      if (bad.length && !diffs.some(function(d){ return d.key === 'qty'; })) {
+        diffs.push({ key: 'item', label: '商品明細', o: bad.length + ' 項不符', s: bad.map(function(b){ return b.label; }).join('、') });
+      }
+    }
+    rows.push({ status: diffs.length ? 'diff' : 'ok', key: o.key, orderNo: o.orderNo, name: o.name || s.name, o: o, s: s, diffs: diffs, items: items });
+  });
+  S.idx.forEach(function(s){
+    if (O.idx.has(s.key)) return;
+    rows.push({ status: 'extra', key: s.key, orderNo: s.orderNo, name: s.name, o: null, s: s, diffs: [], items: [] });
+  });
+
+  var order = { diff: 0, missing: 1, extra: 2, ok: 3 };
+  rows.sort(function(a, b){
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    return a.orderNo.localeCompare(b.orderNo, 'zh-Hant');
+  });
+
+  var t = { orders: O.idx.size, shipped: S.idx.size, ok: 0, diff: 0, missing: 0, extra: 0,
+            qtyOrder: 0, qtyShip: 0, amtOrder: 0, amtShip: 0 };
+  rows.forEach(function(r){ t[r.status]++; });
+  O.idx.forEach(function(o){ t.qtyOrder += o.qty; t.amtOrder += o.amount; });
+  S.idx.forEach(function(s){ t.qtyShip += s.qty; t.amtShip += s.amount; });
+
+  result = { rows: rows, totals: t, notes: notes, checks: checks, rules: rules,
+             hasQty: O.hasQty && S.hasQty, hasAmount: O.hasAmount && S.hasAmount };
+  return result;
+}
+
+/* ---------- 結果畫面 ---------- */
+var filterMode = 'all';
+
+function statusBadge(st){
+  var m = { ok: ['ok', '正確'], diff: ['diff', '資料不符'], missing: ['missing', '未出貨'], extra: ['extra', '多出貨'] };
+  return '<span class="badge ' + m[st][0] + '">' + m[st][1] + '</span>';
+}
+function renderKPI(){
+  var t = result.totals;
+  var issues = t.diff + t.missing + t.extra;
+  var html = '';
+  html += kpi('訂單張數', fmtInt(t.orders), '應出貨');
+  html += kpi('出貨張數', fmtInt(t.shipped), '實際打單', t.shipped === t.orders ? 'ok' : 'warn');
+  html += kpi('核對正確', fmtInt(t.ok), pct(t.ok, t.orders) + ' 正確率', 'ok');
+  html += kpi('資料不符', fmtInt(t.diff), '收件資訊或數量金額有出入', t.diff ? 'bad' : '');
+  html += kpi('未出貨', fmtInt(t.missing), '訂單有、出貨檔沒有', t.missing ? 'warn' : '');
+  html += kpi('多出貨', fmtInt(t.extra), '出貨檔有、訂單沒有', t.extra ? 'bad' : '');
+  html += kpi('出貨數量', fmtInt(t.qtyShip), '訂單合計 ' + fmtInt(t.qtyOrder));
+  html += kpi('出貨金額', 'NT$' + fmtMoney(t.amtShip), '訂單合計 NT$' + fmtMoney(t.amtOrder));
+  $('#kpiGrid').innerHTML = html;
+  var msg = [];
+  if (issues === 0) msg.push('全部 ' + t.orders + ' 張單核對相符。');
+  if (result.notes.length) msg.push(result.notes.join(' '));
+  var box = $('#saveMsg');
+  if (msg.length) { box.className = 'alert ' + (issues ? 'warn' : 'info'); box.textContent = msg.join(' '); box.classList.remove('hide'); }
+  else box.classList.add('hide');
+}
+function kpi(label, value, sub, cls){
+  return '<div class="kpi ' + (cls || '') + '"><div class="label">' + esc(label) + '</div>' +
+    '<div class="value">' + esc(value) + '</div><div class="sub2">' + esc(sub || '') + '</div></div>';
+}
+
+function visibleRows(){
+  var q = normKey($('#searchBox').value);
+  return result.rows.filter(function(r){
+    if (filterMode === 'issue' && r.status === 'ok') return false;
+    if (['diff', 'missing', 'extra', 'ok'].indexOf(filterMode) >= 0 && r.status !== filterMode) return false;
+    if (q) {
+      var hay = normKey([r.orderNo, r.name,
+        (r.o && r.o.phone) || '', (r.s && r.s.phone) || '',
+        (r.o && r.o.addr) || '', (r.s && r.s.addr) || ''].join(' '));
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+}
+
+function renderRows(){
+  var rows = visibleRows();
+  var body = $('#resultBody');
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="8"><div class="empty">沒有符合條件的單。</div></td></tr>'; return; }
+  body.innerHTML = rows.map(function(r, i){
+    var diffText = r.status === 'missing' ? '出貨檔查無此單'
+      : r.status === 'extra' ? '訂單檔查無此單'
+      : (r.diffs.length ? r.diffs.map(function(d){ return d.label; }).join('、') : '—');
+    return '<tr class="row-head" data-key="' + esc(r.key) + '">' +
+      '<td class="l">' + statusBadge(r.status) + '</td>' +
+      '<td class="l num">' + esc(r.orderNo) + '</td>' +
+      '<td class="l">' + esc(r.name || '—') + '</td>' +
+      '<td class="l">' + esc(diffText) + '</td>' +
+      '<td class="num">' + (r.o ? fmtInt(r.o.qty) : '—') + '</td>' +
+      '<td class="num">' + (r.s ? fmtInt(r.s.qty) : '—') + '</td>' +
+      '<td class="num">' + (r.o ? fmtMoney(r.o.amount) : '—') + '</td>' +
+      '<td class="num">' + (r.s ? fmtMoney(r.s.amount) : '—') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function detailHTML(r){
+  var fields = [
+    { key: 'orderNo', label: '訂單編號', get: function(g){ return g ? g.orderNo : ''; } },
+    { key: 'name', label: '收件人', get: function(g){ return g ? g.name : ''; } },
+    { key: 'phone', label: '電話', get: function(g){ return g ? g.phone : ''; } },
+    { key: 'addr', label: '地址', get: function(g){ return g ? g.addr : ''; } },
+    { key: 'qty', label: '數量', get: function(g){ return g ? fmtInt(g.qty) : ''; } },
+    { key: 'amount', label: '金額', get: function(g){ return g ? fmtMoney(g.amount) : ''; } },
+    { key: 'lines', label: '明細列數', get: function(g){ return g ? String(g.lines) : ''; } }
+  ];
+  var badKeys = {};
+  r.diffs.forEach(function(d){ badKeys[d.key] = true; });
+  var html = '<div class="detail-inner"><div class="cmp"><table><thead><tr>' +
+    '<th class="l">欄位</th><th class="l">訂單檔</th><th class="l">出貨檔</th></tr></thead><tbody>';
+  fields.forEach(function(f){
+    var bad = badKeys[f.key] ? ' bad-cell' : '';
+    html += '<tr><td class="l field-name">' + esc(f.label) + '</td>' +
+      '<td class="l wrapval' + bad + '">' + esc(f.get(r.o) || '—') + '</td>' +
+      '<td class="l wrapval' + bad + '">' + esc(f.get(r.s) || '—') + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  if (r.items && r.items.length) {
+    html += '<div class="cmp"><table><thead><tr><th class="l">商品</th><th class="num">訂單數量</th><th class="num">出貨數量</th></tr></thead><tbody>';
+    html += r.items.map(function(it){
+      var bad = it.same ? '' : ' bad-cell';
+      return '<tr><td class="l wrapval">' + esc(it.label) + '</td>' +
+        '<td class="num' + bad + '">' + fmtInt(it.o) + '</td><td class="num' + bad + '">' + fmtInt(it.s) + '</td></tr>';
+    }).join('');
+    html += '</tbody></table></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ---------- 匯出 CSV ---------- */
+function csvCell(v){
+  var s = String(v == null ? '' : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadCSV(filename, rows){
+  var text = '﻿' + rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n');
+  var blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+var STATUS_TEXT = { ok: '正確', diff: '資料不符', missing: '未出貨', extra: '多出貨' };
+
+function resultToRows(onlyIssues){
+  var head = ['狀態', '訂單編號', '差異欄位',
+    '訂單_收件人', '出貨_收件人', '訂單_電話', '出貨_電話', '訂單_地址', '出貨_地址',
+    '訂單_數量', '出貨_數量', '數量差', '訂單_金額', '出貨_金額', '金額差'];
+  var out = [head];
+  result.rows.forEach(function(r){
+    if (onlyIssues && r.status === 'ok') return;
+    var o = r.o || {}, s = r.s || {};
+    out.push([
+      STATUS_TEXT[r.status], r.orderNo, r.diffs.map(function(d){ return d.label; }).join('、'),
+      o.name || '', s.name || '', o.phone || '', s.phone || '', o.addr || '', s.addr || '',
+      r.o ? o.qty : '', r.s ? s.qty : '', (r.o && r.s) ? (s.qty - o.qty) : '',
+      r.o ? Math.round(o.amount) : '', r.s ? Math.round(s.amount) : '',
+      (r.o && r.s) ? Math.round(s.amount - o.amount) : ''
+    ]);
+  });
+  return out;
+}
+
+/* ---------- 每日紀錄 ---------- */
+function saveBatch(){
+  if (!result) return;
+  var date = $('#batchDate').value || todayISO();
+  var note = trim($('#batchNote').value);
+  var channel = trim($('#batchChannel').value);
+  var existing = db.records.filter(function(r){ return r.date === date && r.channel === channel; });
+  if (existing.length && !confirm(date + (channel ? '（' + channel + '）' : '') + ' 已經有紀錄了，要覆蓋嗎？')) return;
+  db.records = db.records.filter(function(r){ return !(r.date === date && r.channel === channel); });
+  var issues = result.rows.filter(function(r){ return r.status !== 'ok'; }).slice(0, 2000).map(function(r){
+    var o = r.o || {}, s = r.s || {};
+    return {
+      status: r.status, orderNo: r.orderNo, name: r.name || '',
+      fields: r.diffs.map(function(d){ return d.label; }).join('、'),
+      oName: o.name || '', sName: s.name || '', oPhone: o.phone || '', sPhone: s.phone || '',
+      oAddr: o.addr || '', sAddr: s.addr || '',
+      oQty: r.o ? o.qty : null, sQty: r.s ? s.qty : null,
+      oAmt: r.o ? Math.round(o.amount) : null, sAmt: r.s ? Math.round(s.amount) : null
+    };
+  });
+  db.records.push({
+    id: 'b' + Date.now(), date: date, note: note, channel: channel,
+    savedAt: new Date().toISOString(), totals: result.totals, issues: issues,
+    orderFile: src.order.name, shipFile: src.ship.name
+  });
+  db.records.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+  db.settings.rules = readRules();
+  saveDB();
+  renderDaily(); renderChannels(); renderMonth();
+  var box = $('#saveMsg');
+  box.className = 'alert info';
+  box.textContent = '已存為 ' + date + ' 的紀錄（' + result.totals.shipped + ' 張出貨、異常 ' +
+    (result.totals.diff + result.totals.missing + result.totals.extra) + ' 張）。月報表已同步更新。';
+  box.classList.remove('hide');
+}
+
+function renderDaily(){
+  var body = $('#dailyBody');
+  if (!db.records.length) {
+    body.innerHTML = '<tr><td colspan="10"><div class="empty">還沒有紀錄。核對完按「存為當日紀錄」。</div></td></tr>';
+    return;
+  }
+  body.innerHTML = db.records.map(function(r){
+    var t = r.totals, issues = t.diff + t.missing + t.extra;
+    return '<tr>' +
+      '<td class="l num">' + esc(r.date) + '</td>' +
+      '<td class="l">' + esc(r.channel || '—') + '</td>' +
+      '<td class="l">' + esc(r.note || '—') + '</td>' +
+      '<td class="num">' + fmtInt(t.orders) + '</td>' +
+      '<td class="num">' + fmtInt(t.shipped) + '</td>' +
+      '<td class="num">' + fmtInt(t.qtyShip) + '</td>' +
+      '<td class="num">' + fmtMoney(t.amtShip) + '</td>' +
+      '<td class="num">' + fmtInt(t.ok) + '</td>' +
+      '<td class="num" style="color:' + (issues ? 'var(--bad)' : 'inherit') + '">' + fmtInt(issues) + '</td>' +
+      '<td class="l"><button class="btn sm ghost" data-detail="' + r.id + '">明細</button> ' +
+      '<button class="btn sm ghost danger" data-del="' + r.id + '">刪除</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function recordIssueRows(rec){
+  var head = ['日期', '通路', '狀態', '訂單編號', '差異欄位', '訂單_收件人', '出貨_收件人',
+    '訂單_電話', '出貨_電話', '訂單_地址', '出貨_地址', '訂單_數量', '出貨_數量', '訂單_金額', '出貨_金額'];
+  var rows = (rec.issues || []).map(function(i){
+    return [rec.date, rec.channel || '', STATUS_TEXT[i.status] || i.status, i.orderNo, i.fields,
+      i.oName, i.sName, i.oPhone, i.sPhone, i.oAddr, i.sAddr,
+      i.oQty == null ? '' : i.oQty, i.sQty == null ? '' : i.sQty,
+      i.oAmt == null ? '' : i.oAmt, i.sAmt == null ? '' : i.sAmt];
+  });
+  return { head: head, rows: rows };
+}
+
+/* ---------- 月報表 ---------- */
+function renderChannels(){
+  var sel = $('#reportChannel');
+  var cur = sel.value;
+  var set = {};
+  db.records.forEach(function(r){ if (r.channel) set[r.channel] = true; });
+  sel.innerHTML = '<option value="">全部通路</option>' + Object.keys(set).map(function(c){
+    return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+  }).join('');
+  sel.value = cur;
+}
+function monthRecords(){
+  var m = $('#reportMonth').value;
+  var ch = $('#reportChannel').value;
+  return db.records.filter(function(r){
+    if (m && r.date.slice(0, 7) !== m) return false;
+    if (ch && r.channel !== ch) return false;
+    return true;
+  }).slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+}
+function sumTotals(recs){
+  var t = { orders: 0, shipped: 0, ok: 0, diff: 0, missing: 0, extra: 0, qtyOrder: 0, qtyShip: 0, amtOrder: 0, amtShip: 0 };
+  recs.forEach(function(r){
+    Object.keys(t).forEach(function(k){ t[k] += (r.totals && r.totals[k]) || 0; });
+  });
+  return t;
+}
+function renderMonth(){
+  var recs = monthRecords();
+  var t = sumTotals(recs);
+  var issues = t.diff + t.missing + t.extra;
+  var days = {};
+  recs.forEach(function(r){ days[r.date] = true; });
+  $('#monthKpi').innerHTML =
+    kpi('出貨天數', String(Object.keys(days).length), '有紀錄的日子') +
+    kpi('出貨張數', fmtInt(t.shipped), '訂單張數 ' + fmtInt(t.orders)) +
+    kpi('出貨數量', fmtInt(t.qtyShip), '件') +
+    kpi('出貨金額', 'NT$' + fmtMoney(t.amtShip), '當月合計') +
+    kpi('異常張數', fmtInt(issues), '不符 ' + t.diff + '／未出 ' + t.missing + '／多出 ' + t.extra, issues ? 'bad' : 'ok') +
+    kpi('核對正確率', pct(t.ok, t.orders), '正確 ' + fmtInt(t.ok) + ' 張', 'ok');
+
+  var maxAmt = recs.reduce(function(m, r){ return Math.max(m, r.totals.amtShip || 0); }, 0);
+  var body = $('#monthBody');
+  if (!recs.length) {
+    body.innerHTML = '<tr><td colspan="9"><div class="empty">這個月份還沒有紀錄。</div></td></tr>';
+    $('#monthFoot').innerHTML = '';
+    return;
+  }
+  body.innerHTML = recs.map(function(r){
+    var rt = r.totals, iss = rt.diff + rt.missing + rt.extra;
+    var w = maxAmt > 0 ? Math.max(2, Math.round((rt.amtShip / maxAmt) * 120)) : 2;
+    return '<tr>' +
+      '<td class="l num">' + esc(r.date) + '</td>' +
+      '<td class="l">' + esc(r.channel || '—') + '</td>' +
+      '<td class="num">' + fmtInt(rt.orders) + '</td>' +
+      '<td class="num">' + fmtInt(rt.shipped) + '</td>' +
+      '<td class="num">' + fmtInt(rt.qtyShip) + '</td>' +
+      '<td class="num">' + fmtMoney(rt.amtShip) + '</td>' +
+      '<td class="num" style="color:' + (iss ? 'var(--bad)' : 'inherit') + '">' + fmtInt(iss) + '</td>' +
+      '<td class="num">' + pct(rt.ok, rt.orders) + '</td>' +
+      '<td class="l"><div class="bar-wrap" style="justify-content:flex-start"><span class="bar' + (iss ? ' bad' : '') + '" style="width:' + w + 'px"></span></div></td>' +
+      '</tr>';
+  }).join('');
+  $('#monthFoot').innerHTML = '<tr><td class="l">合計</td><td></td>' +
+    '<td class="num">' + fmtInt(t.orders) + '</td>' +
+    '<td class="num">' + fmtInt(t.shipped) + '</td>' +
+    '<td class="num">' + fmtInt(t.qtyShip) + '</td>' +
+    '<td class="num">' + fmtMoney(t.amtShip) + '</td>' +
+    '<td class="num">' + fmtInt(issues) + '</td>' +
+    '<td class="num">' + pct(t.ok, t.orders) + '</td><td></td></tr>';
+}
+
+function exportMonth(){
+  var m = $('#reportMonth').value || '全部';
+  var recs = monthRecords();
+  if (!recs.length) { alert('這個月份沒有資料可以匯出。'); return; }
+  var t = sumTotals(recs);
+  var rows = [['當月出貨報表', m], [], 
+    ['日期', '通路', '備註', '訂單張數', '出貨張數', '出貨數量', '出貨金額', '正確張數', '資料不符', '未出貨', '多出貨', '正確率']];
+  recs.forEach(function(r){
+    var rt = r.totals;
+    rows.push([r.date, r.channel || '', r.note || '', rt.orders, rt.shipped, rt.qtyShip, Math.round(rt.amtShip),
+      rt.ok, rt.diff, rt.missing, rt.extra, pct(rt.ok, rt.orders)]);
+  });
+  rows.push(['合計', '', '', t.orders, t.shipped, t.qtyShip, Math.round(t.amtShip), t.ok, t.diff, t.missing, t.extra, pct(t.ok, t.orders)]);
+  downloadCSV('出貨月報表_' + m + '.csv', rows);
+}
+function exportMonthIssues(){
+  var m = $('#reportMonth').value || '全部';
+  var recs = monthRecords();
+  var head = null, all = [];
+  recs.forEach(function(r){
+    var x = recordIssueRows(r);
+    head = x.head;
+    all = all.concat(x.rows);
+  });
+  if (!all.length) { alert('這個月份沒有異常明細。'); return; }
+  downloadCSV('出貨異常明細_' + m + '.csv', [head].concat(all));
+}
+function exportYear(){
+  if (!db.records.length) { alert('還沒有任何紀錄。'); return; }
+  var byMonth = {};
+  db.records.forEach(function(r){
+    var k = r.date.slice(0, 7) + '|' + (r.channel || '');
+    if (!byMonth[k]) byMonth[k] = [];
+    byMonth[k].push(r);
+  });
+  var rows = [['月份', '通路', '出貨天數', '訂單張數', '出貨張數', '出貨數量', '出貨金額', '正確張數', '異常張數', '正確率']];
+  Object.keys(byMonth).sort().forEach(function(k){
+    var recs = byMonth[k], t = sumTotals(recs), days = {};
+    recs.forEach(function(r){ days[r.date] = true; });
+    rows.push([k.split('|')[0], k.split('|')[1], Object.keys(days).length, t.orders, t.shipped, t.qtyShip,
+      Math.round(t.amtShip), t.ok, t.diff + t.missing + t.extra, pct(t.ok, t.orders)]);
+  });
+  downloadCSV('出貨彙總_全部月份.csv', rows);
+}
+
+/* ---------- 事件綁定 ---------- */
+function bindSide(side){
+  var drop = $('[data-drop="' + side + '"]');
+  var input = $('[data-file="' + side + '"]');
+  drop.addEventListener('click', function(){ input.click(); });
+  drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function(){ drop.classList.remove('over'); });
+  drop.addEventListener('drop', function(e){
+    e.preventDefault(); drop.classList.remove('over');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(side, e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', function(){ if (input.files[0]) handleFile(side, input.files[0]); });
+  $('[data-clear="' + side + '"]').addEventListener('click', function(e){ e.stopPropagation(); clearSide(side); });
+  $('[data-paste-toggle="' + side + '"]').addEventListener('click', function(){
+    $('[data-paste-box="' + side + '"]').classList.toggle('hide');
+  });
+  $('[data-paste-apply="' + side + '"]').addEventListener('click', function(){
+    var text = $('[data-paste="' + side + '"]').value;
+    if (!trim(text)) { showErr(side, '貼上的內容是空的。'); return; }
+    showErr(side, '');
+    var sheets = {}; sheets['(貼上)'] = parseDelimited(text);
+    setSource(side, '貼上的資料', sheets, '(貼上)');
+  });
+  $('[data-sheet="' + side + '"]').addEventListener('change', function(e){
+    var s = src[side];
+    s.sheetName = e.target.value;
+    s.headerRow = guessHeaderRow(s.sheets[s.sheetName] || []);
+    $('[data-headerrow="' + side + '"]').value = s.headerRow;
+    applyGrid(side);
+  });
+  $('[data-headerrow="' + side + '"]').addEventListener('change', function(){ applyGrid(side); });
+}
+bindSide('order'); bindSide('ship');
+
+document.addEventListener('change', function(e){
+  var sel = e.target.closest('[data-mapfield]');
+  if (!sel) return;
+  var side = sel.getAttribute('data-mapside'), key = sel.getAttribute('data-mapfield');
+  var v = sel.value;
+  src[side].map[key] = v === '' ? null : parseInt(v, 10);
+  sel.classList.toggle('unset', key === 'orderNo' && v === '');
+  rememberMap(side);
+});
+
+$('#runBtn').addEventListener('click', function(){
+  var err = $('#runErr');
+  var problems = [];
+  ['order', 'ship'].forEach(function(side){
+    if (!src[side].rows.length) problems.push(SIDE_LABEL[side] + '還沒有資料');
+    else if (src[side].map.orderNo == null || src[side].map.orderNo === '') problems.push(SIDE_LABEL[side] + '沒有對應「訂單編號」欄位');
+  });
+  if (problems.length) {
+    err.textContent = problems.join('；') + '。';
+    err.classList.remove('hide');
+    return;
+  }
+  err.classList.add('hide');
+  reconcile();
+  db.settings.rules = readRules();
+  saveDB();
+  $('#resultEmpty').classList.add('hide');
+  $('#resultBox').classList.remove('hide');
+  renderKPI(); renderRows();
+  $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+$('#resetRules').addEventListener('click', function(){
+  writeRules({ name: true, phone: true, addr: true, qty: true, amount: true,
+    tolQty: 0, tolAmount: 0, addrMode: 'loose', phoneMode: 'tail9', qtySource: 'sum' });
+  db.settings.rules = readRules(); saveDB();
+});
+
+$('#filterChips').addEventListener('click', function(e){
+  var chip = e.target.closest('.chip');
+  if (!chip) return;
+  filterMode = chip.getAttribute('data-filter');
+  $$('#filterChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c === chip)); });
+  renderRows();
+});
+$('#searchBox').addEventListener('input', function(){ renderRows(); });
+
+$('#resultBody').addEventListener('click', function(e){
+  var tr = e.target.closest('tr.row-head');
+  if (!tr) return;
+  var next = tr.nextElementSibling;
+  if (next && next.classList.contains('row-detail')) { next.remove(); return; }
+  var key = tr.getAttribute('data-key');
+  var r = result.rows.filter(function(x){ return x.key === key; })[0];
+  if (!r) return;
+  var det = document.createElement('tr');
+  det.className = 'row-detail';
+  det.innerHTML = '<td colspan="8">' + detailHTML(r) + '</td>';
+  tr.parentNode.insertBefore(det, tr.nextSibling);
+});
+
+$('#saveBatchBtn').addEventListener('click', saveBatch);
+$('#exportIssuesBtn').addEventListener('click', function(){
+  if (!result) return;
+  var rows = resultToRows(true);
+  if (rows.length <= 1) { alert('這次核對沒有差異，不用匯出。'); return; }
+  downloadCSV('出貨差異_' + ($('#batchDate').value || todayISO()) + '.csv', rows);
+});
+$('#exportAllBtn').addEventListener('click', function(){
+  if (!result) return;
+  downloadCSV('出貨核對表_' + ($('#batchDate').value || todayISO()) + '.csv', resultToRows(false));
+});
+$('#printBtn').addEventListener('click', function(){ window.print(); });
+
+$('#dailyBody').addEventListener('click', function(e){
+  var del = e.target.closest('[data-del]');
+  if (del) {
+    var id = del.getAttribute('data-del');
+    var rec = db.records.filter(function(r){ return r.id === id; })[0];
+    if (rec && confirm('確定刪除 ' + rec.date + ' 的紀錄？')) {
+      db.records = db.records.filter(function(r){ return r.id !== id; });
+      saveDB(); renderDaily(); renderChannels(); renderMonth();
+    }
+    return;
+  }
+  var det = e.target.closest('[data-detail]');
+  if (det) {
+    var rec2 = db.records.filter(function(r){ return r.id === det.getAttribute('data-detail'); })[0];
+    if (!rec2) return;
+    var x = recordIssueRows(rec2);
+    if (!x.rows.length) { alert(rec2.date + ' 全部核對正確，沒有異常明細。'); return; }
+    downloadCSV('出貨異常明細_' + rec2.date + (rec2.channel ? '_' + rec2.channel : '') + '.csv', [x.head].concat(x.rows));
+  }
+});
+
+$('#backupBtn').addEventListener('click', function(){
+  var blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '出貨核對備份_' + todayISO() + '.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+});
+$('#restoreBtn').addEventListener('click', function(){ $('#restoreFile').click(); });
+$('#restoreFile').addEventListener('change', function(){
+  var f = $('#restoreFile').files[0];
+  if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    try {
+      var o = JSON.parse(rd.result);
+      if (!o || !Array.isArray(o.records)) throw new Error('格式不對');
+      var mode = confirm('按「確定」合併到現有紀錄，按「取消」則完全取代。');
+      if (mode) {
+        var have = {};
+        db.records.forEach(function(r){ have[r.date + '|' + (r.channel || '')] = true; });
+        o.records.forEach(function(r){ if (!have[r.date + '|' + (r.channel || '')]) db.records.push(r); });
+      } else {
+        db.records = o.records;
+      }
+      db.maps = Object.assign({}, o.maps || {}, db.maps);
+      db.records.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+      saveDB(); renderDaily(); renderChannels(); renderMonth();
+      alert('已還原 ' + o.records.length + ' 筆紀錄。');
+    } catch (err) { alert('還原失敗：' + err.message); }
+    $('#restoreFile').value = '';
+  };
+  rd.readAsText(f);
+});
+$('#clearAllBtn').addEventListener('click', function(){
+  if (!confirm('這會刪掉全部每日紀錄，無法復原。建議先備份。確定要清空嗎？')) return;
+  db.records = [];
+  saveDB(); renderDaily(); renderChannels(); renderMonth();
+});
+
+$('#reportMonth').addEventListener('change', renderMonth);
+$('#reportChannel').addEventListener('change', renderMonth);
+$('#exportMonthBtn').addEventListener('click', exportMonth);
+$('#exportMonthIssuesBtn').addEventListener('click', exportMonthIssues);
+$('#exportYearBtn').addEventListener('click', exportYear);
+
+['#chkName', '#chkPhone', '#chkAddr', '#chkQty', '#chkAmount', '#tolQty', '#tolAmount', '#addrMode', '#phoneMode', '#qtySource']
+  .forEach(function(sel){
+    $(sel).addEventListener('change', function(){ db.settings.rules = readRules(); saveDB(); });
+  });
+
+$('#batchChannel').addEventListener('change', function(){ db.settings.channel = trim($('#batchChannel').value); saveDB(); });
+
+/* ---------- 主題 ---------- */
+(function theme(){
+  var saved = null;
+  try { saved = localStorage.getItem('alpha-order-check-theme'); } catch (e) {}
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  $('#themeToggle').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    var isDark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('alpha-order-check-theme', next); } catch (e) {}
+  });
+})();
+
+/* ---------- 啟動 ---------- */
+loadDB();
+writeRules(db.settings.rules);
+$('#batchDate').value = todayISO();
+if (db.settings.channel) $('#batchChannel').value = db.settings.channel;
+$('#reportMonth').value = todayISO().slice(0, 7);
+renderDaily(); renderChannels(); renderMonth();
+
+})();
+</script>
+</body>
+</html>
