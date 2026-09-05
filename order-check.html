@@ -180,6 +180,23 @@
   .bar{ height:8px; border-radius:4px; background:var(--accent); min-width:2px; }
   .bar.bad{ background:var(--bad); }
 
+  .cell-input{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:5px 7px; font-size:12.5px; width:100%; min-width:70px;
+  }
+  .cell-input:focus{ background:var(--surface); }
+  .w-order{ min-width:110px; font-family:var(--font-mono); }
+  .w-name{ min-width:90px; }
+  .w-phone{ min-width:120px; font-family:var(--font-mono); }
+  .w-addr{ min-width:230px; }
+  .w-num{ min-width:70px; font-family:var(--font-mono); text-align:right; }
+  tr.row-off td{ opacity:.42; }
+  .muted-note{ color:var(--ink-muted); font-size:12.5px; }
+  #reviewTable td{ vertical-align:middle; }
+  #reviewTable{ min-width:1120px; }
+  #reviewTable td:first-child, #reviewTable th:first-child{ min-width:190px; }
+  #reviewTable td:first-child{ word-break:break-word; overflow-wrap:anywhere; }
+
   @media print{
     .topbar,.btn-row,.chips,.drop,.toolbar{ display:none !important; }
     .card{ box-shadow:none; break-inside:avoid; }
@@ -196,7 +213,8 @@
       <h1>訂單出貨核對</h1>
     </div>
     <nav class="tabs">
-      <a href="#upload">上傳檔案</a>
+      <a href="#upload">上傳資料夾</a>
+      <a href="#filesCard">逐檔擷取</a>
       <a href="#rules">核對規則</a>
       <a href="#result">核對結果</a>
       <a href="#daily">每日紀錄</a>
@@ -209,10 +227,10 @@
 <main class="page">
 
   <section class="hero">
-    <h2 style="font-size:24px;">每天兩個檔案，逐張核對出貨是否正確</h2>
-    <p>左邊放當天「全部訂單」，右邊放打完單的「實際出貨明細」，系統以訂單編號逐張比對收件人、電話、地址、數量與金額，把不一致的單挑出來。核完存檔，月底直接產出當月出貨報表。</p>
+    <h2 style="font-size:24px;">每天兩個資料夾，逐張核對出貨是否正確</h2>
+    <p>左邊放當天「全部訂單」的資料夾，右邊放打完單的「實際出貨明細」資料夾。Excel、CSV、Word、PDF 混著丟沒關係，系統逐檔讀出訂單編號、收件人、電話、地址、數量與金額，再以訂單編號逐張比對，把不一致的單挑出來。核完存檔，月底直接產出當月出貨報表。</p>
     <div class="steps">
-      <span>1 · 上傳兩份檔案</span><span>2 · 確認欄位對應</span><span>3 · 核對並檢視差異</span><span>4 · 存成當日紀錄</span><span>5 · 月底輸出報表</span>
+      <span>1 · 丟進兩個資料夾</span><span>2 · 檢查逐檔擷取結果</span><span>3 · 核對並檢視差異</span><span>4 · 存成當日紀錄</span><span>5 · 月底輸出報表</span>
     </div>
     <div class="btn-row">
       <button class="btn ghost" id="demoBtn">載入範例資料試跑</button>
@@ -241,84 +259,74 @@
 
   <div class="upload-grid" id="upload">
     <section class="card" data-side="order">
-      <h2><span class="step-no">1</span>當天全部訂單</h2>
-      <p class="sub">從後台匯出的當日訂單檔（應該要出貨的清單）。支援 .xlsx / .csv，或直接貼上（舊版 .xls 請先另存新檔）。</p>
+      <h2><span class="step-no">1</span>當天全部訂單（資料夾）</h2>
+      <p class="sub">把當天所有訂單檔案放在同一個資料夾裡丟進來。一個檔案一張單，或一份檔案含整天的單，都讀得到。</p>
       <div class="card-body">
         <div class="drop" data-drop="order">
-          <div class="big">點此選擇檔案，或把檔案拖進來</div>
-          <div class="small">Excel／CSV 皆可，資料不會離開這台電腦</div>
+          <div class="big">點此選擇整個資料夾，或把資料夾拖進來</div>
+          <div class="small">Excel、CSV、Word、PDF 混在一起沒關係，資料不會離開這台電腦</div>
         </div>
-        <input type="file" class="hide" data-file="order" accept=".xlsx,.csv,.txt,.tsv">
+        <input type="file" class="hide" data-file="order" webkitdirectory directory multiple>
+        <input type="file" class="hide" data-files="order" multiple accept=".xlsx,.csv,.tsv,.txt,.docx,.pdf">
         <div class="btn-row">
-          <button class="btn ghost sm" data-paste-toggle="order">改用貼上資料</button>
+          <button class="btn sm" data-pick-folder="order">選擇資料夾</button>
+          <button class="btn ghost sm" data-pick-files="order">改選個別檔案</button>
           <button class="btn ghost sm hide" data-clear="order">清除</button>
-        </div>
-        <div class="field hide" data-paste-box="order" style="margin-top:10px;">
-          <label>貼上表格內容（可直接從 Excel 複製整片區域，含標題列）</label>
-          <textarea data-paste="order" placeholder="訂單編號&#9;收件人&#9;電話&#9;地址&#9;數量&#9;金額"></textarea>
-          <div class="btn-row"><button class="btn sm" data-paste-apply="order">讀取貼上的資料</button></div>
-        </div>
-        <div class="field-grid hide" data-sheetbox="order" style="margin-top:14px;">
-          <div class="field">
-            <label>工作表</label>
-            <select data-sheet="order"></select>
-          </div>
-          <div class="field">
-            <label>標題列在第幾列</label>
-            <input type="number" min="1" step="1" value="1" data-headerrow="order">
-            <span class="hint">若前面有標題／說明列，改成實際欄位名稱那一列</span>
-          </div>
-        </div>
-        <div class="preview scrollwrap hide" data-preview="order" style="margin-top:12px;"></div>
-        <div class="hide" data-mapbox="order" style="margin-top:16px;">
-          <h3 style="font-size:13.5px; color:var(--ink-muted);">欄位對應</h3>
-          <div class="field-grid" data-mapgrid="order" style="margin-top:10px;"></div>
         </div>
         <div class="alert err hide" data-err="order"></div>
       </div>
     </section>
-
     <section class="card" data-side="ship">
-      <h2><span class="step-no">2</span>實際出貨明細</h2>
-      <p class="sub">打完出貨單後的檔案（實際印出貨單／交寄的清單）。欄位不同沒關係，下面對應一次就好。</p>
+      <h2><span class="step-no">2</span>實際出貨明細（資料夾）</h2>
+      <p class="sub">打完出貨單後的資料夾。檔名、欄位跟訂單不一樣沒關係，系統會自己找訂單編號對應。</p>
       <div class="card-body">
         <div class="drop" data-drop="ship">
-          <div class="big">點此選擇檔案，或把檔案拖進來</div>
-          <div class="small">Excel／CSV 皆可，資料不會離開這台電腦</div>
+          <div class="big">點此選擇整個資料夾，或把資料夾拖進來</div>
+          <div class="small">Excel、CSV、Word、PDF 混在一起沒關係，資料不會離開這台電腦</div>
         </div>
-        <input type="file" class="hide" data-file="ship" accept=".xlsx,.csv,.txt,.tsv">
+        <input type="file" class="hide" data-file="ship" webkitdirectory directory multiple>
+        <input type="file" class="hide" data-files="ship" multiple accept=".xlsx,.csv,.tsv,.txt,.docx,.pdf">
         <div class="btn-row">
-          <button class="btn ghost sm" data-paste-toggle="ship">改用貼上資料</button>
+          <button class="btn sm" data-pick-folder="ship">選擇資料夾</button>
+          <button class="btn ghost sm" data-pick-files="ship">改選個別檔案</button>
           <button class="btn ghost sm hide" data-clear="ship">清除</button>
-        </div>
-        <div class="field hide" data-paste-box="ship" style="margin-top:10px;">
-          <label>貼上表格內容（可直接從 Excel 複製整片區域，含標題列）</label>
-          <textarea data-paste="ship" placeholder="訂單編號&#9;收件人&#9;電話&#9;地址&#9;數量&#9;金額"></textarea>
-          <div class="btn-row"><button class="btn sm" data-paste-apply="ship">讀取貼上的資料</button></div>
-        </div>
-        <div class="field-grid hide" data-sheetbox="ship" style="margin-top:14px;">
-          <div class="field">
-            <label>工作表</label>
-            <select data-sheet="ship"></select>
-          </div>
-          <div class="field">
-            <label>標題列在第幾列</label>
-            <input type="number" min="1" step="1" value="1" data-headerrow="ship">
-            <span class="hint">若前面有標題／說明列，改成實際欄位名稱那一列</span>
-          </div>
-        </div>
-        <div class="preview scrollwrap hide" data-preview="ship" style="margin-top:12px;"></div>
-        <div class="hide" data-mapbox="ship" style="margin-top:16px;">
-          <h3 style="font-size:13.5px; color:var(--ink-muted);">欄位對應</h3>
-          <div class="field-grid" data-mapgrid="ship" style="margin-top:10px;"></div>
         </div>
         <div class="alert err hide" data-err="ship"></div>
       </div>
     </section>
   </div>
 
+  <section class="card hide" id="filesCard">
+    <h2><span class="step-no">3</span>逐檔擷取結果</h2>
+    <p class="sub">每個檔案抓到什麼，這裡全部攤開。抓錯的直接在欄位裡改，不該算的把最右邊的勾取消。確認完再往下核對。</p>
+    <div class="card-body">
+      <p id="reviewSummary" class="note" style="margin-top:0;"></p>
+      <div class="toolbar">
+        <div class="chips" id="reviewTabs">
+          <button class="chip" data-side="order" aria-pressed="true">訂單資料夾</button>
+          <button class="chip" data-side="ship" aria-pressed="false">出貨資料夾</button>
+        </div>
+        <div class="chips" id="reviewFilter">
+          <button class="chip" data-rf="issue" aria-pressed="true">只看要確認的</button>
+          <button class="chip" data-rf="all" aria-pressed="false">全部檔案</button>
+        </div>
+        <input type="search" class="search" id="reviewSearch" placeholder="搜尋檔名／訂單編號／收件人">
+      </div>
+      <div class="scrollwrap">
+        <table id="reviewTable">
+          <thead><tr>
+            <th class="l">檔案</th><th class="l">格式</th><th class="l">狀態</th>
+            <th class="l">訂單編號</th><th class="l">收件人</th><th class="l">電話</th>
+            <th class="l">地址</th><th class="l">數量</th><th class="l">金額</th><th class="l">納入</th>
+          </tr></thead>
+          <tbody id="reviewBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <section class="card" id="rules">
-    <h2><span class="step-no">3</span>核對規則</h2>
+    <h2><span class="step-no">4</span>核對規則</h2>
     <p class="sub">哪些欄位要比、比到多嚴，可以自己調。設定會記在這台電腦上。</p>
     <div class="card-body">
       <div class="check-row">
@@ -371,7 +379,7 @@
   </section>
 
   <section class="card" id="result">
-    <h2><span class="step-no">4</span>核對結果</h2>
+    <h2><span class="step-no">5</span>核對結果</h2>
     <p class="sub">點任一列可以展開，逐欄看訂單檔與出貨檔的差別。</p>
     <div class="card-body">
       <div id="resultEmpty" class="empty">尚未核對。上傳兩份檔案並確認欄位對應後，按「開始核對」。</div>
@@ -417,7 +425,7 @@
   </section>
 
   <section class="card" id="daily">
-    <h2><span class="step-no">5</span>每日紀錄</h2>
+    <h2><span class="step-no">6</span>每日紀錄</h2>
     <p class="sub">每天核完存一次，這裡就是全年的出貨底稿。資料存在這台電腦的瀏覽器裡，建議定期用下面的按鈕備份。</p>
     <div class="card-body">
       <div class="scrollwrap">
@@ -442,7 +450,7 @@
   </section>
 
   <section class="card" id="monthly">
-    <h2><span class="step-no">6</span>月報表</h2>
+    <h2><span class="step-no">7</span>月報表</h2>
     <p class="sub">選一個月份，彙總當月每日出貨張數、數量、金額與異常率，可匯出 CSV 給會計或存檔。</p>
     <div class="card-body">
       <div class="field-grid">
@@ -743,48 +751,7 @@ function parseDelimited(text, delim){
   return rows;
 }
 
-/* ---------- 來源狀態 ---------- */
-var src = {
-  order: { name: '', grid: null, sheets: null, sheetName: '', headerRow: 1, headers: [], rows: [], map: {} },
-  ship:  { name: '', grid: null, sheets: null, sheetName: '', headerRow: 1, headers: [], rows: [], map: {} }
-};
-var SIDE_LABEL = { order: '訂單檔', ship: '出貨檔' };
-
-function showErr(side, msg){
-  var el = $('[data-err="' + side + '"]');
-  if (!msg) { el.classList.add('hide'); el.textContent = ''; return; }
-  el.classList.remove('hide'); el.textContent = msg;
-}
-
-function handleFile(side, file){
-  showErr(side, '');
-  var name = file.name || '';
-  if (/\.xls$/i.test(name)) {
-    showErr(side, '這是舊版 .xls 格式，讀不了。請用 Excel 另存成 .xlsx 或 CSV 再上傳。');
-    return;
-  }
-  var isExcel = /\.xlsx$/i.test(name);
-  var reader = new FileReader();
-  reader.onload = function(){
-    try {
-      if (isExcel) {
-        parseXlsx(reader.result).then(function(sheets){
-          setSource(side, name, sheets, Object.keys(sheets)[0]);
-        }).catch(function(err){ showErr(side, '讀檔失敗：' + err.message); });
-      } else {
-        var text = decodeBuf(reader.result);
-        var grid = parseDelimited(text);
-        var sheets = {}; sheets['(CSV)'] = grid;
-        setSource(side, name, sheets, '(CSV)');
-      }
-    } catch (err) {
-      showErr(side, '讀檔失敗：' + err.message);
-    }
-  };
-  reader.onerror = function(){ showErr(side, '讀檔失敗，請確認檔案沒有被其他程式鎖住。'); };
-  reader.readAsArrayBuffer(file);
-}
-
+/* ---------- 表格標題列判斷與欄位自動對應 ---------- */
 function guessHeaderRow(grid){
   var best = 1, bestScore = -1;
   for (var i = 0; i < Math.min(grid.length, 15); i++) {
@@ -804,67 +771,6 @@ function guessHeaderRow(grid){
   }
   return best;
 }
-
-function setSource(side, name, sheets, sheetName){
-  var s = src[side];
-  s.name = name; s.sheets = sheets; s.sheetName = sheetName;
-  s.headerRow = guessHeaderRow(sheets[sheetName] || []);
-  var sel = $('[data-sheet="' + side + '"]');
-  sel.innerHTML = Object.keys(sheets).map(function(n){
-    return '<option value="' + esc(n) + '">' + esc(n) + '（' + sheets[n].length + ' 列）</option>';
-  }).join('');
-  sel.value = sheetName;
-  $('[data-headerrow="' + side + '"]').value = s.headerRow;
-  $('[data-sheetbox="' + side + '"]').classList.remove('hide');
-  applyGrid(side);
-  var drop = $('[data-drop="' + side + '"]');
-  drop.classList.add('loaded');
-  $('[data-clear="' + side + '"]').classList.remove('hide');
-}
-
-function applyGrid(side){
-  var s = src[side];
-  if (!s.sheets) return;
-  var grid = s.sheets[s.sheetName] || [];
-  var hr = Math.max(1, parseInt($('[data-headerrow="' + side + '"]').value, 10) || 1);
-  s.headerRow = hr;
-  var headerLine = grid[hr - 1] || [];
-  s.headers = headerLine.map(function(h, i){ return trim(h) || ('第 ' + (i + 1) + ' 欄'); });
-  s.rows = grid.slice(hr).filter(function(r){
-    return r && r.some(function(c){ return trim(c) !== ''; });
-  });
-  s.grid = grid;
-  renderFileLine(side);
-  renderPreview(side);
-  var sig = s.headers.join('|');
-  s.map = (db.maps && db.maps[sig]) ? Object.assign({}, db.maps[sig]) : autoMap(s.headers);
-  renderMap(side);
-}
-
-function renderFileLine(side){
-  var s = src[side];
-  var drop = $('[data-drop="' + side + '"]');
-  drop.innerHTML =
-    '<div class="file-line"><span class="badge ok">已載入</span>' +
-    '<span class="name">' + esc(s.name || '貼上的資料') + '</span>' +
-    '<span class="meta">' + s.rows.length + ' 筆資料 · ' + s.headers.length + ' 欄</span>' +
-    '<span class="meta">點此可換檔</span></div>';
-}
-
-function renderPreview(side){
-  var s = src[side];
-  var box = $('[data-preview="' + side + '"]');
-  if (!s.headers.length) { box.classList.add('hide'); return; }
-  var rows = s.rows.slice(0, 4);
-  var html = '<table><thead><tr>' + s.headers.map(function(h){ return '<th class="l">' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>';
-  html += rows.map(function(r){
-    return '<tr>' + s.headers.map(function(_, i){ return '<td class="l">' + esc(r[i] == null ? '' : r[i]) + '</td>'; }).join('') + '</tr>';
-  }).join('');
-  html += '</tbody></table>';
-  box.innerHTML = html;
-  box.classList.remove('hide');
-}
-
 function autoMap(headers){
   var norm = headers.map(normHeader);
   var used = {}, map = {};
@@ -886,39 +792,737 @@ function autoMap(headers){
   return map;
 }
 
-function renderMap(side){
-  var s = src[side];
-  var grid = $('[data-mapgrid="' + side + '"]');
-  grid.innerHTML = FIELDS.map(function(f){
-    var cur = (s.map[f.key] == null) ? '' : s.map[f.key];
-    var opts = ['<option value="">（不比對）</option>'].concat(s.headers.map(function(h, i){
-      return '<option value="' + i + '"' + (String(cur) === String(i) ? ' selected' : '') + '>' + esc(h) + '</option>';
-    })).join('');
-    var unset = (f.required && cur === '') ? ' unset' : '';
-    return '<div class="field"><label>' + esc(f.label) + (f.required ? ' <span style="color:var(--bad)">*</span>' : '') + '</label>' +
-      '<select class="' + unset.trim() + '" data-mapfield="' + f.key + '" data-mapside="' + side + '">' + opts + '</select></div>';
-  }).join('');
-  $('[data-mapbox="' + side + '"]').classList.remove('hide');
+/* ---------- 解壓縮共用 ---------- */
+function inflateBytes(bytes, fmt){
+  if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('這個瀏覽器版本不支援解壓縮'));
+  var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(fmt));
+  return new Response(stream).arrayBuffer().then(function(b){ return new Uint8Array(b); });
+}
+function inflateAuto(bytes){
+  return inflateBytes(bytes, 'deflate').catch(function(){ return inflateBytes(bytes, 'deflate-raw'); });
+}
+function bytesToLatin(bytes){
+  var s = '', CH = 0x8000;
+  for (var i = 0; i < bytes.length; i += CH) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CH, bytes.length)));
+  }
+  return s;
+}
+function latinToBytes(str){
+  var b = new Uint8Array(str.length);
+  for (var i = 0; i < str.length; i++) b[i] = str.charCodeAt(i) & 0xFF;
+  return b;
 }
 
-function rememberMap(side){
+/* ---------- Word (.docx) ---------- */
+function parseDocx(buf){
+  var zip = unzip(buf);
+  if (!zipHas(zip, 'word/document.xml')) return Promise.reject(new Error('這不像是 Word 檔。'));
+  return zipRead(zip, 'word/document.xml').then(function(xml){
+    var doc = xmlDoc(xml);
+    var bodies = doc.getElementsByTagName('w:body');
+    var body = bodies.length ? bodies[0] : doc.documentElement;
+    var lines = [], tables = [];
+    function paraText(p){
+      var t = p.getElementsByTagName('w:t'), s = '';
+      for (var i = 0; i < t.length; i++) s += t[i].textContent;
+      return trim(s);
+    }
+    function walk(node){
+      for (var i = 0; i < node.childNodes.length; i++) {
+        var c = node.childNodes[i];
+        if (c.nodeType !== 1) continue;
+        var tag = c.nodeName;
+        if (tag === 'w:p') {
+          var t = paraText(c);
+          if (t) lines.push(t);
+        } else if (tag === 'w:tbl') {
+          var grid = [];
+          var rows = c.getElementsByTagName('w:tr');
+          for (var r = 0; r < rows.length; r++) {
+            if (rows[r].parentNode !== c) continue;
+            var cells = rows[r].getElementsByTagName('w:tc'), row = [];
+            for (var k = 0; k < cells.length; k++) {
+              if (cells[k].parentNode !== rows[r]) continue;
+              var ps = cells[k].getElementsByTagName('w:p'), txt = [];
+              for (var q = 0; q < ps.length; q++) { var pt = paraText(ps[q]); if (pt) txt.push(pt); }
+              row.push(txt.join(' '));
+            }
+            if (row.length) grid.push(row);
+          }
+          if (grid.length) { tables.push(grid); grid.forEach(function(row){ lines.push(row.join('\t')); }); }
+        } else if (c.childNodes.length) {
+          walk(c);
+        }
+      }
+    }
+    walk(body);
+    return { lines: lines, tables: tables };
+  });
+}
+
+/* ---------- PDF 取字 ---------- */
+function hexToStr(h){
+  var s = '';
+  for (var i = 0; i + 4 <= h.length; i += 4) s += String.fromCharCode(parseInt(h.substr(i, 4), 16));
+  if (h.length % 4 === 2) s += String.fromCharCode(parseInt(h.substr(h.length - 2, 2), 16));
+  return s;
+}
+function hexPlus(h, add){
+  var units = [];
+  for (var i = 0; i + 4 <= h.length; i += 4) units.push(parseInt(h.substr(i, 4), 16));
+  if (!units.length) return '';
+  units[units.length - 1] += add;
+  return units.map(function(u){ return String.fromCharCode(u & 0xFFFF); }).join('');
+}
+function parseToUnicode(text){
+  var map = {}, width = 2, m;
+  var csr = /begincodespacerange([\s\S]*?)endcodespacerange/g;
+  while ((m = csr.exec(text))) {
+    var hx = m[1].match(/<([0-9A-Fa-f]+)>/);
+    if (hx) width = Math.max(1, Math.round((hx[1].length) / 2));
+  }
+  var bfc = /beginbfchar([\s\S]*?)endbfchar/g;
+  while ((m = bfc.exec(text))) {
+    var re = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]*)>/g, r;
+    while ((r = re.exec(m[1]))) map[parseInt(r[1], 16)] = hexToStr(r[2]);
+  }
+  var bfr = /beginbfrange([\s\S]*?)endbfrange/g;
+  while ((m = bfr.exec(text))) {
+    var re2 = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(\[[\s\S]*?\]|<[0-9A-Fa-f]*>)/g, r2;
+    while ((r2 = re2.exec(m[1]))) {
+      var lo = parseInt(r2[1], 16), hi = parseInt(r2[2], 16), dst = r2[3];
+      if (hi - lo > 65535) continue;
+      if (dst.charAt(0) === '[') {
+        var items = dst.match(/<([0-9A-Fa-f]*)>/g) || [];
+        for (var i = 0; i <= hi - lo && i < items.length; i++) map[lo + i] = hexToStr(items[i].slice(1, -1));
+      } else {
+        var base = dst.slice(1, -1);
+        for (var j = 0; j <= hi - lo; j++) map[lo + j] = hexPlus(base, j);
+      }
+    }
+  }
+  return { map: map, width: width };
+}
+function pdfSplitObjects(raw){
+  var objs = {}, re = /(\d+)\s+\d+\s+obj\b/g, m;
+  while ((m = re.exec(raw))) {
+    var start = m.index + m[0].length;
+    var end = raw.indexOf('endobj', start);
+    if (end < 0) end = raw.length;
+    objs[m[1]] = raw.slice(start, end);
+    re.lastIndex = end;
+  }
+  return objs;
+}
+function pdfStreamBytes(body){
+  var i = body.indexOf('stream');
+  if (i < 0) return null;
+  var j = i + 6;
+  if (body.charAt(j) === '\r') j++;
+  if (body.charAt(j) === '\n') j++;
+  var k = body.lastIndexOf('endstream');
+  if (k < 0 || k <= j) return null;
+  /* /Length 是權威值；用搜尋到的 endstream 會把中間的換行也算進去，
+     解壓縮器會把那個尾巴當成壞資料而整個失敗。 */
+  var lm = /\/Length\s+(\d+)[^0-9R]/.exec(body.slice(0, i));
+  if (lm) {
+    var n = parseInt(lm[1], 10);
+    if (n > 0 && j + n <= k + 2) return latinToBytes(body.substr(j, n));
+  }
+  var end = k;
+  while (end > j && (body.charAt(end - 1) === '\n' || body.charAt(end - 1) === '\r')) end--;
+  return latinToBytes(body.slice(j, end));
+}
+function pdfDict(body){
+  var i = body.indexOf('stream');
+  return i < 0 ? body : body.slice(0, i);
+}
+function pdfDecodeStream(body){
+  var bytes = pdfStreamBytes(body);
+  if (!bytes) return Promise.resolve(null);
+  var dict = pdfDict(body);
+  if (dict.indexOf('FlateDecode') < 0) return Promise.resolve(bytes);
+  if (dict.indexOf('Predictor') >= 0) return Promise.resolve(null);
+  return inflateAuto(bytes).catch(function(){ return null; });
+}
+
+/* 內容流取字。追蹤文字座標：同一行的片段（中文、數字常因字型切換被拆成多段）
+   要接回同一行，只有 Y 座標真的換行時才斷行，否則地址會被切碎。 */
+function pdfScanContent(content, fontMaps, pageFonts){
+  var lines = [], buf = '', cur = null, i = 0, L = content.length, operands = [];
+  var lineX = 0, lineY = 0, curX = 0, curY = 0, leading = 0, started = false;
+  function flush(){ var t = trim(buf); if (t) lines.push(t); buf = ''; }
+  function moveTo(x, y){
+    /* 只看 Y。產生器常用 Tm 回到行首、再用 Td 推進到該段位置，
+       把「x 變小」當換行會在每個字型片段處切斷同一行。 */
+    if (started && Math.abs(y - curY) > 2.5) flush();
+    curX = x; curY = y; started = true;
+  }
+  function emit(raw){
+    if (cur && cur.width === 2) {
+      for (var k = 0; k + 1 < raw.length; k += 2) {
+        var code = (raw.charCodeAt(k) << 8) | raw.charCodeAt(k + 1);
+        buf += (cur.map[code] != null ? cur.map[code] : '');
+      }
+    } else if (cur) {
+      for (var k2 = 0; k2 < raw.length; k2++) {
+        var c = raw.charCodeAt(k2);
+        buf += (cur.map[c] != null ? cur.map[c] : String.fromCharCode(c));
+      }
+    } else {
+      buf += raw;
+    }
+  }
+  function nums(){ return operands.filter(function(o){ return o.t === 'd'; }).map(function(o){ return o.v; }); }
+  function readLiteral(){
+    var depth = 1, out = '';
+    i++;
+    while (i < L && depth > 0) {
+      var ch = content.charAt(i);
+      if (ch === '\\') {
+        var nx = content.charAt(i + 1);
+        if (nx >= '0' && nx <= '7') {
+          var oct = '', p = i + 1;
+          while (p < L && oct.length < 3 && content.charAt(p) >= '0' && content.charAt(p) <= '7') { oct += content.charAt(p); p++; }
+          out += String.fromCharCode(parseInt(oct, 8) & 0xFF);
+          i = p; continue;
+        }
+        var mapEsc = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f' };
+        out += (mapEsc[nx] != null ? mapEsc[nx] : nx);
+        i += 2; continue;
+      }
+      if (ch === '(') { depth++; out += ch; i++; continue; }
+      if (ch === ')') { depth--; i++; if (depth === 0) break; out += ch; continue; }
+      out += ch; i++;
+    }
+    return out;
+  }
+  function readHex(){
+    var out = '';
+    i++;
+    while (i < L && content.charAt(i) !== '>') { out += content.charAt(i); i++; }
+    i++;
+    var clean = out.replace(/[^0-9A-Fa-f]/g, '');
+    if (clean.length % 2) clean += '0';
+    var s2 = '';
+    for (var h = 0; h + 2 <= clean.length; h += 2) s2 += String.fromCharCode(parseInt(clean.substr(h, 2), 16));
+    return s2;
+  }
+  while (i < L) {
+    var ch = content.charAt(i);
+    if (ch === '(') { operands.push({ t: 's', v: readLiteral() }); continue; }
+    if (ch === '<' && content.charAt(i + 1) !== '<') { operands.push({ t: 's', v: readHex() }); continue; }
+    if (ch === '<' || ch === '>') { i += 2; continue; }
+    if (ch === '/') {
+      var nm = '';
+      i++;
+      while (i < L && !/[\s\/\[\]<>()]/.test(content.charAt(i))) { nm += content.charAt(i); i++; }
+      operands.push({ t: 'n', v: nm });
+      continue;
+    }
+    if (ch === '[' || ch === ']') { operands.push({ t: ch }); i++; continue; }
+    if (/\s/.test(ch)) { i++; continue; }
+    if (/[-+.0-9]/.test(ch)) {
+      var numTok = '';
+      while (i < L && /[-+.0-9]/.test(content.charAt(i))) { numTok += content.charAt(i); i++; }
+      operands.push({ t: 'd', v: parseFloat(numTok) });
+      continue;
+    }
+    var op = '';
+    while (i < L && /[A-Za-z*'"]/.test(content.charAt(i))) { op += content.charAt(i); i++; }
+    if (!op) { i++; continue; }
+    var v = nums();
+    if (op === 'Tf') {
+      var nameTok = null;
+      for (var z = operands.length - 1; z >= 0; z--) if (operands[z].t === 'n') { nameTok = operands[z].v; break; }
+      var ref = nameTok != null ? pageFonts[nameTok] : null;
+      cur = ref != null ? (fontMaps[ref] || null) : null;
+    } else if (op === 'BT') {
+      /* 產生器常把同一行的每個字型片段各包一個 BT…ET，
+         在區塊邊界斷行會把地址切碎，所以只重置矩陣、由座標決定換行。 */
+      lineX = lineY = 0;
+    } else if (op === 'ET') {
+      /* 不在此斷行，理由同上 */
+    } else if (op === 'Tm') {
+      if (v.length >= 6) { lineX = v[4]; lineY = v[5]; moveTo(v[4], v[5]); }
+    } else if (op === 'Td' || op === 'TD') {
+      if (v.length >= 2) {
+        if (op === 'TD') leading = -v[1];
+        lineX += v[0]; lineY += v[1];
+        moveTo(lineX, lineY);
+      }
+    } else if (op === 'TL') {
+      if (v.length) leading = v[0];
+    } else if (op === 'T*') {
+      lineY -= leading; moveTo(lineX, lineY);
+    } else if (op === 'Tj') {
+      for (var y = operands.length - 1; y >= 0; y--) if (operands[y].t === 's') { emit(operands[y].v); break; }
+    } else if (op === "'" || op === '"') {
+      lineY -= leading; moveTo(lineX, lineY);
+      for (var y2 = operands.length - 1; y2 >= 0; y2--) if (operands[y2].t === 's') { emit(operands[y2].v); break; }
+    } else if (op === 'TJ') {
+      operands.forEach(function(o){
+        if (o.t === 's') emit(o.v);
+        else if (o.t === 'd' && o.v < -150) buf += ' ';
+      });
+    }
+    operands = [];
+  }
+  flush();
+  return lines;
+}
+
+function parsePdf(buf){
+  var raw = bytesToLatin(new Uint8Array(buf));
+  if (raw.indexOf('%PDF') < 0) return Promise.reject(new Error('這不像是 PDF 檔。'));
+  var objs = pdfSplitObjects(raw);
+  var fontRefs = {}, fontMaps = {}, pages = [];
+  Object.keys(objs).forEach(function(numKey){
+    var body = objs[numKey], dict = pdfDict(body);
+    if (/\/Type\s*\/Page[^s]/.test(dict) || /\/Type\s*\/Page\s*(\/|>)/.test(dict)) {
+      var contents = [];
+      var cm = /\/Contents\s+(\d+)\s+\d+\s+R/.exec(dict);
+      if (cm) contents.push(cm[1]);
+      else {
+        var am = /\/Contents\s*\[([^\]]*)\]/.exec(dict);
+        if (am) { var rs = am[1].match(/(\d+)\s+\d+\s+R/g) || []; rs.forEach(function(x){ contents.push(/(\d+)/.exec(x)[1]); }); }
+      }
+      var fonts = {};
+      var fm = /\/Font\s*<<([\s\S]*?)>>/.exec(dict);
+      if (fm) {
+        var fr = /\/([^\s\/]+)\s+(\d+)\s+\d+\s+R/g, f;
+        while ((f = fr.exec(fm[1]))) { fonts[f[1]] = f[2]; fontRefs[f[2]] = true; }
+      } else {
+        var rm = /\/Resources\s+(\d+)\s+\d+\s+R/.exec(dict);
+        if (rm && objs[rm[1]]) {
+          var fm2 = /\/Font\s*<<([\s\S]*?)>>/.exec(objs[rm[1]]);
+          if (fm2) {
+            var fr2 = /\/([^\s\/]+)\s+(\d+)\s+\d+\s+R/g, f2;
+            while ((f2 = fr2.exec(fm2[1]))) { fonts[f2[1]] = f2[2]; fontRefs[f2[2]] = true; }
+          }
+        }
+      }
+      if (contents.length) pages.push({ contents: contents, fonts: fonts });
+    }
+  });
+  var toUniJobs = [];
+  Object.keys(fontRefs).forEach(function(fref){
+    var fbody = objs[fref];
+    if (!fbody) return;
+    var tm = /\/ToUnicode\s+(\d+)\s+\d+\s+R/.exec(fbody);
+    if (!tm || !objs[tm[1]]) return;
+    toUniJobs.push(pdfDecodeStream(objs[tm[1]]).then(function(bytes){
+      if (bytes) fontMaps[fref] = parseToUnicode(bytesToLatin(bytes));
+    }).catch(function(){}));
+  });
+  return Promise.all(toUniJobs).then(function(){
+    var lines = [];
+    return pages.reduce(function(chain, pg){
+      return chain.then(function(){
+        return Promise.all(pg.contents.map(function(cref){
+          return objs[cref] ? pdfDecodeStream(objs[cref]) : Promise.resolve(null);
+        })).then(function(parts){
+          var content = parts.filter(Boolean).map(bytesToLatin).join('\n');
+          if (content) lines = lines.concat(pdfScanContent(content, fontMaps, pg.fonts));
+        });
+      });
+    }, Promise.resolve()).then(function(){ return { lines: lines, tables: [] }; });
+  });
+}
+
+/* ---------- 從文字／表格擷取一張單 ---------- */
+var LABELS = {
+  orderNo: ['訂單編號', '訂單號碼', '訂單序號', '出貨單號', '銷貨單號', '訂單代號', '訂單號', '單據編號', '單號', 'order no', 'order number', 'orderid'],
+  name: ['收件人姓名', '收件人', '收貨人', '收件者', '訂購人', '購買人', '客戶姓名', '客戶名稱', '買家姓名', '買家', '姓名'],
+  phone: ['收件人電話', '收件人手機', '聯絡電話', '連絡電話', '行動電話', '手機號碼', '電話', '手機'],
+  addr: ['收件人地址', '收件地址', '送貨地址', '配送地址', '寄送地址', '地址'],
+  item: ['商品名稱', '品名', '商品編號', '商品', '規格', '品號', '料號'],
+  qty: ['出貨數量', '訂購數量', '配送數量', '銷售數量', '數量', '件數'],
+  amount: ['訂單金額', '銷售金額', '應收金額', '應付金額', '商品金額', '出貨金額', '總金額', '金額', '小計', '合計']
+};
+var ALL_LABELS = [];
+Object.keys(LABELS).forEach(function(k){ ALL_LABELS = ALL_LABELS.concat(LABELS[k]); });
+/* 這些欄位在單據上很常見，但不是我們要的值，遇到就當作值的結尾 */
+var STOP_LABELS = ALL_LABELS.concat(['託運單號', '物流單號', '配送方式', '列印時間', '出貨日期', '訂單日期', '備註', '溫層', '付款方式']);
+
+function compact(line){
+  var s = toHalf(line), out = '', map = [];
+  for (var i = 0; i < s.length; i++) {
+    if (/\s/.test(s.charAt(i))) continue;
+    out += s.charAt(i); map.push(i);
+  }
+  return { text: out, low: out.toLowerCase(), map: map, src: s };
+}
+function cutAtNextLabel(value){
+  var c = compact(value), best = -1;
+  STOP_LABELS.forEach(function(lab){
+    var l = compact(lab).low;
+    if (!l) return;
+    var p = c.low.indexOf(l);
+    if (p > 0 && (best < 0 || p < best)) best = p;
+  });
+  if (best < 0) return value;
+  return value.slice(0, c.map[best]);
+}
+function looksLikeLabelOnly(line){
+  var c = compact(line).low;
+  if (!c) return true;
+  return STOP_LABELS.some(function(lab){ return compact(lab).low === c; });
+}
+function valueFor(lines, key){
+  var labels = LABELS[key];
+  for (var li = 0; li < labels.length; li++) {
+    var lab = compact(labels[li]).low;
+    if (!lab) continue;
+    for (var i = 0; i < lines.length; i++) {
+      var c = compact(lines[i]);
+      var p = c.low.indexOf(lab);
+      if (p < 0) continue;
+      var after = p + lab.length;
+      var v = '';
+      if (after < c.text.length) {
+        v = c.src.slice(c.map[after]).replace(/^[\s:：=＝\-–—|｜、,，]+/, '');
+        v = cutAtNextLabel(v);
+      }
+      if (trim(v)) return trim(v);
+      /* 值在下一行：表格式版面把標籤與內容分開時最常見 */
+      for (var j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+        if (!trim(lines[j])) continue;
+        if (looksLikeLabelOnly(lines[j])) break;
+        return trim(cutAtNextLabel(lines[j]));
+      }
+    }
+  }
+  return '';
+}
+function pickOrderNo(raw){
+  var m = /[A-Za-z0-9][A-Za-z0-9_\-\/]{3,}/.exec(toHalf(raw));
+  return m ? m[0] : trim(raw);
+}
+function pickName(raw){
+  var v = trim(toHalf(raw));
+  var m = /^[^\d]{1,20}/.exec(v);
+  v = m ? m[0] : v.slice(0, 20);
+  return trim(v.replace(/[,，、|｜]+$/, ''));
+}
+function pickPhone(raw){
+  var v = toHalf(raw);
+  var m = /(\+?886[\s\-]?\d[\d\s\-]{7,})|(\(0\d{1,2}\)[\s\-]?\d[\d\s\-]{5,})|(0\d{1,2}[\s\-]?\d{3,4}[\s\-]?\d{3,4})/.exec(v);
+  return trim(m ? m[0] : v);
+}
+function pickAddr(raw){
+  return trim(toHalf(raw).replace(/[|｜]+$/, ''));
+}
+function numOrNull(raw){
+  if (isBlank(raw)) return null;
+  var t = toHalf(raw).replace(/[^0-9.\-]/g, '');
+  if (t === '' || t === '-' || t === '.') return null;
+  var v = parseFloat(t);
+  return isFinite(v) ? v : null;
+}
+function orderNoFromFileName(name){
+  var base = String(name || '').replace(/\.[a-z0-9]+$/i, '');
+  var toks = toHalf(base).split(/[\s_\-–—()（）\[\]．.]+/).filter(Boolean);
+  for (var i = toks.length - 1; i >= 0; i--) {
+    if (/^[A-Za-z]{0,5}\d{3,}[A-Za-z0-9]*$/.test(toks[i])) return toks[i];
+  }
+  return '';
+}
+function recordFromLines(lines, fileName){
+  var rec = {
+    orderNo: pickOrderNo(valueFor(lines, 'orderNo')),
+    name: pickName(valueFor(lines, 'name')),
+    phone: pickPhone(valueFor(lines, 'phone')),
+    addr: pickAddr(valueFor(lines, 'addr')),
+    item: trim(valueFor(lines, 'item')),
+    qty: numOrNull(valueFor(lines, 'qty')),
+    amount: numOrNull(valueFor(lines, 'amount'))
+  };
+  var joined = lines.join('\n');
+  if (!rec.phone) rec.phone = pickPhone((/(09\d{2}[\s\-]?\d{3}[\s\-]?\d{3})|(\(0\d{1,2}\)[\s\-]?\d{6,8})/.exec(toHalf(joined)) || [''])[0]);
+  if (!rec.addr) {
+    for (var i = 0; i < lines.length; i++) {
+      if (/[縣市].*(路|街|大道|巷|弄|號)/.test(toHalf(lines[i]))) { rec.addr = pickAddr(lines[i]); break; }
+    }
+  }
+  if (!rec.orderNo) rec.orderNo = orderNoFromFileName(fileName);
+  return rec;
+}
+
+/* ---------- 表格型檔案（一份檔含多張單） ---------- */
+function gridIsTable(grid){
+  if (!grid || grid.length < 2) return null;
+  var hr = guessHeaderRow(grid);
+  var headers = (grid[hr - 1] || []).map(function(h, i){ return trim(h) || ('第 ' + (i + 1) + ' 欄'); });
+  if (headers.length < 3) return null;
+  var map = autoMap(headers);
+  var mapped = Object.keys(map).filter(function(k){ return map[k] != null; }).length;
+  var rows = grid.slice(hr).filter(function(r){ return r && r.some(function(c){ return trim(c) !== ''; }); });
+  if (map.orderNo == null || mapped < 3 || !rows.length) return null;
+  return { headers: headers, map: map, rows: rows };
+}
+function recordsFromTable(t){
+  return t.rows.map(function(r){
+    function at(k){ return t.map[k] == null ? '' : (r[t.map[k]] == null ? '' : String(r[t.map[k]])); }
+    return {
+      orderNo: trim(at('orderNo')), name: trim(at('name')), phone: trim(at('phone')),
+      addr: trim(at('addr')), item: trim(at('item')),
+      qty: numOrNull(at('qty')), amount: numOrNull(at('amount'))
+    };
+  }).filter(function(r){ return r.orderNo || r.name || r.phone; });
+}
+function gridToLines(grid){
+  return grid.map(function(r){ return (r || []).map(function(c){ return trim(c); }).filter(Boolean).join('\t'); })
+             .filter(function(x){ return x; });
+}
+
+/* ---------- 單一檔案 → 0..N 張單 ---------- */
+function extRe(name, re){ return re.test(String(name || '')); }
+function readBuffer(file){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(r.result); };
+    r.onerror = function(){ rej(new Error('讀不到檔案內容')); };
+    r.readAsArrayBuffer(file);
+  });
+}
+function extractFile(file){
+  var name = file.name || '';
+  var out = { file: name, kind: '', status: 'ok', note: '', records: [] };
+  if (extRe(name, /\.xls$/i)) {
+    out.kind = 'xls'; out.status = 'fail'; out.note = '舊版 .xls，請另存成 .xlsx 或 CSV';
+    return Promise.resolve(out);
+  }
+  if (extRe(name, /\.(png|jpe?g|gif|bmp|webp|heic|tif?f)$/i)) {
+    out.kind = '圖片'; out.status = 'skip'; out.note = '圖片無法辨識文字，已略過';
+    return Promise.resolve(out);
+  }
+  var isXlsx = extRe(name, /\.xlsx$/i), isDocx = extRe(name, /\.docx$/i);
+  var isPdf = extRe(name, /\.pdf$/i), isText = extRe(name, /\.(csv|tsv|txt)$/i);
+  if (!isXlsx && !isDocx && !isPdf && !isText) {
+    out.kind = (name.split('.').pop() || '').toLowerCase() || '未知';
+    out.status = 'skip'; out.note = '不支援這種格式，已略過';
+    return Promise.resolve(out);
+  }
+  return readBuffer(file).then(function(buf){
+    if (isXlsx) {
+      out.kind = 'Excel';
+      return parseXlsx(buf).then(function(sheets){
+        var names = Object.keys(sheets);
+        for (var i = 0; i < names.length; i++) {
+          var t = gridIsTable(sheets[names[i]]);
+          if (t) { out.records = recordsFromTable(t); out.note = '表格（' + out.records.length + ' 張單）'; return out; }
+        }
+        var lines = [];
+        names.forEach(function(n){ lines = lines.concat(gridToLines(sheets[n])); });
+        out.records = [recordFromLines(lines, name)];
+        return out;
+      });
+    }
+    if (isDocx) {
+      out.kind = 'Word';
+      return parseDocx(buf).then(function(d){
+        for (var i = 0; i < d.tables.length; i++) {
+          var t = gridIsTable(d.tables[i]);
+          if (t) { out.records = recordsFromTable(t); out.note = '表格（' + out.records.length + ' 張單）'; return out; }
+        }
+        out.records = [recordFromLines(d.lines, name)];
+        return out;
+      });
+    }
+    if (isPdf) {
+      out.kind = 'PDF';
+      return parsePdf(buf).then(function(d){
+        if (!d.lines.length) { out.status = 'fail'; out.note = '這份 PDF 讀不到文字，可能是掃描或拍照的影像檔'; return out; }
+        out.records = [recordFromLines(d.lines, name)];
+        return out;
+      });
+    }
+    out.kind = 'CSV';
+    var grid = parseDelimited(decodeBuf(buf));
+    var t2 = gridIsTable(grid);
+    if (t2) { out.records = recordsFromTable(t2); out.note = '表格（' + out.records.length + ' 張單）'; return out; }
+    out.records = [recordFromLines(gridToLines(grid), name)];
+    return out;
+  }).then(function(o){
+    o.records.forEach(function(r){ r.file = name; r.excluded = false; });
+    if (o.status === 'ok' && !o.records.length) { o.status = 'fail'; o.note = o.note || '這個檔案裡找不到訂單資料'; }
+    if (o.status === 'ok' && o.records.length === 1 && !o.records[0].orderNo) {
+      o.status = 'warn'; o.note = '讀不到訂單編號，請在下面手動填';
+    }
+    return o;
+  }).catch(function(err){
+    out.status = 'fail'; out.note = err.message || '解析失敗';
+    return out;
+  });
+}
+
+/* ---------- 兩個資料夾的狀態 ---------- */
+var src = { order: { files: [], busy: false, label: '' }, ship: { files: [], busy: false, label: '' } };
+var SIDE_LABEL = { order: '訂單資料夾', ship: '出貨資料夾' };
+var reviewSide = 'order';
+var reviewFilter = 'issue';
+
+function sideRecords(side){
+  var out = [];
+  src[side].files.forEach(function(f){
+    f.records.forEach(function(r){ if (!r.excluded) out.push(r); });
+  });
+  return out;
+}
+function sideStats(side){
+  var s = src[side], orders = 0, bad = 0;
+  s.files.forEach(function(f){
+    orders += f.records.filter(function(r){ return !r.excluded; }).length;
+    if (f.status !== 'ok') bad++;
+    else if (f.records.some(function(r){ return !r.excluded && !trim(r.orderNo); })) bad++;
+  });
+  return { files: s.files.length, orders: orders, bad: bad };
+}
+function showErr(side, msg){
+  var el = $('[data-err="' + side + '"]');
+  if (!msg) { el.classList.add('hide'); el.textContent = ''; return; }
+  el.classList.remove('hide'); el.textContent = msg;
+}
+function renderSideStatus(side, busyText){
+  var drop = $('[data-drop="' + side + '"]');
   var s = src[side];
-  if (!s.headers.length) return;
-  db.maps[s.headers.join('|')] = Object.assign({}, s.map);
-  saveDB();
+  if (busyText) {
+    drop.classList.add('loaded');
+    drop.innerHTML = '<div class="file-line"><span class="badge dup">讀取中</span><span class="meta">' + esc(busyText) + '</span></div>';
+    return;
+  }
+  if (!s.files.length) {
+    drop.classList.remove('loaded');
+    drop.innerHTML = '<div class="big">點此選擇整個資料夾，或把資料夾拖進來</div>' +
+      '<div class="small">Excel、CSV、Word、PDF 混在一起沒關係，資料不會離開這台電腦</div>';
+    $('[data-clear="' + side + '"]').classList.add('hide');
+    return;
+  }
+  var st = sideStats(side);
+  drop.classList.add('loaded');
+  drop.innerHTML = '<div class="file-line">' +
+    '<span class="badge ' + (st.bad ? 'missing' : 'ok') + '">' + (st.bad ? st.bad + ' 檔要確認' : '全部讀到') + '</span>' +
+    (s.label ? '<span class="name">' + esc(s.label) + '</span>' : '') +
+    '<span class="meta">' + st.files + ' 個檔案 · 讀到 ' + st.orders + ' 張單</span>' +
+    '<span class="meta">點此可重選</span></div>';
+  $('[data-clear="' + side + '"]').classList.remove('hide');
+}
+
+function ingest(side, fileList){
+  var files = Array.prototype.slice.call(fileList || []).filter(function(f){
+    return f && f.name && !/^~\$/.test(f.name) && !/^\./.test(f.name) && !/(^|\/)\.DS_Store$/.test(f.name);
+  });
+  showErr(side, '');
+  if (!files.length) { showErr(side, '這個資料夾裡沒有看到檔案。'); return; }
+  var s = src[side];
+  s.files = [];
+  s.busy = true;
+  var rel = files[0].webkitRelativePath || '';
+  s.label = rel ? rel.split('/')[0] : '';
+  renderSideStatus(side, '解析中… 0 / ' + files.length);
+  var done = 0, i = 0, CONC = 4, results = [];
+  function next(){
+    if (i >= files.length) return Promise.resolve();
+    var idx = i++;
+    return extractFile(files[idx]).then(function(res){
+      results[idx] = res;
+      done++;
+      if (done % 3 === 0 || done === files.length) renderSideStatus(side, '解析中… ' + done + ' / ' + files.length);
+      return next();
+    });
+  }
+  var lanes = [];
+  for (var c = 0; c < Math.min(CONC, files.length); c++) lanes.push(next());
+  Promise.all(lanes).then(function(){
+    s.files = results.filter(Boolean);
+    s.busy = false;
+    renderSideStatus(side);
+    renderReview();
+    $('#filesCard').classList.remove('hide');
+  });
 }
 
 function clearSide(side){
-  src[side] = { name: '', grid: null, sheets: null, sheetName: '', headerRow: 1, headers: [], rows: [], map: {} };
-  var drop = $('[data-drop="' + side + '"]');
-  drop.classList.remove('loaded');
-  drop.innerHTML = '<div class="big">點此選擇檔案，或把檔案拖進來</div><div class="small">Excel／CSV 皆可，資料不會離開這台電腦</div>';
-  $('[data-preview="' + side + '"]').classList.add('hide');
-  $('[data-mapbox="' + side + '"]').classList.add('hide');
-  $('[data-sheetbox="' + side + '"]').classList.add('hide');
-  $('[data-clear="' + side + '"]').classList.add('hide');
-  $('[data-file="' + side + '"]').value = '';
+  src[side] = { files: [], busy: false, label: '' };
+  renderSideStatus(side);
   showErr(side, '');
+  var input = $('[data-file="' + side + '"]');
+  if (input) input.value = '';
+  var input2 = $('[data-files="' + side + '"]');
+  if (input2) input2.value = '';
+  renderReview();
+}
+
+/* ---------- 逐檔檢視 ---------- */
+function fileStatusBadge(f){
+  if (f.status === 'fail') return '<span class="badge diff">讀不到</span>';
+  if (f.status === 'skip') return '<span class="badge dup">略過</span>';
+  if (f.status === 'warn') return '<span class="badge missing">要確認</span>';
+  return '<span class="badge ok">已讀取</span>';
+}
+function rowIsIssue(f, r){
+  if (f.status !== 'ok') return true;
+  if (!r) return true;
+  return !trim(r.orderNo) || !trim(r.name) || (!trim(r.phone) && !trim(r.addr));
+}
+function renderReview(){
+  var s = src[reviewSide];
+  $$('#reviewTabs .chip').forEach(function(c){
+    c.setAttribute('aria-pressed', String(c.getAttribute('data-side') === reviewSide));
+  });
+  $$('#reviewFilter .chip').forEach(function(c){
+    c.setAttribute('aria-pressed', String(c.getAttribute('data-rf') === reviewFilter));
+  });
+  var st = sideStats(reviewSide);
+  $('#reviewSummary').innerHTML =
+    '<strong>' + esc(SIDE_LABEL[reviewSide]) + '</strong>：' + st.files + ' 個檔案，讀到 ' + st.orders + ' 張單' +
+    (st.bad ? '，<span style="color:var(--bad);font-weight:700">' + st.bad + ' 個檔案需要你確認</span>' : '，全部讀到資料');
+  var q = normKey($('#reviewSearch').value);
+  var body = $('#reviewBody'), html = '';
+  var shown = 0;
+  s.files.forEach(function(f, fi){
+    var recs = f.records.length ? f.records : [null];
+    recs.forEach(function(r, ri){
+      if (reviewFilter === 'issue' && !rowIsIssue(f, r)) return;
+      if (q) {
+        var hay = normKey([f.file, r && r.orderNo, r && r.name, r && r.phone, r && r.addr].join(' '));
+        if (hay.indexOf(q) < 0) return;
+      }
+      shown++;
+      if (!r) {
+        html += '<tr><td class="l wrapval">' + esc(f.file) + '</td><td class="l">' + esc(f.kind) + '</td>' +
+          '<td class="l">' + fileStatusBadge(f) + '</td>' +
+          '<td class="l" colspan="7"><span class="muted-note">' + esc(f.note || '沒有讀到資料') + '</span></td></tr>';
+        return;
+      }
+      function inp(k, cls){
+        return '<input class="cell-input ' + (cls || '') + '" data-fi="' + fi + '" data-ri="' + ri + '" data-k="' + k + '" value="' +
+          esc(r[k] == null ? '' : r[k]) + '">';
+      }
+      html += '<tr' + (r.excluded ? ' class="row-off"' : '') + '>' +
+        '<td class="l wrapval">' + esc(f.file) + (f.records.length > 1 ? ' <span class="meta">#' + (ri + 1) + '</span>' : '') + '</td>' +
+        '<td class="l">' + esc(f.kind) + '</td>' +
+        '<td class="l">' + fileStatusBadge(f) + '</td>' +
+        '<td class="l">' + inp('orderNo', 'w-order') + '</td>' +
+        '<td class="l">' + inp('name', 'w-name') + '</td>' +
+        '<td class="l">' + inp('phone', 'w-phone') + '</td>' +
+        '<td class="l">' + inp('addr', 'w-addr') + '</td>' +
+        '<td class="l">' + inp('qty', 'w-num') + '</td>' +
+        '<td class="l">' + inp('amount', 'w-num') + '</td>' +
+        '<td class="l"><label class="check"><input type="checkbox" data-ex="1" data-fi="' + fi + '" data-ri="' + ri + '"' +
+        (r.excluded ? '' : ' checked') + '></label></td>' +
+        '</tr>';
+    });
+  });
+  if (!s.files.length) {
+    html = '<tr><td colspan="10"><div class="empty">還沒有選這個資料夾。</div></td></tr>';
+  } else if (!shown) {
+    html = '<tr><td colspan="10"><div class="empty">' +
+      (reviewFilter === 'issue' ? '這個資料夾每個檔案都讀到完整資料，不需要確認。' : '沒有符合條件的檔案。') + '</div></td></tr>';
+  }
+  body.innerHTML = html;
 }
 
 /* ---------- 核對規則 ---------- */
@@ -951,43 +1555,37 @@ function writeRules(r){
 }
 
 /* ---------- 彙整成「一張單」 ---------- */
-function cell(row, idx){
-  if (idx == null || idx === '') return '';
-  var v = row[idx];
-  return v == null ? '' : String(v);
-}
-function buildIndex(s){
-  var map = s.map, idx = new Map(), blanks = 0;
-  var hasQty = map.qty != null && map.qty !== '';
-  var hasAmount = map.amount != null && map.amount !== '';
-  var hasItem = map.item != null && map.item !== '';
-  s.rows.forEach(function(r){
-    var rawNo = cell(r, map.orderNo);
-    var key = normKey(rawNo);
+function buildIndex(recs){
+  var idx = new Map(), blanks = 0;
+  var has = { name: false, phone: false, addr: false, qty: false, amount: false, item: false };
+  recs.forEach(function(r){
+    var key = normKey(r.orderNo);
     if (!key) { blanks++; return; }
     var g = idx.get(key);
     if (!g) {
-      g = { key: key, orderNo: trim(rawNo), name: '', phone: '', addr: '',
-            qty: 0, amount: 0, lines: 0, items: new Map() };
+      g = { key: key, orderNo: trim(r.orderNo), name: '', phone: '', addr: '',
+            qty: 0, amount: 0, lines: 0, items: new Map(), files: [] };
       idx.set(key, g);
     }
     g.lines++;
-    if (isBlank(g.name)) g.name = trim(cell(r, map.name));
-    if (isBlank(g.phone)) g.phone = trim(cell(r, map.phone));
-    if (isBlank(g.addr)) g.addr = trim(cell(r, map.addr));
-    var q = hasQty ? num(cell(r, map.qty)) : 0;
-    g.qty += q;
-    if (hasAmount) g.amount += num(cell(r, map.amount));
-    if (hasItem) {
-      var it = normKey(cell(r, map.item));
-      if (it) {
-        var prev = g.items.get(it) || { label: trim(cell(r, map.item)), qty: 0 };
-        prev.qty += hasQty ? q : 1;
-        g.items.set(it, prev);
-      }
+    if (r.file && g.files.indexOf(r.file) < 0) g.files.push(r.file);
+    if (isBlank(g.name) && !isBlank(r.name)) g.name = trim(r.name);
+    if (isBlank(g.phone) && !isBlank(r.phone)) g.phone = trim(r.phone);
+    if (isBlank(g.addr) && !isBlank(r.addr)) g.addr = trim(r.addr);
+    if (!isBlank(r.name)) has.name = true;
+    if (!isBlank(r.phone)) has.phone = true;
+    if (!isBlank(r.addr)) has.addr = true;
+    if (r.qty != null) { g.qty += r.qty; has.qty = true; }
+    if (r.amount != null) { g.amount += r.amount; has.amount = true; }
+    if (!isBlank(r.item)) {
+      has.item = true;
+      var it = normKey(r.item);
+      var prev = g.items.get(it) || { label: trim(r.item), qty: 0 };
+      prev.qty += (r.qty != null ? r.qty : 1);
+      g.items.set(it, prev);
     }
   });
-  return { idx: idx, hasQty: hasQty, hasAmount: hasAmount, hasItem: hasItem, blanks: blanks };
+  return { idx: idx, blanks: blanks, has: has };
 }
 
 function compareItems(a, b){
@@ -1007,10 +1605,10 @@ var result = null;
 
 function reconcile(){
   var rules = readRules();
-  var O = buildIndex(src.order), S = buildIndex(src.ship);
+  var O = buildIndex(sideRecords('order')), S = buildIndex(sideRecords('ship'));
   var notes = [];
-  if (O.blanks) notes.push('訂單檔有 ' + O.blanks + ' 列沒有訂單編號，已略過。');
-  if (S.blanks) notes.push('出貨檔有 ' + S.blanks + ' 列沒有訂單編號，已略過。');
+  if (O.blanks) notes.push('訂單資料夾有 ' + O.blanks + ' 筆讀不到訂單編號，已略過。');
+  if (S.blanks) notes.push('出貨資料夾有 ' + S.blanks + ' 筆讀不到訂單編號，已略過。');
 
   var checks = [];
   function addCheck(on, key, label, oOk, sOk){
@@ -1018,14 +1616,12 @@ function reconcile(){
     if (!oOk || !sOk) { notes.push('「' + label + '」只有一邊有對應欄位，這次不比對。'); return; }
     checks.push(key);
   }
-  var oMap = src.order.map, sMap = src.ship.map;
-  var has = function(m, k){ return m[k] != null && m[k] !== ''; };
-  addCheck(rules.name, 'name', '收件人', has(oMap, 'name'), has(sMap, 'name'));
-  addCheck(rules.phone, 'phone', '電話', has(oMap, 'phone'), has(sMap, 'phone'));
-  addCheck(rules.addr, 'addr', '地址', has(oMap, 'addr'), has(sMap, 'addr'));
-  addCheck(rules.qty, 'qty', '數量', O.hasQty, S.hasQty);
-  addCheck(rules.amount, 'amount', '金額', O.hasAmount, S.hasAmount);
-  var itemMode = rules.qtySource === 'item' && O.hasItem && S.hasItem;
+  addCheck(rules.name, 'name', '收件人', O.has.name, S.has.name);
+  addCheck(rules.phone, 'phone', '電話', O.has.phone, S.has.phone);
+  addCheck(rules.addr, 'addr', '地址', O.has.addr, S.has.addr);
+  addCheck(rules.qty, 'qty', '數量', O.has.qty, S.has.qty);
+  addCheck(rules.amount, 'amount', '金額', O.has.amount, S.has.amount);
+  var itemMode = rules.qtySource === 'item' && O.has.item && S.has.item;
   if (rules.qtySource === 'item' && !itemMode) notes.push('沒有對應到商品欄位，數量改用整張單加總比對。');
 
   var rows = [], seen = new Set();
@@ -1077,7 +1673,7 @@ function reconcile(){
   S.idx.forEach(function(s){ t.qtyShip += s.qty; t.amtShip += s.amount; });
 
   result = { rows: rows, totals: t, notes: notes, checks: checks, rules: rules,
-             hasQty: O.hasQty && S.hasQty, hasAmount: O.hasAmount && S.hasAmount };
+             hasQty: O.has.qty && S.has.qty, hasAmount: O.has.amount && S.has.amount };
   return result;
 }
 
@@ -1255,7 +1851,7 @@ function saveBatch(){
   db.records.push({
     id: 'b' + Date.now(), date: date, note: note, channel: channel,
     savedAt: new Date().toISOString(), totals: result.totals, issues: issues,
-    orderFile: src.order.name, shipFile: src.ship.name
+    orderFile: src.order.label, shipFile: src.ship.label
   });
   db.records.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
   db.settings.rules = readRules();
@@ -1422,55 +2018,104 @@ function exportYear(){
 }
 
 /* ---------- 事件綁定 ---------- */
+function filesFromDrop(dt){
+  var items = dt && dt.items ? Array.prototype.slice.call(dt.items) : [];
+  var entries = items.map(function(it){ return it.webkitGetAsEntry ? it.webkitGetAsEntry() : null; }).filter(Boolean);
+  if (!entries.length) return Promise.resolve(dt && dt.files ? Array.prototype.slice.call(dt.files) : []);
+  var out = [];
+  function readEntry(entry, path){
+    if (entry.isFile) {
+      return new Promise(function(res){
+        entry.file(function(f){
+          try { Object.defineProperty(f, 'webkitRelativePath', { value: path + f.name }); } catch (e) {}
+          out.push(f); res();
+        }, function(){ res(); });
+      });
+    }
+    if (entry.isDirectory) {
+      var reader = entry.createReader(), all = [];
+      return new Promise(function(res){
+        (function readChunk(){
+          reader.readEntries(function(batch){
+            if (!batch.length) {
+              Promise.all(all.map(function(e){ return readEntry(e, path + entry.name + '/'); })).then(function(){ res(); });
+              return;
+            }
+            all = all.concat(Array.prototype.slice.call(batch));
+            readChunk();
+          }, function(){ res(); });
+        })();
+      });
+    }
+    return Promise.resolve();
+  }
+  return Promise.all(entries.map(function(e){ return readEntry(e, ''); })).then(function(){ return out; });
+}
+
 function bindSide(side){
   var drop = $('[data-drop="' + side + '"]');
-  var input = $('[data-file="' + side + '"]');
-  drop.addEventListener('click', function(){ input.click(); });
+  var folderInput = $('[data-file="' + side + '"]');
+  var filesInput = $('[data-files="' + side + '"]');
+  drop.addEventListener('click', function(){ folderInput.click(); });
   drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', function(){ drop.classList.remove('over'); });
   drop.addEventListener('drop', function(e){
     e.preventDefault(); drop.classList.remove('over');
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(side, e.dataTransfer.files[0]);
+    filesFromDrop(e.dataTransfer).then(function(fs){ ingest(side, fs); });
   });
-  input.addEventListener('change', function(){ if (input.files[0]) handleFile(side, input.files[0]); });
+  folderInput.addEventListener('change', function(){ ingest(side, folderInput.files); });
+  filesInput.addEventListener('change', function(){ ingest(side, filesInput.files); });
+  $('[data-pick-folder="' + side + '"]').addEventListener('click', function(e){ e.stopPropagation(); folderInput.click(); });
+  $('[data-pick-files="' + side + '"]').addEventListener('click', function(e){ e.stopPropagation(); filesInput.click(); });
   $('[data-clear="' + side + '"]').addEventListener('click', function(e){ e.stopPropagation(); clearSide(side); });
-  $('[data-paste-toggle="' + side + '"]').addEventListener('click', function(){
-    $('[data-paste-box="' + side + '"]').classList.toggle('hide');
-  });
-  $('[data-paste-apply="' + side + '"]').addEventListener('click', function(){
-    var text = $('[data-paste="' + side + '"]').value;
-    if (!trim(text)) { showErr(side, '貼上的內容是空的。'); return; }
-    showErr(side, '');
-    var sheets = {}; sheets['(貼上)'] = parseDelimited(text);
-    setSource(side, '貼上的資料', sheets, '(貼上)');
-  });
-  $('[data-sheet="' + side + '"]').addEventListener('change', function(e){
-    var s = src[side];
-    s.sheetName = e.target.value;
-    s.headerRow = guessHeaderRow(s.sheets[s.sheetName] || []);
-    $('[data-headerrow="' + side + '"]').value = s.headerRow;
-    applyGrid(side);
-  });
-  $('[data-headerrow="' + side + '"]').addEventListener('change', function(){ applyGrid(side); });
 }
 bindSide('order'); bindSide('ship');
+renderSideStatus('order'); renderSideStatus('ship');
 
-document.addEventListener('change', function(e){
-  var sel = e.target.closest('[data-mapfield]');
-  if (!sel) return;
-  var side = sel.getAttribute('data-mapside'), key = sel.getAttribute('data-mapfield');
-  var v = sel.value;
-  src[side].map[key] = v === '' ? null : parseInt(v, 10);
-  sel.classList.toggle('unset', key === 'orderNo' && v === '');
-  rememberMap(side);
+$('#reviewTabs').addEventListener('click', function(e){
+  var c = e.target.closest('.chip');
+  if (!c) return;
+  reviewSide = c.getAttribute('data-side');
+  renderReview();
+});
+$('#reviewFilter').addEventListener('click', function(e){
+  var c = e.target.closest('.chip');
+  if (!c) return;
+  reviewFilter = c.getAttribute('data-rf');
+  renderReview();
+});
+$('#reviewSearch').addEventListener('input', function(){ renderReview(); });
+$('#reviewBody').addEventListener('input', function(e){
+  var el = e.target.closest('.cell-input');
+  if (!el) return;
+  var f = src[reviewSide].files[parseInt(el.getAttribute('data-fi'), 10)];
+  if (!f) return;
+  var r = f.records[parseInt(el.getAttribute('data-ri'), 10)];
+  if (!r) return;
+  var k = el.getAttribute('data-k');
+  r[k] = (k === 'qty' || k === 'amount') ? numOrNull(el.value) : el.value;
+});
+$('#reviewBody').addEventListener('change', function(e){
+  var el = e.target.closest('[data-ex]');
+  if (!el) return;
+  var f = src[reviewSide].files[parseInt(el.getAttribute('data-fi'), 10)];
+  if (!f) return;
+  var r = f.records[parseInt(el.getAttribute('data-ri'), 10)];
+  if (!r) return;
+  r.excluded = !el.checked;
+  var tr = el.closest('tr');
+  if (tr) tr.classList.toggle('row-off', r.excluded);
+  renderSideStatus(reviewSide);
+  $('#reviewSummary').innerHTML = $('#reviewSummary').innerHTML;
+  renderReview();
 });
 
 $('#runBtn').addEventListener('click', function(){
-  var err = $('#runErr');
-  var problems = [];
+  var err = $('#runErr'), problems = [];
   ['order', 'ship'].forEach(function(side){
-    if (!src[side].rows.length) problems.push(SIDE_LABEL[side] + '還沒有資料');
-    else if (src[side].map.orderNo == null || src[side].map.orderNo === '') problems.push(SIDE_LABEL[side] + '沒有對應「訂單編號」欄位');
+    var recs = sideRecords(side);
+    if (!recs.length) problems.push(SIDE_LABEL[side] + '還沒有讀到任何單');
+    else if (!recs.some(function(r){ return trim(r.orderNo); })) problems.push(SIDE_LABEL[side] + '完全讀不到訂單編號');
   });
   if (problems.length) {
     err.textContent = problems.join('；') + '。';
@@ -1488,26 +2133,34 @@ $('#runBtn').addEventListener('click', function(){
 });
 
 var DEMO_ORDERS = [
-  ['訂單編號', '收件人', '收件人電話', '收件地址', '商品名稱', '數量', '訂單金額'],
-  ['A2601', '王小明', '0912-345-678', '台北市信義區松高路11號5樓', '雞湯大叔 火鍋湯底 500g', '2', '1000'],
-  ['A2602', '陳美玲', '0922333444', '新北市板橋區文化路一段100號', '麵屋一燈 拉麵組合', '1', '450'],
-  ['A2603', '林大同', '+886933555666', '臺中市西屯區台灣大道三段99號12樓', '賴山嶼 麻辣燙組', '3', '1200'],
-  ['A2604', '張美美', '0955111222', '高雄市前金區中正四路211號', '雞湯桑 定食組', '1', '380'],
-  ['A2605', '黃小華', '0966777888', '桃園市中壢區中央西路二段5號', '雞湯大叔 火鍋湯底 500g', '2', '1600']
+  ['A2601', '王小明', '0912-345-678', '台北市信義區松高路11號5樓', '雞湯大叔 火鍋湯底 500g', 2, 1000],
+  ['A2602', '陳美玲', '0922333444', '新北市板橋區文化路一段100號', '麵屋一燈 拉麵組合', 1, 450],
+  ['A2603', '林大同', '+886933555666', '臺中市西屯區台灣大道三段99號12樓', '賴山嶼 麻辣燙組', 3, 1200],
+  ['A2604', '張美美', '0955111222', '高雄市前金區中正四路211號', '雞湯桑 定食組', 1, 380],
+  ['A2605', '黃小華', '0966777888', '桃園市中壢區中央西路二段5號', '雞湯大叔 火鍋湯底 500g', 2, 1600]
 ];
 var DEMO_SHIPS = [
-  ['出貨單號', '收貨人', '聯絡電話', '送貨地址', '品名', '出貨數量', '銷售金額'],
-  ['A2601', '王 小明', '(02)0912345678', '臺北市信義區松高路 11號5F', '雞湯大叔 火鍋湯底 500g', '2', '1000'],
-  ['A2602', '陳美玲', '0922333444', '新北市板橋區文化路一段100號', '麵屋一燈 拉麵組合', '2', '450'],
-  ['A2604', '張美美', '0955111999', '高雄市前金區中正四路211號', '雞湯桑 定食組', '1', '400'],
-  ['A2605', '黃小華', '0966777888', '桃園市中壢區中央西路二段5號', '雞湯大叔 火鍋湯底 500g', '2', '1600'],
-  ['A2609', '吳阿明', '0977888999', '台南市東區長榮路一段2號', '雞湯大叔 火鍋湯底 500g', '1', '500']
+  ['A2601', '王 小明', '(02)0912345678', '臺北市信義區松高路 11號5F', '雞湯大叔 火鍋湯底 500g', 2, 1000],
+  ['A2602', '陳美玲', '0922333444', '新北市板橋區文化路一段100號', '麵屋一燈 拉麵組合', 2, 450],
+  ['A2604', '張美美', '0955111999', '高雄市前金區中正四路211號', '雞湯桑 定食組', 1, 400],
+  ['A2605', '黃小華', '0966777888', '桃園市中壢區中央西路二段5號', '雞湯大叔 火鍋湯底 500g', 2, 1600],
+  ['A2609', '吳阿明', '0977888999', '台南市東區長榮路一段2號', '雞湯大叔 火鍋湯底 500g', 1, 500]
 ];
 $('#demoBtn').addEventListener('click', function(){
-  var o = {}; o['（範例）訂單'] = DEMO_ORDERS.map(function(r){ return r.slice(); });
-  var p = {}; p['（範例）出貨'] = DEMO_SHIPS.map(function(r){ return r.slice(); });
-  setSource('order', '範例：當日訂單', o, '（範例）訂單');
-  setSource('ship', '範例：實際出貨', p, '（範例）出貨');
+  function mk(rows, prefix, kind, ext){
+    return rows.map(function(r){
+      var fname = prefix + r[0] + ext;
+      return { file: fname, kind: kind, status: 'ok', note: '', records: [{
+        orderNo: r[0], name: r[1], phone: r[2], addr: r[3], item: r[4],
+        qty: r[5], amount: r[6], file: fname, excluded: false
+      }] };
+    });
+  }
+  src.order = { files: mk(DEMO_ORDERS, '訂單_', 'Word', '.docx'), busy: false, label: '（範例）訂單資料夾' };
+  src.ship = { files: mk(DEMO_SHIPS, '出貨_', 'PDF', '.pdf'), busy: false, label: '（範例）出貨資料夾' };
+  renderSideStatus('order'); renderSideStatus('ship');
+  $('#filesCard').classList.remove('hide');
+  renderReview();
   $('#batchNote').value = '範例資料';
   $('#runBtn').click();
 });
