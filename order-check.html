@@ -968,13 +968,72 @@ function pdfDict(body){
   var i = body.indexOf('stream');
   return i < 0 ? body : body.slice(0, i);
 }
+/* PNG 預測器（Predictor 10–15）：xref 串流一定用，物件串流偶爾也用。
+   不解會整份 PDF 讀不到。 */
+function pngUnpredict(data, columns, colors, bpc){
+  var bpp = Math.max(1, Math.round(colors * bpc / 8));
+  var rowLen = Math.ceil(columns * colors * bpc / 8);
+  if (rowLen <= 0) return data;
+  var rows = Math.floor(data.length / (rowLen + 1));
+  var out = new Uint8Array(rows * rowLen), prev = new Uint8Array(rowLen);
+  for (var r = 0; r < rows; r++) {
+    var ft = data[r * (rowLen + 1)];
+    var src = data.subarray(r * (rowLen + 1) + 1, (r + 1) * (rowLen + 1));
+    var dst = out.subarray(r * rowLen, (r + 1) * rowLen);
+    for (var i = 0; i < rowLen; i++) {
+      var a = i >= bpp ? dst[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0, x = src[i];
+      if (ft === 1) dst[i] = (x + a) & 255;
+      else if (ft === 2) dst[i] = (x + b) & 255;
+      else if (ft === 3) dst[i] = (x + ((a + b) >> 1)) & 255;
+      else if (ft === 4) {
+        var pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c);
+        dst[i] = (x + ((pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c))) & 255;
+      } else dst[i] = x;
+    }
+    prev = dst;
+  }
+  return out;
+}
 function pdfDecodeStream(body){
   var bytes = pdfStreamBytes(body);
   if (!bytes) return Promise.resolve(null);
   var dict = pdfDict(body);
   if (dict.indexOf('FlateDecode') < 0) return Promise.resolve(bytes);
-  if (dict.indexOf('Predictor') >= 0) return Promise.resolve(null);
-  return inflateAuto(bytes).catch(function(){ return null; });
+  return inflateAuto(bytes).then(function(out){
+    var pm = /\/Predictor\s+(\d+)/.exec(dict);
+    if (!pm) return out;
+    var pred = parseInt(pm[1], 10);
+    if (pred < 10) return pred === 1 ? out : null;
+    var cols = parseInt((/\/Columns\s+(\d+)/.exec(dict) || [0, 1])[1], 10) || 1;
+    var colors = parseInt((/\/Colors\s+(\d+)/.exec(dict) || [0, 1])[1], 10) || 1;
+    var bpc = parseInt((/\/BitsPerComponent\s+(\d+)/.exec(dict) || [0, 8])[1], 10) || 8;
+    return pngUnpredict(out, cols, colors, bpc);
+  }).catch(function(){ return null; });
+}
+
+/* Word、Excel、Acrobat 與多數報表引擎會把頁面、字型等物件壓進 /ObjStm。
+   在原始位元組裡掃 "N 0 obj" 看不到它們，等於整份 PDF 沒有頁面。要先展開。 */
+function pdfExpandObjStms(objs){
+  var jobs = [];
+  Object.keys(objs).forEach(function(k){
+    var body = objs[k], dict = pdfDict(body);
+    if (!/\/Type\s*\/ObjStm/.test(dict)) return;
+    jobs.push(pdfDecodeStream(body).then(function(bytes){
+      if (!bytes) return;
+      var text = bytesToLatin(bytes);
+      var n = parseInt((/\/N\s+(\d+)/.exec(dict) || [0, 0])[1], 10);
+      var first = parseInt((/\/First\s+(\d+)/.exec(dict) || [0, 0])[1], 10);
+      if (!n || !first) return;
+      var header = text.slice(0, first).trim().split(/\s+/).map(Number);
+      for (var i = 0; i + 1 < header.length && i / 2 < n; i += 2) {
+        var num = header[i], off = header[i + 1];
+        var nextOff = (i + 3 < header.length) ? header[i + 3] : (text.length - first);
+        if (!isFinite(num) || !isFinite(off)) continue;
+        if (objs[String(num)] == null) objs[String(num)] = text.slice(first + off, first + nextOff);
+      }
+    }).catch(function(){}));
+  });
+  return Promise.all(jobs);
 }
 
 /* 內容流取字。追蹤文字座標：同一行的片段（中文、數字常因字型切換被拆成多段）
@@ -1106,36 +1165,53 @@ function pdfScanContent(content, fontMaps, pageFonts){
 function parsePdf(buf){
   var raw = bytesToLatin(new Uint8Array(buf));
   if (raw.indexOf('%PDF') < 0) return Promise.reject(new Error('這不像是 PDF 檔。'));
+  if (/\/Encrypt\s+\d+\s+\d+\s+R|\/Encrypt\s*<</.test(raw)) {
+    return Promise.reject(new Error('這份 PDF 有加密保護，無法讀取文字。請用產生它的系統重新輸出未加密版本。'));
+  }
   var objs = pdfSplitObjects(raw);
   var fontRefs = {}, fontMaps = {}, pages = [];
-  Object.keys(objs).forEach(function(numKey){
-    var body = objs[numKey], dict = pdfDict(body);
-    if (/\/Type\s*\/Page[^s]/.test(dict) || /\/Type\s*\/Page\s*(\/|>)/.test(dict)) {
+
+  /* 字型表可能：直接寫在頁面、寫在 /Resources 引用的物件、
+     用 /Font N 0 R 間接引用、或放在父層 /Pages 讓所有頁面繼承。全部找一遍。 */
+  function collectFontPairs(dictText, into){
+    var fr = /\/([^\s\/<>\[\]()]+)\s+(\d+)\s+\d+\s+R/g, f;
+    while ((f = fr.exec(dictText))) { into[f[1]] = f[2]; fontRefs[f[2]] = true; }
+  }
+  function fontsFrom(dict, depth){
+    var fonts = {};
+    if (!dict || depth > 8) return fonts;
+    var inline = /\/Font\s*<<([\s\S]*?)>>/.exec(dict);
+    if (inline) { collectFontPairs(inline[1], fonts); return fonts; }
+    var indirect = /\/Font\s+(\d+)\s+\d+\s+R/.exec(dict);
+    if (indirect && objs[indirect[1]]) { collectFontPairs(pdfDict(objs[indirect[1]]), fonts); return fonts; }
+    var res = /\/Resources\s+(\d+)\s+\d+\s+R/.exec(dict);
+    if (res && objs[res[1]]) {
+      fonts = fontsFrom(pdfDict(objs[res[1]]), depth + 1);
+      if (Object.keys(fonts).length) return fonts;
+    }
+    var parent = /\/Parent\s+(\d+)\s+\d+\s+R/.exec(dict);
+    if (parent && objs[parent[1]]) return fontsFrom(pdfDict(objs[parent[1]]), depth + 1);
+    return fonts;
+  }
+  function collectPages(){
+    Object.keys(objs).forEach(function(numKey){
+      var body = objs[numKey], dict = pdfDict(body);
+      if (!(/\/Type\s*\/Page[^s]/.test(dict) || /\/Type\s*\/Page\s*(\/|>)/.test(dict))) return;
       var contents = [];
       var cm = /\/Contents\s+(\d+)\s+\d+\s+R/.exec(dict);
       if (cm) contents.push(cm[1]);
       else {
         var am = /\/Contents\s*\[([^\]]*)\]/.exec(dict);
-        if (am) { var rs = am[1].match(/(\d+)\s+\d+\s+R/g) || []; rs.forEach(function(x){ contents.push(/(\d+)/.exec(x)[1]); }); }
+        if (am) { (am[1].match(/(\d+)\s+\d+\s+R/g) || []).forEach(function(x){ contents.push(/(\d+)/.exec(x)[1]); }); }
       }
-      var fonts = {};
-      var fm = /\/Font\s*<<([\s\S]*?)>>/.exec(dict);
-      if (fm) {
-        var fr = /\/([^\s\/]+)\s+(\d+)\s+\d+\s+R/g, f;
-        while ((f = fr.exec(fm[1]))) { fonts[f[1]] = f[2]; fontRefs[f[2]] = true; }
-      } else {
-        var rm = /\/Resources\s+(\d+)\s+\d+\s+R/.exec(dict);
-        if (rm && objs[rm[1]]) {
-          var fm2 = /\/Font\s*<<([\s\S]*?)>>/.exec(objs[rm[1]]);
-          if (fm2) {
-            var fr2 = /\/([^\s\/]+)\s+(\d+)\s+\d+\s+R/g, f2;
-            while ((f2 = fr2.exec(fm2[1]))) { fonts[f2[1]] = f2[2]; fontRefs[f2[2]] = true; }
-          }
-        }
-      }
-      if (contents.length) pages.push({ contents: contents, fonts: fonts });
+      if (contents.length) pages.push({ contents: contents, fonts: fontsFrom(dict, 0) });
+    });
+  }
+  return pdfExpandObjStms(objs).then(function(){
+    collectPages();
+    if (!pages.length) {
+      throw new Error('讀不到這份 PDF 的頁面結構——可能是我還沒支援的產生器格式，不一定是掃描件。請把這份檔案給開發者看。');
     }
-  });
   var toUniJobs = [];
   Object.keys(fontRefs).forEach(function(fref){
     var fbody = objs[fref];
@@ -1158,6 +1234,7 @@ function parsePdf(buf){
         });
       });
     }, Promise.resolve()).then(function(){ return { lines: lines, tables: [] }; });
+  });
   });
 }
 
@@ -1379,7 +1456,7 @@ function extractFile(file){
     if (isPdf) {
       out.kind = 'PDF';
       return parsePdf(buf).then(function(d){
-        if (!d.lines.length) { out.status = 'fail'; out.note = '這份 PDF 讀不到文字，可能是掃描或拍照的影像檔'; return out; }
+        if (!d.lines.length) { out.status = 'fail'; out.note = '這份 PDF 有頁面但沒有可抽取的文字，應該是掃描或拍照的影像檔'; return out; }
         out.records = [recordFromLines(d.lines, name)];
         return out;
       });
