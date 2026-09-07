@@ -4,6 +4,7 @@
 
 - `index.html` — **MOMO 渠道談判測算器**（抽成調整與行銷效益追蹤）
 - `order-check.html` — **訂單出貨核對**（每日核單與月報表）
+- `lark-sync/` — 選用：把 Lark 共用資料夾的檔案抓到本機，供上面的核對工具使用（Windows）
 
 ---
 
@@ -116,3 +117,64 @@
 - 列印／存 PDF
 
 CSV 皆含 UTF-8 BOM，用 Excel 直接開不會亂碼。
+
+---
+
+# 從 Lark 抓檔案（`lark-sync/`，選用）
+
+如果同事是把單子丟到 **Lark 雲空間的共用資料夾**，這支腳本每天把兩個資料夾抓到本機，
+再把抓下來的 `orders` 與 `ships` 拖進 `order-check.html`。
+
+Windows 內建的 PowerShell 就能跑，**不用安裝任何東西**。核對工具本身完全不變，一樣離線。
+
+## 檔案
+
+- `lark-sync.ps1` — 主程式
+- `lark-sync-test.bat` — 雙擊：只連線並列出看得到的檔案，不下載（第一次設定用）
+- `lark-sync.bat` — 雙擊：實際下載（每天用這個）
+- `lark-sync.config.example.json` — 設定範本
+
+設定檔 `lark-sync.config.json` 內含 App Secret，已列入 `.gitignore`，不會進版控。
+
+## 一次性設定
+
+1. 到 Lark 開放平台建一個**自建應用**，記下 `App ID` 與 `App Secret`。
+2. 幫應用開通**雲空間的讀取權限**（查看與下載雲空間檔案）。如果資料夾裡會有 Lark 自己的
+   雲文件／表格（不是上傳的檔案），再加上**匯出**權限。
+3. 發布應用版本並等管理員通過。
+4. **把應用加入那兩個資料夾的協作者**（在 Lark 打開資料夾 → 分享 → 加入你的應用，可讀即可）。
+   這步最常被漏掉——少了它，API 會回權限錯誤，或是資料夾看起來是空的。
+5. 取得資料夾 token：在 Lark 打開該資料夾，網址是
+   `https://xxx.larksuite.com/drive/folder/fldcnAbCdEfGhIjKlMn`，最後那段就是 token。
+6. 執行一次 `lark-sync-test.bat`。第一次會自動建立 `lark-sync.config.json` 並要你填。
+   填好後再跑一次，確認列出的檔案清單正確。
+7. 清單沒問題後，改用 `lark-sync.bat` 實際下載。
+
+## 設定說明
+
+| 欄位 | 說明 |
+| --- | --- |
+| `domain` | 國際版填 `lark`，中國版飛書填 `feishu` |
+| `appId` / `appSecret` | 自建應用的憑證 |
+| `ordersFolderToken` | 訂單資料夾 token |
+| `shipsFolderToken` | 出貨資料夾 token |
+| `outputRoot` | 下載到哪，例如 `C:\出貨核對` |
+| `onlyModifiedWithinDays` | 只抓最近幾天內修改的檔案；填 `0` 表示整個資料夾都抓 |
+| `includeSubfolders` | 是否連子資料夾一起抓 |
+| `exportLarkDocs` | Lark 雲文件／表格要不要匯出成 docx／xlsx |
+
+## 每天怎麼用
+
+1. 雙擊 `lark-sync.bat`。
+2. 檔案會下載到 `outputRoot\日期\orders` 與 `outputRoot\日期\ships`，跑完自動開啟資料夾。
+3. 把這兩個資料夾分別拖進 `order-check.html` 的左右兩區，按「開始核對」。
+
+依日期分資料夾，所以每天的原始檔都留著，之後要追也查得到。
+
+## 已知行為
+
+- 同名檔案不會互相覆蓋，第二個會變成 `檔名(2).pdf`。
+- 檔名裡的 `\ / : * ? " < > |` 會換成底線。
+- 清單裡若沒有副檔名，會從下載回應的標頭補回來（核對工具靠副檔名判斷格式）。
+- 捷徑會自動解析到原始檔案。
+- 單一檔案沒有權限時只會標成失敗並繼續，不會中斷整批。

@@ -1,0 +1,11 @@
+{
+  "domain": "lark",
+  "appId": "cli_xxxxxxxxxxxxxxxx",
+  "appSecret": "把應用的 App Secret 貼在這裡",
+  "ordersFolderToken": "訂單資料夾網址最後那一段",
+  "shipsFolderToken": "出貨資料夾網址最後那一段",
+  "outputRoot": "C:\\出貨核對",
+  "onlyModifiedWithinDays": 2,
+  "includeSubfolders": true,
+  "exportLarkDocs": true
+}
