@@ -366,6 +366,11 @@
           </select>
         </div>
         <div class="field">
+          <label for="minKeyRun">相近配對：至少連續幾碼相同</label>
+          <input type="number" id="minKeyRun" value="5" min="3" max="30" step="1">
+          <span class="hint">兩邊單號只要有這麼多個連續字元相同就算同一張。碼數太少容易誤配</span>
+        </div>
+        <div class="field">
           <label for="qtySource">數量比對基準</label>
           <select id="qtySource">
             <option value="sum">同一張單的數量加總</option>
@@ -509,6 +514,26 @@ function toHalf(s){
 function trim(s){ return String(s == null ? '' : s).trim(); }
 function normKey(s){ return toHalf(s).replace(/\s+/g, '').toUpperCase(); }
 function looseKey(s){ return normKey(s).replace(/[^0-9A-Z]/g, ''); }
+/* 兩字串最長的連續共同片段長度 */
+function commonRunLength(a, b){
+  var m = a.length, n = b.length;
+  if (!m || !n) return 0;
+  var prev = [], cur = [], best = 0, i, j;
+  for (j = 0; j <= n; j++) prev[j] = 0;
+  for (i = 1; i <= m; i++) {
+    cur[0] = 0;
+    for (j = 1; j <= n; j++) {
+      if (a.charAt(i - 1) === b.charAt(j - 1)) {
+        cur[j] = prev[j - 1] + 1;
+        if (cur[j] > best) best = cur[j];
+      } else {
+        cur[j] = 0;
+      }
+    }
+    var t = prev; prev = cur; cur = t;
+  }
+  return best;
+}
 function normHeader(s){ return toHalf(s).replace(/\s+/g, '').replace(/[()（）\[\]{}:：*＊#]/g, '').toLowerCase(); }
 function normName(s){ return toHalf(s).replace(/\s+/g, '').replace(/[*＊·・.,]/g, '').toLowerCase(); }
 function digitsOf(s){ return toHalf(s).replace(/\D/g, ''); }
@@ -1554,6 +1579,7 @@ function readRules(){
     qty: $('#chkQty').checked,
     amount: $('#chkAmount').checked,
     looseKey: $('#chkLooseKey').checked,
+    minKeyRun: Math.max(3, Math.min(30, parseInt($('#minKeyRun').value, 10) || 5)),
     tolQty: num($('#tolQty').value),
     tolAmount: num($('#tolAmount').value),
     addrMode: $('#addrMode').value,
@@ -1569,6 +1595,7 @@ function writeRules(r){
   if (r.qty != null) $('#chkQty').checked = !!r.qty;
   if (r.amount != null) $('#chkAmount').checked = !!r.amount;
   if (r.looseKey != null) $('#chkLooseKey').checked = !!r.looseKey;
+  if (r.minKeyRun != null) $('#minKeyRun').value = r.minKeyRun;
   if (r.tolQty != null) $('#tolQty').value = r.tolQty;
   if (r.tolAmount != null) $('#tolAmount').value = r.tolAmount;
   if (r.addrMode) $('#addrMode').value = r.addrMode;
@@ -1648,7 +1675,7 @@ function reconcile(){
 
   /* 先用完全相同的訂單編號配對，配不到的再放寬。兩邊只要差一個前綴、
      一個分隔符號、或分批出貨的後綴，整批就會變成「未出貨＋多出貨」。 */
-  var pairing = new Map(), usedShip = new Set(), approx = new Set();
+  var pairing = new Map(), usedShip = new Set(), approx = new Set(), ambiguous = [];
   O.idx.forEach(function(o){
     var s = S.idx.get(o.key);
     if (s) { pairing.set(o.key, s); usedShip.add(s.key); }
@@ -1668,18 +1695,57 @@ function reconcile(){
       var s = k ? byLoose.get(k) : null;
       if (s && !usedShip.has(s.key)) { pairing.set(o.key, s); usedShip.add(s.key); approx.add(o.key); }
     });
+    /* 第三輪：兩邊只要有夠長的連續相同片段就算同一張。
+       先用 N-gram 找出候選（避免每張單都跟每張單比），再挑最相似的那一個；
+       同分表示分不出來，寧可不配也不要亂湊。 */
+    var minRun = rules.minKeyRun || 5;
+    var gramIndex = new Map();
+    freeShips.forEach(function(s){
+      if (usedShip.has(s.key)) return;
+      var sk = looseKey(s.key);
+      if (sk.length < minRun) return;
+      var seenG = {};
+      for (var g = 0; g + minRun <= sk.length; g++) {
+        var key = sk.substr(g, minRun);
+        if (seenG[key]) continue;
+        seenG[key] = 1;
+        if (!gramIndex.has(key)) gramIndex.set(key, []);
+        gramIndex.get(key).push(s);
+      }
+    });
+    /* 單號常常共用一長段開頭（同一組日期、通路碼）。那種片段每張單都有，
+       不具辨識力，卻會讓每張單都成為彼此的候選、比對量爆成 N×N。剔除掉。 */
+    var gramCap = Math.max(10, Math.round(freeShips.length * 0.05));
+    var dropped = 0;
+    gramIndex.forEach(function(list, g){
+      if (list.length > gramCap) { gramIndex.delete(g); dropped++; }
+    });
+    if (dropped) {
+      notes.push('兩邊單號有很長的共同開頭，相近比對已略過共通的部分，只比對能區別的片段。');
+    }
     freeOrders.forEach(function(o){
       if (pairing.has(o.key)) return;
       var ok = looseKey(o.key);
-      if (ok.length < 5) return;
-      var hit = null, count = 0;
-      freeShips.forEach(function(s){
-        if (usedShip.has(s.key)) return;
-        var sk = looseKey(s.key);
-        if (sk.length < 5) return;
-        if (sk.indexOf(ok) >= 0 || ok.indexOf(sk) >= 0) { hit = s; count++; }
+      if (ok.length < minRun) return;
+      var cand = new Map();
+      for (var g = 0; g + minRun <= ok.length; g++) {
+        var list = gramIndex.get(ok.substr(g, minRun));
+        if (!list) continue;
+        list.forEach(function(s){ if (!usedShip.has(s.key)) cand.set(s.key, s); });
+      }
+      if (!cand.size || cand.size > 200) return;
+      var best = 0, bestList = [];
+      cand.forEach(function(s){
+        var L = commonRunLength(ok, looseKey(s.key));
+        if (L > best) { best = L; bestList = [s]; }
+        else if (L === best && L > 0) { bestList.push(s); }
       });
-      if (count === 1 && hit) { pairing.set(o.key, hit); usedShip.add(hit.key); approx.add(o.key); }
+      if (best < minRun) return;
+      if (bestList.length === 1) {
+        pairing.set(o.key, bestList[0]); usedShip.add(bestList[0].key); approx.add(o.key);
+      } else {
+        ambiguous.push(o.orderNo + ' ↔ ' + bestList.map(function(x){ return x.orderNo; }).join(' / '));
+      }
     });
   }
 
@@ -1719,6 +1785,11 @@ function reconcile(){
     if (usedShip.has(s.key)) return;
     rows.push({ status: 'extra', key: s.key, orderNo: s.orderNo, name: s.name, o: null, s: s, diffs: [], items: [] });
   });
+
+  if (ambiguous.length) {
+    notes.push('有 ' + ambiguous.length + ' 張單找到多個同樣相近的出貨單，分不出是哪一張，已保留為未出貨：' +
+               ambiguous.slice(0, 3).join('；') + (ambiguous.length > 3 ? ' 等' : '') + '。');
+  }
 
   var order = { diff: 0, missing: 1, extra: 2, ok: 3 };
   rows.sort(function(a, b){
@@ -2254,7 +2325,7 @@ $('#demoBtn').addEventListener('click', function(){
 });
 
 $('#resetRules').addEventListener('click', function(){
-  writeRules({ name: true, phone: true, addr: true, qty: true, amount: true, looseKey: true,
+  writeRules({ name: true, phone: true, addr: true, qty: true, amount: true, looseKey: true, minKeyRun: 5,
     tolQty: 0, tolAmount: 0, addrMode: 'loose', phoneMode: 'tail9', qtySource: 'sum' });
   db.settings.rules = readRules(); saveDB();
 });
@@ -2357,7 +2428,7 @@ $('#exportMonthBtn').addEventListener('click', exportMonth);
 $('#exportMonthIssuesBtn').addEventListener('click', exportMonthIssues);
 $('#exportYearBtn').addEventListener('click', exportYear);
 
-['#chkName', '#chkPhone', '#chkAddr', '#chkQty', '#chkAmount', '#chkLooseKey', '#tolQty', '#tolAmount', '#addrMode', '#phoneMode', '#qtySource']
+['#chkName', '#chkPhone', '#chkAddr', '#chkQty', '#chkAmount', '#chkLooseKey', '#minKeyRun', '#tolQty', '#tolAmount', '#addrMode', '#phoneMode', '#qtySource']
   .forEach(function(sel){
     $(sel).addEventListener('change', function(){ db.settings.rules = readRules(); saveDB(); });
   });
