@@ -1417,13 +1417,18 @@ function sideRecords(side){
   return out;
 }
 function sideStats(side){
-  var s = src[side], orders = 0, bad = 0;
+  var s = src[side], orders = 0, bad = 0, reasons = {};
   s.files.forEach(function(f){
-    orders += f.records.filter(function(r){ return !r.excluded; }).length;
+    var live = f.records.filter(function(r){ return !r.excluded; });
+    orders += live.length;
     if (f.status !== 'ok') bad++;
-    else if (f.records.some(function(r){ return !r.excluded && !trim(r.orderNo); })) bad++;
+    else if (live.some(function(r){ return !trim(r.orderNo); })) bad++;
+    if (!live.length) {
+      var why = f.note || '讀不到內容';
+      reasons[why] = (reasons[why] || 0) + 1;
+    }
   });
-  return { files: s.files.length, orders: orders, bad: bad };
+  return { files: s.files.length, orders: orders, bad: bad, reasons: reasons };
 }
 function showErr(side, msg){
   var el = $('[data-err="' + side + '"]');
@@ -1447,11 +1452,20 @@ function renderSideStatus(side, busyText){
   }
   var st = sideStats(side);
   drop.classList.add('loaded');
+  /* 只說「N 檔要確認」等於沒說。把讀不到的原因直接寫在這裡，
+     否則使用者得自己去逐檔清單裡翻才知道發生什麼事。 */
+  var why = Object.keys(st.reasons).sort(function(a, b){ return st.reasons[b] - st.reasons[a]; });
+  var whyHtml = '';
+  if (why.length) {
+    whyHtml = '<div class="meta" style="flex-basis:100%;color:var(--bad)">' +
+      why.slice(0, 3).map(function(w){ return esc(w) + '（' + st.reasons[w] + ' 個檔案）'; }).join('；') +
+      (why.length > 3 ? '；其他 ' + (why.length - 3) + ' 種狀況' : '') + '</div>';
+  }
   drop.innerHTML = '<div class="file-line">' +
     '<span class="badge ' + (st.bad ? 'missing' : 'ok') + '">' + (st.bad ? st.bad + ' 檔要確認' : '全部讀到') + '</span>' +
     (s.label ? '<span class="name">' + esc(s.label) + '</span>' : '') +
     '<span class="meta">' + st.files + ' 個檔案 · 讀到 ' + st.orders + ' 張單</span>' +
-    '<span class="meta">點此可重選</span></div>';
+    '<span class="meta">點此可重選</span>' + whyHtml + '</div>';
   $('[data-clear="' + side + '"]').classList.remove('hide');
 }
 
@@ -1539,7 +1553,8 @@ function renderReview(){
       if (!r) {
         html += '<tr><td class="l wrapval">' + esc(f.file) + '</td><td class="l">' + esc(f.kind) + '</td>' +
           '<td class="l">' + fileStatusBadge(f) + '</td>' +
-          '<td class="l" colspan="7"><span class="muted-note">' + esc(f.note || '沒有讀到資料') + '</span></td></tr>';
+          '<td class="l" colspan="7"><span class="muted-note">' + esc(f.note || '沒有讀到資料') + '</span> ' +
+          '<button class="btn sm ghost" data-add="' + fi + '">手動填入這張單</button></td></tr>';
         return;
       }
       function inp(k, cls){
@@ -2253,6 +2268,22 @@ $('#reviewBody').addEventListener('input', function(e){
   if (!r) return;
   var k = el.getAttribute('data-k');
   r[k] = (k === 'qty' || k === 'amount') ? numOrNull(el.value) : el.value;
+});
+/* 掃描件、舊版 .xls 這類讀不出來的檔案，還是得有辦法把單補進來，
+   不然整批核對就卡在這幾張上。 */
+$('#reviewBody').addEventListener('click', function(e){
+  var btn = e.target.closest('[data-add]');
+  if (!btn) return;
+  var f = src[reviewSide].files[parseInt(btn.getAttribute('data-add'), 10)];
+  if (!f) return;
+  f.records.push({
+    orderNo: orderNoFromFileName(f.file), name: '', phone: '', addr: '', item: '',
+    qty: null, amount: null, file: f.file, excluded: false
+  });
+  f.status = 'warn';
+  f.note = '手動填入，請補齊欄位';
+  renderReview();
+  renderSideStatus(reviewSide);
 });
 $('#reviewBody').addEventListener('change', function(e){
   var el = e.target.closest('[data-ex]');
