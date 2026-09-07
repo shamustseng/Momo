@@ -336,6 +336,9 @@
         <label class="check"><input type="checkbox" id="chkQty" checked>比對數量</label>
         <label class="check"><input type="checkbox" id="chkAmount" checked>比對金額</label>
       </div>
+      <div class="check-row" style="margin-top:10px;">
+        <label class="check"><input type="checkbox" id="chkLooseKey" checked>允許相近的訂單編號配對（忽略符號差異、前綴、分批後綴；配到的會標示出來）</label>
+      </div>
       <div class="field-grid" style="margin-top:18px;">
         <div class="field">
           <label for="tolQty">數量容差</label>
@@ -396,6 +399,7 @@
           </div>
           <input type="search" class="search" id="searchBox" placeholder="搜尋訂單編號／收件人／電話／地址">
         </div>
+        <div id="matchHelp" class="alert warn hide" style="margin-top:14px;"></div>
         <div class="scrollwrap">
           <table id="resultTable">
             <thead>
@@ -504,6 +508,7 @@ function toHalf(s){
 }
 function trim(s){ return String(s == null ? '' : s).trim(); }
 function normKey(s){ return toHalf(s).replace(/\s+/g, '').toUpperCase(); }
+function looseKey(s){ return normKey(s).replace(/[^0-9A-Z]/g, ''); }
 function normHeader(s){ return toHalf(s).replace(/\s+/g, '').replace(/[()（）\[\]{}:：*＊#]/g, '').toLowerCase(); }
 function normName(s){ return toHalf(s).replace(/\s+/g, '').replace(/[*＊·・.,]/g, '').toLowerCase(); }
 function digitsOf(s){ return toHalf(s).replace(/\D/g, ''); }
@@ -1170,6 +1175,20 @@ function looksLikeLabelOnly(line){
   if (!c) return true;
   return STOP_LABELS.some(function(lab){ return compact(lab).low === c; });
 }
+/* 「單號」會命中「託運單號」的尾巴，抓到物流單號當訂單編號，兩邊就永遠對不起來。
+   命中位置若剛好是另一個更長標籤的結尾，就不算數。 */
+function labelBlockedAt(flatLow, pos, labLen, key){
+  var own = (LABELS[key] || []).map(function(l){ return compact(l).low; });
+  for (var i = 0; i < STOP_LABELS.length; i++) {
+    var n = compact(STOP_LABELS[i]).low;
+    if (n.length <= labLen) continue;
+    if (own.indexOf(n) >= 0) continue;
+    var start = pos + labLen - n.length;
+    if (start < 0) continue;
+    if (flatLow.substr(start, n.length) === n) return true;
+  }
+  return false;
+}
 function valueFor(lines, key){
   var labels = LABELS[key];
   for (var li = 0; li < labels.length; li++) {
@@ -1179,6 +1198,7 @@ function valueFor(lines, key){
       var c = compact(lines[i]);
       var p = c.low.indexOf(lab);
       if (p < 0) continue;
+      if (labelBlockedAt(c.low, p, lab.length, key)) continue;
       var after = p + lab.length;
       var v = '';
       if (after < c.text.length) {
@@ -1533,6 +1553,7 @@ function readRules(){
     addr: $('#chkAddr').checked,
     qty: $('#chkQty').checked,
     amount: $('#chkAmount').checked,
+    looseKey: $('#chkLooseKey').checked,
     tolQty: num($('#tolQty').value),
     tolAmount: num($('#tolAmount').value),
     addrMode: $('#addrMode').value,
@@ -1547,6 +1568,7 @@ function writeRules(r){
   if (r.addr != null) $('#chkAddr').checked = !!r.addr;
   if (r.qty != null) $('#chkQty').checked = !!r.qty;
   if (r.amount != null) $('#chkAmount').checked = !!r.amount;
+  if (r.looseKey != null) $('#chkLooseKey').checked = !!r.looseKey;
   if (r.tolQty != null) $('#tolQty').value = r.tolQty;
   if (r.tolAmount != null) $('#tolAmount').value = r.tolAmount;
   if (r.addrMode) $('#addrMode').value = r.addrMode;
@@ -1624,14 +1646,50 @@ function reconcile(){
   var itemMode = rules.qtySource === 'item' && O.has.item && S.has.item;
   if (rules.qtySource === 'item' && !itemMode) notes.push('沒有對應到商品欄位，數量改用整張單加總比對。');
 
-  var rows = [], seen = new Set();
+  /* 先用完全相同的訂單編號配對，配不到的再放寬。兩邊只要差一個前綴、
+     一個分隔符號、或分批出貨的後綴，整批就會變成「未出貨＋多出貨」。 */
+  var pairing = new Map(), usedShip = new Set(), approx = new Set();
   O.idx.forEach(function(o){
     var s = S.idx.get(o.key);
+    if (s) { pairing.set(o.key, s); usedShip.add(s.key); }
+  });
+  if (rules.looseKey) {
+    var freeOrders = [], freeShips = [];
+    O.idx.forEach(function(o){ if (!pairing.has(o.key)) freeOrders.push(o); });
+    S.idx.forEach(function(s){ if (!usedShip.has(s.key)) freeShips.push(s); });
+    var byLoose = new Map();
+    freeShips.forEach(function(s){
+      var k = looseKey(s.key);
+      if (!k) return;
+      if (byLoose.has(k)) byLoose.set(k, null); else byLoose.set(k, s);
+    });
+    freeOrders.forEach(function(o){
+      var k = looseKey(o.key);
+      var s = k ? byLoose.get(k) : null;
+      if (s && !usedShip.has(s.key)) { pairing.set(o.key, s); usedShip.add(s.key); approx.add(o.key); }
+    });
+    freeOrders.forEach(function(o){
+      if (pairing.has(o.key)) return;
+      var ok = looseKey(o.key);
+      if (ok.length < 5) return;
+      var hit = null, count = 0;
+      freeShips.forEach(function(s){
+        if (usedShip.has(s.key)) return;
+        var sk = looseKey(s.key);
+        if (sk.length < 5) return;
+        if (sk.indexOf(ok) >= 0 || ok.indexOf(sk) >= 0) { hit = s; count++; }
+      });
+      if (count === 1 && hit) { pairing.set(o.key, hit); usedShip.add(hit.key); approx.add(o.key); }
+    });
+  }
+
+  var rows = [];
+  O.idx.forEach(function(o){
+    var s = pairing.get(o.key);
     if (!s) {
       rows.push({ status: 'missing', key: o.key, orderNo: o.orderNo, name: o.name, o: o, s: null, diffs: [], items: [] });
       return;
     }
-    seen.add(o.key);
     var diffs = [];
     checks.forEach(function(k){
       if (k === 'name') {
@@ -1653,10 +1711,12 @@ function reconcile(){
         diffs.push({ key: 'item', label: '商品明細', o: bad.length + ' 項不符', s: bad.map(function(b){ return b.label; }).join('、') });
       }
     }
-    rows.push({ status: diffs.length ? 'diff' : 'ok', key: o.key, orderNo: o.orderNo, name: o.name || s.name, o: o, s: s, diffs: diffs, items: items });
+    rows.push({ status: diffs.length ? 'diff' : 'ok', key: o.key, orderNo: o.orderNo,
+                name: o.name || s.name, o: o, s: s, diffs: diffs, items: items,
+                approx: approx.has(o.key) });
   });
   S.idx.forEach(function(s){
-    if (O.idx.has(s.key)) return;
+    if (usedShip.has(s.key)) return;
     rows.push({ status: 'extra', key: s.key, orderNo: s.orderNo, name: s.name, o: null, s: s, diffs: [], items: [] });
   });
 
@@ -1703,6 +1763,27 @@ function renderKPI(){
   var box = $('#saveMsg');
   if (msg.length) { box.className = 'alert ' + (issues ? 'warn' : 'info'); box.textContent = msg.join(' '); box.classList.remove('hide'); }
   else box.classList.add('hide');
+  renderMatchHelp();
+}
+
+/* 一張都配不起來時，光看「全部未出貨」看不出原因。
+   把兩邊實際抓到的訂單編號並排列出來，通常一眼就知道是抓錯欄位還是格式不同。 */
+function renderMatchHelp(){
+  var el = $('#matchHelp');
+  if (!el) return;
+  var t = result.totals;
+  if (t.ok + t.diff > 0 || t.missing === 0 || t.extra === 0) { el.classList.add('hide'); return; }
+  function sample(status, pick){
+    return result.rows.filter(function(r){ return r.status === status; })
+      .slice(0, 5).map(function(r){ return esc(pick(r)); }).join('、');
+  }
+  el.innerHTML = '<strong>兩邊的訂單編號完全對不起來，所以每張單都變成未出貨或多出貨。</strong>' +
+    '<div style="margin-top:8px">訂單側抓到：<span class="num">' + sample('missing', function(r){ return r.orderNo; }) + '</span></div>' +
+    '<div>出貨側抓到：<span class="num">' + sample('extra', function(r){ return r.orderNo; }) + '</span></div>' +
+    '<div style="margin-top:8px">看一下這兩排是不是同一種號碼。常見原因：出貨單上抓到的是託運單號而不是訂單編號；' +
+    '或是其中一邊多了前綴、分隔符號。如果只是寫法不同，把上面「允許相近的訂單編號配對」打開；' +
+    '如果是抓錯欄位，到「逐檔擷取結果」直接改訂單編號那一欄。</div>';
+  el.classList.remove('hide');
 }
 function kpi(label, value, sub, cls){
   return '<div class="kpi ' + (cls || '') + '"><div class="label">' + esc(label) + '</div>' +
@@ -1732,11 +1813,17 @@ function renderRows(){
     var diffText = r.status === 'missing' ? '出貨檔查無此單'
       : r.status === 'extra' ? '訂單檔查無此單'
       : (r.diffs.length ? r.diffs.map(function(d){ return d.label; }).join('、') : '—');
+    if (r.approx) {
+      diffText = '<span class="badge dup">相近單號</span> ' +
+        (r.diffs.length ? esc(diffText) : '單號不完全相同，其餘相符');
+    } else {
+      diffText = esc(diffText);
+    }
     return '<tr class="row-head" data-key="' + esc(r.key) + '">' +
       '<td class="l">' + statusBadge(r.status) + '</td>' +
       '<td class="l num">' + esc(r.orderNo) + '</td>' +
       '<td class="l">' + esc(r.name || '—') + '</td>' +
-      '<td class="l">' + esc(diffText) + '</td>' +
+      '<td class="l">' + diffText + '</td>' +
       '<td class="num">' + (r.o ? fmtInt(r.o.qty) : '—') + '</td>' +
       '<td class="num">' + (r.s ? fmtInt(r.s.qty) : '—') + '</td>' +
       '<td class="num">' + (r.o ? fmtMoney(r.o.amount) : '—') + '</td>' +
@@ -1757,6 +1844,7 @@ function detailHTML(r){
   ];
   var badKeys = {};
   r.diffs.forEach(function(d){ badKeys[d.key] = true; });
+  if (r.approx) badKeys.orderNo = true;
   var html = '<div class="detail-inner"><div class="cmp"><table><thead><tr>' +
     '<th class="l">欄位</th><th class="l">訂單檔</th><th class="l">出貨檔</th></tr></thead><tbody>';
   fields.forEach(function(f){
@@ -2166,7 +2254,7 @@ $('#demoBtn').addEventListener('click', function(){
 });
 
 $('#resetRules').addEventListener('click', function(){
-  writeRules({ name: true, phone: true, addr: true, qty: true, amount: true,
+  writeRules({ name: true, phone: true, addr: true, qty: true, amount: true, looseKey: true,
     tolQty: 0, tolAmount: 0, addrMode: 'loose', phoneMode: 'tail9', qtySource: 'sum' });
   db.settings.rules = readRules(); saveDB();
 });
@@ -2269,7 +2357,7 @@ $('#exportMonthBtn').addEventListener('click', exportMonth);
 $('#exportMonthIssuesBtn').addEventListener('click', exportMonthIssues);
 $('#exportYearBtn').addEventListener('click', exportYear);
 
-['#chkName', '#chkPhone', '#chkAddr', '#chkQty', '#chkAmount', '#tolQty', '#tolAmount', '#addrMode', '#phoneMode', '#qtySource']
+['#chkName', '#chkPhone', '#chkAddr', '#chkQty', '#chkAmount', '#chkLooseKey', '#tolQty', '#tolAmount', '#addrMode', '#phoneMode', '#qtySource']
   .forEach(function(sel){
     $(sel).addEventListener('change', function(){ db.settings.rules = readRules(); saveDB(); });
   });
