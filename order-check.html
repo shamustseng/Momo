@@ -2568,9 +2568,12 @@ function reconcile(){
     /* 單號常常共用一長段開頭（同一組日期、通路碼）。那種片段每張單都有，
        不具辨識力，卻會讓每張單都成為彼此的候選、比對量爆成 N×N。剔除掉。 */
     var gramCap = Math.max(10, Math.round(freeShips.length * 0.05));
+    /* 出貨單很少時（例如一天 5 張）上面的門檻擋不住：一段「26090」五張都有，
+       每張都成候選、最後只能報「分不出是哪一張」。半數以上的單都有的片段一樣剔除。 */
+    var halfCap = freeShips.length >= 3 ? Math.floor(freeShips.length / 2) : Infinity;
     var dropped = 0;
     gramIndex.forEach(function(list, g){
-      if (list.length > gramCap) { gramIndex.delete(g); dropped++; }
+      if (list.length > gramCap || list.length > halfCap) { gramIndex.delete(g); dropped++; }
     });
     if (dropped) {
       notes.push('兩邊單號有很長的共同開頭，相近比對已略過共通的部分，只比對能區別的片段。');
