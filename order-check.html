@@ -292,6 +292,14 @@
     </div>
   </section>
 
+  <div class="field-grid" id="xlsPassRow" style="margin-top:-6px;">
+    <div class="field">
+      <label for="xlsPassword">Excel 97-2003（.xls）檔密碼</label>
+      <input type="password" id="xlsPassword" placeholder="有加密才需要；留空會先試 Excel 預設密碼" autocomplete="off">
+      <span class="hint">momo 等平台匯出的 .xls 多半用 Excel 預設密碼加密，不用填。填了之後重新拖入即可。密碼只留在記憶體，不會存起來</span>
+    </div>
+  </div>
+
   <div class="upload-grid" id="upload">
     <section class="card" data-side="order">
       <h2><span class="step-no">2</span>當天全部訂單（資料夾）</h2>
@@ -799,6 +807,269 @@ function parseXlsx(buf){
       return sheets;
     });
 }
+/* ---------- Excel 97-2003（.xls）：OLE 容器 → RC4 解密 → BIFF8 儲存格 ----------
+   平台匯出的 .xls 常用 Excel 的預設密碼加密，Excel 開啟時不會問，所以看起來像沒加密。
+   這裡用同一把預設密碼解，解不開才請使用者輸入。 */
+var XLS_DEFAULT_PASSWORD = 'VelvetSweatshop';
+
+function cfbOpen(buf){
+  var dv = new DataView(buf), u8 = new Uint8Array(buf);
+  if (buf.byteLength < 512 || u32(dv, 0) !== 0xE011CFD0 || u32(dv, 4) !== 0xE11AB1A1) throw new Error('不是 Excel 97-2003 的檔案結構');
+  var secSize = 1 << u16(dv, 0x1E), miniSize = 1 << u16(dv, 0x20);
+  var nFat = u32(dv, 0x2C), dirStart = u32(dv, 0x30), miniCutoff = u32(dv, 0x38);
+  var miniFatStart = u32(dv, 0x3C), nMiniFat = u32(dv, 0x40), difatStart = u32(dv, 0x44), nDifat = u32(dv, 0x48);
+  var END = 0xFFFFFFFA;
+  function secOff(sec){ return (sec + 1) * secSize; }
+  var fatSecs = [], i, v;
+  for (i = 0; i < 109 && fatSecs.length < nFat; i++) { v = u32(dv, 0x4C + i * 4); if (v < END) fatSecs.push(v); }
+  var ds = difatStart, guard = 0;
+  while (ds < END && guard++ <= nDifat) {
+    var base = secOff(ds);
+    for (var j = 0; j < secSize / 4 - 1 && fatSecs.length < nFat; j++) { v = u32(dv, base + j * 4); if (v < END) fatSecs.push(v); }
+    ds = u32(dv, base + secSize - 4);
+  }
+  var fat = [];
+  fatSecs.forEach(function(sec){ var b = secOff(sec); for (var k = 0; k < secSize / 4 && b + k * 4 + 4 <= buf.byteLength; k++) fat.push(u32(dv, b + k * 4)); });
+  function chain(start, table){ var out = [], sec = start, g = 0; while (sec < END && g++ < 1e6) { out.push(sec); sec = table[sec]; if (sec === undefined) break; } return out; }
+  function readChain(start, size){
+    var secs = chain(start, fat), out = new Uint8Array(secs.length * secSize);
+    secs.forEach(function(sec, idx){ var o = secOff(sec); if (o + secSize <= u8.length) out.set(u8.subarray(o, o + secSize), idx * secSize); });
+    return out.subarray(0, Math.min(size, out.length));
+  }
+  var dirBytes = readChain(dirStart, chain(dirStart, fat).length * secSize), entries = [];
+  for (var e = 0; e + 128 <= dirBytes.length; e += 128) {
+    var type = dirBytes[e + 0x42];
+    if (!type) continue;
+    var nameLen = dirBytes[e + 0x40] | (dirBytes[e + 0x41] << 8), name = '';
+    for (var c = 0; c + 1 < Math.min(nameLen, 64); c += 2) { var ch = dirBytes[e + c] | (dirBytes[e + c + 1] << 8); if (ch) name += String.fromCharCode(ch); }
+    var ddv = new DataView(dirBytes.buffer, dirBytes.byteOffset + e, 128);
+    entries.push({ name: name, type: type, start: ddv.getUint32(0x74, true), size: ddv.getUint32(0x78, true) });
+  }
+  var root = entries.filter(function(x){ return x.type === 5; })[0];
+  var miniFat = [];
+  if (nMiniFat && miniFatStart < END) {
+    var mfb = readChain(miniFatStart, nMiniFat * secSize), mdv = new DataView(mfb.buffer, mfb.byteOffset, mfb.byteLength);
+    for (var m = 0; m + 4 <= mfb.byteLength; m++, m += 3) miniFat.push(mdv.getUint32(m, true));
+  }
+  var miniStream = root ? readChain(root.start, root.size) : new Uint8Array(0);
+  function readEntry(en){
+    if (en.type === 2 && en.size < miniCutoff) {
+      var secs = chain(en.start, miniFat), out = new Uint8Array(secs.length * miniSize);
+      secs.forEach(function(sec, idx){ var o = sec * miniSize; if (o + miniSize <= miniStream.length) out.set(miniStream.subarray(o, o + miniSize), idx * miniSize); });
+      return out.subarray(0, Math.min(en.size, out.length));
+    }
+    return readChain(en.start, en.size);
+  }
+  return {
+    entries: entries,
+    read: function(name){ var en = entries.filter(function(x){ return x.name === name && x.type === 2; })[0]; return en ? readEntry(en) : null; }
+  };
+}
+
+function sha1(bytes){
+  var ml = bytes.length, words = [], i;
+  for (i = 0; i < ml; i++) words[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+  words[ml >> 2] |= 0x80 << (24 - (ml % 4) * 8);
+  words[(((ml + 8) >> 6) << 4) + 15] = ml * 8;
+  var h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0, w = [];
+  for (i = 0; i < words.length; i += 16) {
+    var a = h0, b = h1, c = h2, d = h3, e = h4, t;
+    for (var j = 0; j < 80; j++) {
+      if (j < 16) w[j] = words[i + j] | 0;
+      else { var n = w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16]; w[j] = (n << 1) | (n >>> 31); }
+      var f, k;
+      if (j < 20) { f = (b & c) | (~b & d); k = 0x5A827999; }
+      else if (j < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1; }
+      else if (j < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC; }
+      else { f = b ^ c ^ d; k = 0xCA62C1D6; }
+      t = (((a << 5) | (a >>> 27)) + f + e + k + w[j]) | 0;
+      e = d; d = c; c = (b << 30) | (b >>> 2); b = a; a = t;
+    }
+    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0; h4 = (h4 + e) | 0;
+  }
+  var out = new Uint8Array(20);
+  [h0, h1, h2, h3, h4].forEach(function(h, idx){ out[idx * 4] = (h >>> 24) & 255; out[idx * 4 + 1] = (h >>> 16) & 255; out[idx * 4 + 2] = (h >>> 8) & 255; out[idx * 4 + 3] = h & 255; });
+  return out;
+}
+function rc4Keystream(key, len){
+  var S = new Uint8Array(256), i, j = 0, t;
+  for (i = 0; i < 256; i++) S[i] = i;
+  for (i = 0; i < 256; i++) { j = (j + S[i] + key[i % key.length]) & 255; t = S[i]; S[i] = S[j]; S[j] = t; }
+  var out = new Uint8Array(len); i = 0; j = 0;
+  for (var k = 0; k < len; k++) { i = (i + 1) & 255; j = (j + S[i]) & 255; t = S[i]; S[i] = S[j]; S[j] = t; out[k] = S[(S[i] + S[j]) & 255]; }
+  return out;
+}
+function concatBytes(parts){ var n = 0; parts.forEach(function(p){ n += p.length; }); var out = new Uint8Array(n), o = 0; parts.forEach(function(p){ out.set(p, o); o += p.length; }); return out; }
+function utf16le(str){ var out = new Uint8Array(str.length * 2); for (var i = 0; i < str.length; i++) { var c = str.charCodeAt(i); out[i * 2] = c & 255; out[i * 2 + 1] = c >> 8; } return out; }
+function rc4ApiKey(password, salt, keyBits, block){
+  var h0 = sha1(concatBytes([salt, utf16le(password)]));
+  var blk = new Uint8Array([block & 255, (block >> 8) & 255, (block >> 16) & 255, (block >>> 24) & 255]);
+  var hf = sha1(concatBytes([h0, blk]));
+  if (keyBits === 40) { var k = new Uint8Array(16); k.set(hf.subarray(0, 5)); return k; }
+  return hf.subarray(0, keyBits / 8);
+}
+function parseFilePass(data){
+  var dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  var encType = dv.getUint16(0, true);
+  if (encType !== 1) { var ex = new Error('這個 .xls 用的是 XOR 混淆加密，目前不支援。請在 Excel 另存新檔（不加密）。'); ex.code = 'unsupported'; throw ex; }
+  var vMajor = dv.getUint16(2, true), vMinor = dv.getUint16(4, true);
+  if (!((vMajor === 2 || vMajor === 3 || vMajor === 4) && vMinor === 2)) {
+    var ex2 = new Error('這個 .xls 用的是舊式 RC4 加密（' + vMajor + '.' + vMinor + '），目前不支援。請在 Excel 另存新檔（不加密）。'); ex2.code = 'unsupported'; throw ex2;
+  }
+  var p = 6;
+  p += 4;                                   /* EncryptionHeader flags */
+  var headerSize = dv.getUint32(p, true); p += 4;
+  var hdr = p;
+  var keySize = dv.getUint32(hdr + 16, true);   /* Flags, SizeExtra, AlgID, AlgIDHash, KeySize */
+  p += headerSize;
+  var saltSize = dv.getUint32(p, true); p += 4;
+  var salt = data.subarray(p, p + saltSize); p += saltSize;
+  var encVerifier = data.subarray(p, p + 16); p += 16;
+  var vhSize = dv.getUint32(p, true); p += 4;
+  var encVerifierHash = data.subarray(p, p + vhSize);
+  return { keyBits: keySize || 40, salt: salt, encVerifier: encVerifier, encVerifierHash: encVerifierHash, vhSize: vhSize };
+}
+function xlsVerifyPassword(fp, password){
+  var ks = rc4Keystream(rc4ApiKey(password, fp.salt, fp.keyBits, 0), 16 + fp.vhSize);
+  var ver = new Uint8Array(16), vh = new Uint8Array(fp.vhSize), i;
+  for (i = 0; i < 16; i++) ver[i] = fp.encVerifier[i] ^ ks[i];
+  for (i = 0; i < fp.vhSize; i++) vh[i] = fp.encVerifierHash[i] ^ ks[16 + i];
+  var h = sha1(ver);
+  for (i = 0; i < 20 && i < fp.vhSize; i++) if (h[i] !== vh[i]) return false;
+  return true;
+}
+/* 記錄標頭不加密；BOF、FILEPASS、UsrExcl、FileLock、InterfaceHdr、RRDInfo、RRDHead 整筆不加密；
+   BoundSheet8 的前 4 位元組（lbPlyPos）不加密。不加密的位元組仍然佔密鑰流位置。 */
+var XLS_PLAIN_RECORDS = { 0x809: 1, 0x2F: 1, 0x194: 1, 0x195: 1, 0xE1: 1, 0x196: 1, 0x138: 1 };
+function xlsDecrypt(stream, fp, password){
+  var out = new Uint8Array(stream), n = stream.length, pos = 0, cache = {};
+  function ks(block){ if (!cache[block]) cache[block] = rc4Keystream(rc4ApiKey(password, fp.salt, fp.keyBits, block), 1024); return cache[block]; }
+  while (pos + 4 <= n) {
+    var type = stream[pos] | (stream[pos + 1] << 8), len = stream[pos + 2] | (stream[pos + 3] << 8);
+    var a = pos + 4, b = Math.min(n, a + len);
+    if (!XLS_PLAIN_RECORDS[type]) {
+      for (var i = (type === 0x85 ? a + 4 : a); i < b; i++) out[i] = stream[i] ^ ks(i >> 10)[i & 1023];
+    }
+    pos = b;
+  }
+  return out;
+}
+function xlsRecords(wb){
+  var recs = [], pos = 0, n = wb.length;
+  while (pos + 4 <= n) {
+    var type = wb[pos] | (wb[pos + 1] << 8), len = wb[pos + 2] | (wb[pos + 3] << 8);
+    recs.push({ type: type, start: pos + 4, len: Math.min(len, n - pos - 4), pos: pos });
+    pos += 4 + len;
+  }
+  return recs;
+}
+/* 跨多個 CONTINUE 記錄讀 Unicode 字串：每跨到新的一段就重讀一個 flags 位元組 */
+function segReader(segs){
+  var si = 0, off = 0;
+  function atEnd(){ while (si < segs.length && off >= segs[si].length) { si++; off = 0; } return si >= segs.length; }
+  return {
+    u8: function(){ if (atEnd()) return 0; return segs[si][off++]; },
+    u16: function(){ var a = this.u8(), b = this.u8(); return a | (b << 8); },
+    u32: function(){ var a = this.u16(), b = this.u16(); return (a | (b << 16)) >>> 0; },
+    skip: function(k){ for (var i = 0; i < k; i++) this.u8(); },
+    boundary: function(){ return off >= segs[si].length && si + 1 < segs.length; },
+    str: function(cch, flags){
+      var high = flags & 1, rich = flags & 8, ext = flags & 4, cRun = 0, cbExt = 0, s = '';
+      if (rich) cRun = this.u16();
+      if (ext) cbExt = this.u32();
+      for (var i = 0; i < cch; i++) {
+        if (this.boundary()) { atEnd(); high = this.u8() & 1; }
+        s += String.fromCharCode(high ? this.u16() : this.u8());
+      }
+      this.skip(cRun * 4 + cbExt);
+      return s;
+    }
+  };
+}
+function rkValue(rk){
+  var v;
+  if (rk & 2) v = rk >> 2;
+  else {
+    /* 浮點 RK：這 32 位元是 IEEE double 的高半部，低 2 位元清零 */
+    var dv = new DataView(new ArrayBuffer(8));
+    dv.setUint32(4, (rk & 0xFFFFFFFC) >>> 0, true);
+    v = dv.getFloat64(0, true);
+  }
+  return (rk & 1) ? v / 100 : v;
+}
+function numStr(v){
+  if (!isFinite(v)) return '';
+  /* 14 碼的訂單編號是整數，不能拿去乘 1e6 再四捨五入，會超過安全整數而失真 */
+  if (Math.floor(v) === v) return String(v);
+  return String(Math.round(v * 1e6) / 1e6);
+}
+function parseXls(buf, passwords){
+  var cfb = cfbOpen(buf);
+  var wb = cfb.read('Workbook');
+  if (!wb) {
+    if (cfb.read('Book')) { var e5 = new Error('這是 Excel 5.0/95 格式的檔案，目前不支援。請在 Excel 另存為 .xlsx。'); throw e5; }
+    throw new Error('檔案裡找不到 Excel 工作簿');
+  }
+  var recs = xlsRecords(wb);
+  var fpRec = recs.filter(function(r){ return r.type === 0x2F; })[0];
+  if (fpRec) {
+    var fp = parseFilePass(wb.subarray(fpRec.start, fpRec.start + fpRec.len)), okPw = null;
+    (passwords || [XLS_DEFAULT_PASSWORD]).some(function(pw){ if (xlsVerifyPassword(fp, pw)) { okPw = pw; return true; } return false; });
+    if (okPw == null) { var pe = new Error('這個 Excel 檔有密碼保護，Excel 預設密碼解不開。請在上方「.xls 檔密碼」填入密碼後重新拖入。'); pe.code = 'password'; throw pe; }
+    wb = xlsDecrypt(wb, fp, okPw);
+    recs = xlsRecords(wb);
+  }
+  var dv = new DataView(wb.buffer, wb.byteOffset, wb.byteLength);
+  /* 字串表 */
+  var sst = [];
+  for (var i = 0; i < recs.length; i++) {
+    if (recs[i].type !== 0xFC) continue;
+    var segs = [wb.subarray(recs[i].start + 8, recs[i].start + recs[i].len)];
+    for (var j = i + 1; j < recs.length && recs[j].type === 0x3C; j++) segs.push(wb.subarray(recs[j].start, recs[j].start + recs[j].len));
+    var count = dv.getUint32(recs[i].start + 4, true), rd = segReader(segs);
+    for (var k = 0; k < count; k++) { var cch = rd.u16(), flags = rd.u8(); sst.push(rd.str(cch, flags)); }
+    break;
+  }
+  /* 工作表 */
+  var sheets = {}, bounds = [];
+  recs.forEach(function(r){
+    if (r.type !== 0x85) return;
+    var pos = dv.getUint32(r.start, true), cch = wb[r.start + 6], fl = wb[r.start + 7], name = '';
+    for (var c = 0; c < cch; c++) name += String.fromCharCode(fl & 1 ? (wb[r.start + 8 + c * 2] | (wb[r.start + 9 + c * 2] << 8)) : wb[r.start + 8 + c]);
+    bounds.push({ pos: pos, name: name || ('工作表' + (bounds.length + 1)) });
+  });
+  bounds.forEach(function(bs){
+    var grid = [], started = false;
+    function put(row, col, val){ if (!grid[row]) grid[row] = []; grid[row][col] = val; }
+    for (var i2 = 0; i2 < recs.length; i2++) {
+      var r = recs[i2];
+      if (r.pos < bs.pos) continue;
+      if (r.type === 0x809) { if (started) break; started = true; continue; }
+      if (!started) continue;
+      if (r.type === 0x0A) break;
+      var s = r.start;
+      if (r.type === 0xFD) { put(dv.getUint16(s, true), dv.getUint16(s + 2, true), sst[dv.getUint32(s + 6, true)] || ''); }
+      else if (r.type === 0x204) { var cch2 = dv.getUint16(s + 6, true), rd2 = segReader([wb.subarray(s + 9, s + r.len)]); put(dv.getUint16(s, true), dv.getUint16(s + 2, true), rd2.str(cch2, wb[s + 8])); }
+      else if (r.type === 0x203) { put(dv.getUint16(s, true), dv.getUint16(s + 2, true), numStr(dv.getFloat64(s + 6, true))); }
+      else if (r.type === 0x27E) { put(dv.getUint16(s, true), dv.getUint16(s + 2, true), numStr(rkValue(dv.getUint32(s + 6, true)))); }
+      else if (r.type === 0xBD) { var row = dv.getUint16(s, true), c0 = dv.getUint16(s + 2, true), nCells = (r.len - 6) / 6; for (var q = 0; q < nCells; q++) put(row, c0 + q, numStr(rkValue(dv.getUint32(s + 4 + q * 6 + 2, true)))); }
+      else if (r.type === 0x06) {
+        var row6 = dv.getUint16(s, true), col6 = dv.getUint16(s + 2, true);
+        if (dv.getUint16(s + 12, true) === 0xFFFF) {
+          var kind = wb[s + 6];
+          if (kind === 0) { var nx = recs[i2 + 1]; if (nx && nx.type === 0x207) { var cch3 = dv.getUint16(nx.start, true), rd3 = segReader([wb.subarray(nx.start + 3, nx.start + nx.len)]); put(row6, col6, rd3.str(cch3, wb[nx.start + 2])); } }
+          else if (kind === 1) put(row6, col6, wb[s + 8] ? 'TRUE' : 'FALSE');
+        } else put(row6, col6, numStr(dv.getFloat64(s + 6, true)));
+      }
+    }
+    for (var g = 0; g < grid.length; g++) { if (!grid[g]) grid[g] = []; for (var h = 0; h < grid[g].length; h++) if (grid[g][h] == null) grid[g][h] = ''; }
+    while (grid.length && grid[grid.length - 1].every(function(x){ return trim(x) === ''; })) grid.pop();
+    sheets[bs.name] = grid;
+  });
+  if (!Object.keys(sheets).length) throw new Error('這個 Excel 檔沒有讀到任何工作表');
+  return sheets;
+}
+
 function decodeBuf(buf){
   var b = new Uint8Array(buf);
   if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
@@ -1609,25 +1880,24 @@ function readBuffer(file){
 function extractFile(file){
   var name = file.name || '';
   var out = { file: name, kind: '', status: 'ok', note: '', records: [] };
-  if (extRe(name, /\.xls$/i)) {
-    out.kind = 'xls'; out.status = 'fail'; out.note = '舊版 .xls，請另存成 .xlsx 或 CSV';
-    return Promise.resolve(out);
-  }
+  var isXls = extRe(name, /\.xls$/i);
   if (extRe(name, /\.(png|jpe?g|gif|bmp|webp|heic|tif?f)$/i)) {
     out.kind = '圖片'; out.status = 'skip'; out.note = '圖片無法辨識文字，已略過';
     return Promise.resolve(out);
   }
   var isXlsx = extRe(name, /\.xlsx$/i), isDocx = extRe(name, /\.docx$/i);
   var isPdf = extRe(name, /\.pdf$/i), isText = extRe(name, /\.(csv|tsv|txt)$/i);
-  if (!isXlsx && !isDocx && !isPdf && !isText) {
+  if (!isXlsx && !isXls && !isDocx && !isPdf && !isText) {
     out.kind = (name.split('.').pop() || '').toLowerCase() || '未知';
     out.status = 'skip'; out.note = '不支援這種格式，已略過';
     return Promise.resolve(out);
   }
   return readBuffer(file).then(function(buf){
-    if (isXlsx) {
-      out.kind = 'Excel';
-      return parseXlsx(buf).then(function(sheets){
+    if (isXlsx || isXls) {
+      out.kind = isXls ? 'Excel 97-2003' : 'Excel';
+      var pw = trim(($('#xlsPassword') || {}).value || '');
+      var parsed = isXls ? Promise.resolve().then(function(){ return parseXls(buf, pw ? [pw, XLS_DEFAULT_PASSWORD] : [XLS_DEFAULT_PASSWORD]); }) : parseXlsx(buf);
+      return parsed.then(function(sheets){
         var names = Object.keys(sheets);
         for (var i = 0; i < names.length; i++) {
           var t = gridIsTable(sheets[names[i]]);
@@ -1674,7 +1944,8 @@ function extractFile(file){
     }
     return o;
   }).catch(function(err){
-    out.status = 'fail'; out.note = err.message || '解析失敗';
+    out.status = (err && err.code === 'password') ? 'warn' : 'fail';
+    out.note = err.message || '解析失敗';
     return out;
   });
 }
