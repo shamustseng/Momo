@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>MOMO 出貨單產生器｜訂單清單 → 出貨單 Excel</title>
+<style>
+  :root{
+    --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+    --border:#DDD6C7; --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+    --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+    --momo:#D6316B; --momo-soft:#FBE3EC; --momo-ink:#7A1A3D;
+    --warn:#B5730A; --warn-soft:#F6E8D2; --warn-ink:#6B4507;
+    --good:#2F9E44; --bad:#C4362F; --bad-soft:#F9E0DE;
+    --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+    --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+      --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+      --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+      --momo:#D9527F; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+      --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
+      --good:#4CAF6B; --bad:#E2665F; --bad-soft:#3B2220;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--ink); font-family:var(--font-ui); font-size:14.5px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3{ font-weight:800; letter-spacing:-0.01em; margin:0; }
+  .num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  button,input,select,textarea{ font:inherit; color:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .topbar{ position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+  .topbar-inner{ max-width:1240px; margin:0 auto; padding:12px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; }
+  .brand{ display:flex; flex-direction:column; gap:1px; margin-right:auto; }
+  .brand .eyebrow{ font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
+  .brand h1{ font-size:18px; }
+  .steps{ display:flex; gap:6px; flex-wrap:wrap; }
+  .step{ display:flex; align-items:center; gap:7px; padding:6px 11px; border-radius:999px; border:1px solid var(--border); background:var(--surface); font-size:12.5px; color:var(--ink-muted); }
+  .step .dot{ width:20px; height:20px; border-radius:50%; background:var(--surface-3); display:grid; place-items:center; font-weight:800; font-size:11px; color:var(--ink-muted); }
+  .step.active{ border-color:var(--accent); color:var(--accent-ink); background:var(--accent-soft); }
+  .step.active .dot{ background:var(--accent); color:#fff; }
+  .step.done .dot{ background:var(--good); color:#fff; }
+
+  main{ max-width:1240px; margin:0 auto; padding:22px 20px 80px; display:grid; gap:18px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); padding:18px 20px; }
+  .card h2{ font-size:16px; display:flex; align-items:center; gap:10px; }
+  .card h2 .badge{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--surface-2); color:var(--ink-muted); }
+  .card-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .hint{ color:var(--ink-muted); font-size:13px; margin:4px 0 0; }
+  .muted{ color:var(--ink-muted); }
+  .small{ font-size:12.5px; }
+
+  .drop{ display:block; border:2px dashed var(--border); border-radius:14px; padding:26px 20px; text-align:center; background:var(--surface-2); cursor:pointer; transition:border-color .15s, background .15s; }
+  .drop.over{ border-color:var(--accent); background:var(--accent-soft); }
+  .drop strong{ display:block; font-size:16px; margin-bottom:4px; }
+  .drop input{ display:none; }
+  .paste{ margin-top:12px; display:grid; gap:8px; }
+  .paste textarea{ width:100%; min-height:72px; border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--surface); resize:vertical; font-family:var(--font-mono); font-size:12.5px; }
+
+  .btn{ display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-weight:700; cursor:pointer; transition:background .15s, border-color .15s, transform .05s; }
+  .btn:hover{ background:var(--surface-2); }
+  .btn:active{ transform:translateY(1px); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:var(--accent-hover); }
+  .btn.momo{ background:var(--momo); border-color:var(--momo); color:#fff; }
+  .btn.sm{ padding:6px 11px; font-size:12.5px; border-radius:8px; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+  .grid{ display:grid; gap:12px; }
+  .grid.two{ grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); }
+  .grid.three{ grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+  .grid.tiles{ grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); }
+  .tile{ background:var(--surface-2); border-radius:12px; padding:12px 14px; }
+  .tile .label{ font-size:12px; color:var(--ink-muted); font-weight:700; }
+  .tile .value{ font-size:24px; font-weight:800; line-height:1.2; }
+  .tile.accent{ background:var(--accent-soft); color:var(--accent-ink); }
+  .tile.momo{ background:var(--momo-soft); color:var(--momo-ink); }
+
+  .field{ display:grid; gap:4px; }
+  .field label{ font-size:12.5px; font-weight:700; color:var(--ink-muted); }
+  .field select, .field input[type="text"], .field input[type="date"], .field textarea{ width:100%; border:1px solid var(--border); border-radius:9px; padding:8px 10px; background:var(--surface); }
+  .field textarea{ min-height:96px; resize:vertical; font-size:12.5px; }
+  .field .req{ color:var(--momo); }
+  .field.mapped select{ border-color:var(--accent); }
+  .field.missing select{ border-color:var(--bad); }
+  .map-grid{ display:grid; gap:10px 14px; grid-template-columns:repeat(auto-fill, minmax(215px, 1fr)); }
+
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface); font-size:12.5px; cursor:pointer; user-select:none; }
+  .chip input{ margin:0; accent-color:var(--accent); }
+  .chip.on{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+  .chip .cnt{ font-family:var(--font-mono); color:var(--ink-faint); font-size:11px; }
+  .switch{ display:inline-flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+  .switch input{ accent-color:var(--accent); width:16px; height:16px; }
+
+  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+  table{ border-collapse:collapse; width:100%; font-size:13px; }
+  th,td{ padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; white-space:nowrap; }
+  th{ background:var(--surface-2); font-size:12px; color:var(--ink-muted); position:sticky; top:0; }
+  td.wrap{ white-space:normal; min-width:220px; }
+  tr.ship{ cursor:pointer; }
+  tr.ship:hover td{ background:var(--surface-2); }
+  tr.ship.off td{ opacity:.45; }
+  tr.lines td{ background:var(--surface-2); padding:0 10px 10px 42px; }
+  tr.lines table{ font-size:12.5px; background:var(--surface); border-radius:8px; overflow:hidden; }
+  tr.lines th{ position:static; }
+  .tag{ display:inline-block; padding:1px 7px; border-radius:6px; font-size:11px; font-weight:700; background:var(--surface-3); color:var(--ink-muted); margin-left:6px; vertical-align:middle; }
+  .tag.dup{ background:var(--warn-soft); color:var(--warn-ink); }
+  .tag.warn{ background:var(--bad-soft); color:var(--bad); }
+  .tag.ok{ background:var(--accent-soft); color:var(--accent-ink); }
+
+  .alert{ border-radius:10px; padding:10px 14px; font-size:13px; border:1px solid var(--border); background:var(--surface-2); }
+  .alert.warn{ background:var(--warn-soft); border-color:transparent; color:var(--warn-ink); }
+  .alert.bad{ background:var(--bad-soft); border-color:transparent; color:var(--bad); }
+  .alert.ok{ background:var(--accent-soft); border-color:transparent; color:var(--accent-ink); }
+  details summary{ cursor:pointer; font-weight:700; color:var(--ink-muted); font-size:13px; }
+  .sticky-actions{ position:sticky; bottom:0; z-index:15; background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(10px); border-top:1px solid var(--border); margin:0 -20px -80px; padding:12px 20px; }
+  .sticky-inner{ max-width:1200px; margin:0 auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .sticky-inner .summary{ margin-right:auto; font-size:13.5px; }
+  .hidden{ display:none !important; }
+  code{ font-family:var(--font-mono); font-size:12px; background:var(--surface-2); padding:1px 5px; border-radius:5px; }
+
+  /* 列印用出貨單（瀏覽器直接列印） */
+  #printArea{ display:none; }
+  @media print{
+    @page{ size:A4 portrait; margin:12mm; }
+    body{ background:#fff; color:#000; }
+    .topbar, main{ display:none !important; }
+    #printArea{ display:block; }
+    .sheet{ page-break-after:always; break-after:page; font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif; font-size:12px; color:#000; }
+    .sheet:last-child{ page-break-after:auto; break-after:auto; }
+    .sheet .pdate{ text-align:right; font-size:11px; }
+    .sheet h1{ text-align:center; font-size:22px; font-weight:400; letter-spacing:.3em; margin:6px 0 14px; }
+    .sheet .meta{ display:grid; grid-template-columns:1fr 1fr; gap:2px 20px; margin-bottom:12px; }
+    .sheet table{ width:100%; border-collapse:collapse; font-size:12px; }
+    .sheet th, .sheet td{ border-top:1px solid #000; border-bottom:1px solid #000; padding:5px 6px; white-space:normal; text-align:left; background:none; color:#000; position:static; }
+    .sheet th{ font-weight:400; white-space:nowrap; }
+    .sheet td.num{ white-space:nowrap; }
+    .sheet td.c, .sheet th.c{ text-align:center; }
+    .sheet .total{ text-align:center; font-size:14px; margin:6px 0 16px; }
+    .sheet .box{ display:inline-block; width:12px; height:12px; border:1px solid #000; }
+    .sheet .notice{ font-size:10.5px; line-height:1.5; white-space:pre-wrap; }
+    .sheet .note{ margin:4px 0 10px; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">MOMO Shipping Order Generator</span>
+      <h1>MOMO 出貨單產生器</h1>
+    </div>
+    <nav class="steps" aria-label="步驟">
+      <span class="step active" id="step1"><span class="dot">1</span>匯入訂單清單</span>
+      <span class="step" id="step2"><span class="dot">2</span>對應欄位</span>
+      <span class="step" id="step3"><span class="dot">3</span>篩選與確認</span>
+      <span class="step" id="step4"><span class="dot">4</span>匯出出貨單</span>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- STEP 1: 匯入 -->
+  <section class="card" id="secImport">
+    <div class="card-head">
+      <h2>1. 匯入 momo 後台訂單清單</h2>
+      <div class="btn-row">
+        <a class="btn sm" href="sample/momo訂單匯出範例.xlsx" download>下載範例檔</a>
+        <button class="btn sm" id="btnLoadSample" type="button">載入範例試用</button>
+      </div>
+    </div>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt,.tsv,.htm,.html">
+      <strong>把 momo 供應商後台匯出的訂單清單拖到這裡，或點擊選擇檔案</strong>
+      <span class="muted small">支援 .xlsx / .xls / .csv；每一列是一個商品品項，程式會自動依「出貨單號」（或訂單編號）把品項併成一張出貨單。</span>
+    </label>
+    <details class="paste">
+      <summary>或直接貼上從後台網頁複製的表格（含標題列）</summary>
+      <textarea id="pasteBox" placeholder="在後台選取整張表格 → 複製 → 貼到這裡"></textarea>
+      <div><button class="btn sm" id="btnPaste" type="button">解析貼上的內容</button></div>
+    </details>
+    <div id="fileInfo" class="hint"></div>
+    <div id="sheetPick" class="btn-row hidden" style="margin-top:10px"></div>
+  </section>
+
+  <!-- STEP 2: 欄位對應 -->
+  <section class="card hidden" id="secMap">
+    <div class="card-head">
+      <h2>2. 欄位對應 <span class="badge" id="mapBadge"></span></h2>
+      <div class="btn-row">
+        <div class="field" style="min-width:160px">
+          <label for="headerRow">標題列（第幾列）</label>
+          <select id="headerRow"></select>
+        </div>
+      </div>
+    </div>
+    <p class="hint">程式已依欄名自動對應，<span class="req" style="color:var(--momo)">＊</span> 為必要欄位。若後台匯出的欄名不同，請手動調整；對應結果會記住，下次同格式檔案自動套用。</p>
+    <div class="map-grid" id="mapGrid" style="margin-top:12px"></div>
+    <div id="mapAlert" style="margin-top:12px"></div>
+  </section>
+
+  <!-- STEP 3: 篩選與確認 -->
+  <section class="card hidden" id="secFilter">
+    <div class="card-head">
+      <h2>3. 篩選需要出貨的訂單</h2>
+      <div class="btn-row">
+        <button class="btn sm" id="btnAllOn" type="button">全選</button>
+        <button class="btn sm" id="btnAllOff" type="button">全不選</button>
+      </div>
+    </div>
+    <div class="grid two">
+      <div class="field" id="statusFilterBox">
+        <label>訂單／出貨狀態（勾選要出貨的狀態）</label>
+        <div class="chips" id="statusChips"></div>
+      </div>
+      <div class="field" id="carrierFilterBox">
+        <label>配送方式</label>
+        <div class="chips" id="carrierChips"></div>
+      </div>
+      <div class="field">
+        <label for="search">搜尋（訂單編號、收件人、商品、宅配單號）</label>
+        <input type="text" id="search" placeholder="輸入關鍵字即時過濾">
+      </div>
+      <div class="field">
+        <label>其他</label>
+        <div class="btn-row" style="gap:16px">
+          <label class="switch"><input type="checkbox" id="skipExported" checked> 排除先前已匯出過的出貨單</label>
+          <label class="switch"><input type="checkbox" id="onlyProblem"> 只看有警示的</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid tiles" style="margin:16px 0 12px">
+      <div class="tile accent"><div class="label">將匯出的出貨單</div><div class="value num" id="tShips">0</div></div>
+      <div class="tile"><div class="label">訂單筆數</div><div class="value num" id="tOrders">0</div></div>
+      <div class="tile"><div class="label">商品總數量</div><div class="value num" id="tQty">0</div></div>
+      <div class="tile"><div class="label">品項種類</div><div class="value num" id="tSkus">0</div></div>
+      <div class="tile momo"><div class="label">被過濾掉 / 未勾選</div><div class="value num" id="tExcluded">0</div></div>
+    </div>
+    <div id="filterAlert"></div>
+    <div class="table-wrap" style="margin-top:10px">
+      <table id="shipTable">
+        <thead><tr>
+          <th style="width:36px"><input type="checkbox" id="chkAll" checked aria-label="全選"></th>
+          <th>#</th><th>出貨單號</th><th>訂單編號</th><th>宅配／配送編號</th><th>收件人</th><th>配送方式</th><th>最晚出貨日</th><th>品項</th><th>數量</th><th>狀態</th>
+        </tr></thead>
+        <tbody id="shipBody"></tbody>
+      </table>
+    </div>
+    <p class="hint">點一列可展開商品明細；取消勾選可排除單張出貨單。</p>
+  </section>
+
+  <!-- STEP 4: 匯出 -->
+  <section class="card hidden" id="secExport">
+    <div class="card-head">
+      <h2>4. 出貨單格式與匯出</h2>
+    </div>
+    <div class="grid three">
+      <div class="field"><label for="setSupplier">供應商名稱（出貨總表抬頭）</label><input type="text" id="setSupplier" placeholder="例：希塔食品股份有限公司"></div>
+      <div class="field"><label for="setTitle">出貨單標題</label><input type="text" id="setTitle" value="裝箱明細"></div>
+      <div class="field"><label for="setDate">印單日期</label><input type="date" id="setDate"></div>
+      <div class="field"><label for="setSort">出貨單排序</label>
+        <select id="setSort">
+          <option value="file">依檔案原順序</option>
+          <option value="deadline">依最晚出貨日</option>
+          <option value="receiver">依收件人</option>
+          <option value="track">依宅配單號</option>
+        </select>
+      </div>
+      <div class="field"><label for="setLayout">出貨單版面</label>
+        <select id="setLayout">
+          <option value="single">全部放在一個工作表，每張自動分頁（建議，直接整份列印）</option>
+          <option value="multi">每張出貨單一個工作表</option>
+        </select>
+      </div>
+      <div class="field"><label>附帶內容</label>
+        <div class="grid" style="gap:6px">
+          <label class="switch"><input type="checkbox" id="setNotice" checked> 出貨單底部印「注意事項」</label>
+          <label class="switch"><input type="checkbox" id="setPick" checked> 加「揀貨彙總」工作表（各品項總量）</label>
+          <label class="switch"><input type="checkbox" id="setRaw" checked> 加「原始明細」工作表（整理後逐列資料）</label>
+        </div>
+      </div>
+    </div>
+    <details style="margin-top:12px">
+      <summary>編輯「注意事項」文字</summary>
+      <div class="field" style="margin-top:8px"><textarea id="setNoticeText"></textarea></div>
+    </details>
+    <div class="sticky-actions">
+      <div class="sticky-inner">
+        <div class="summary" id="exportSummary">尚未載入資料</div>
+        <button class="btn" id="btnPrint" type="button" disabled>🖨 直接用瀏覽器列印</button>
+        <button class="btn primary" id="btnExport" type="button" disabled>⬇ 匯出出貨單 Excel</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="printArea" aria-hidden="true"></div>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/exceljs.min.js"></script>
+<script>
+/* ==================== 欄位定義 ==================== */
+const FIELDS = [
+  { key:'orderNo',   label:'訂單編號',        required:true,  aliases:['訂單編號','訂單號碼','訂單號','訂單序號','orderno','orderid','order'] },
+  { key:'shipNo',    label:'出貨單號',        aliases:['出貨單號','出貨編號','出貨單','shipno','shipmentno'] },
+  { key:'trackNo',   label:'配送編號／宅配單號', aliases:['配送編號','宅配單號','託運單號','托運單號','物流單號','貨運單號','配送單號','trackingno','tracking'] },
+  { key:'carrier',   label:'配送方式',        aliases:['配送方式','物流方式','出貨方式','配送商','物流商','配送類型','物流公司'] },
+  { key:'deadline',  label:'最晚出貨日',      aliases:['最晚出貨日','最後出貨日','出貨期限','預計出貨日','應出貨日','出貨日'] },
+  { key:'orderDate', label:'訂單日期',        aliases:['訂單日期','成立日期','訂購日期','下單日期','訂單成立時間','訂單時間'] },
+  { key:'status',    label:'訂單／出貨狀態',  aliases:['出貨狀態','訂單狀態','處理狀態','狀態','status'] },
+  { key:'receiver',  label:'收件人',          required:true,  aliases:['收件人姓名','收件人','收貨人姓名','收貨人','收件者','受貨人'] },
+  { key:'phone',     label:'收件人電話',      aliases:['收件人電話','收件人手機','收件人聯絡電話','收貨人電話','收件電話','收件人行動電話','聯絡電話','手機','電話'] },
+  { key:'address',   label:'收件人地址',      aliases:['收件人地址','收貨人地址','收件地址','配送地址','送貨地址','地址'] },
+  { key:'sku',       label:'商品編碼',        aliases:['商品編碼','商品編號','品號','商品代碼','商品代號','貨號','商品id','productno','sku'] },
+  { key:'name',      label:'商品名稱',        required:true,  aliases:['商品名稱','品名','商品名','產品名稱','商品'] },
+  { key:'spec',      label:'規格',            aliases:['規格','款式','規格名稱','顏色','尺寸','商品規格'] },
+  { key:'barcode',   label:'國際條碼',        aliases:['國際條碼','條碼','barcode','ean','upc'] },
+  { key:'vendorCode',label:'商品原廠編號',    aliases:['商品原廠編號','原廠編號','原廠型號','廠商編號','廠商貨號','廠商料號','供應商編號','供應商貨號','料號','型號'] },
+  { key:'qty',       label:'數量',            required:true,  aliases:['出貨數量','訂購數量','購買數量','數量','件數','qty','quantity'] },
+  { key:'cod',       label:'代收款',          aliases:['代收款','代收金額','貨到付款金額','代收'] },
+  { key:'invoice',   label:'發票號碼',        aliases:['發票號碼','發票編號','發票'] },
+  { key:'note',      label:'備註',            aliases:['訂單備註','客戶備註','買家備註','備註','留言','附註'] },
+];
+const DEFAULT_NOTICE = `一、商品確認
+為保障消費者權益,請務必核對商品內容是否與上述商品明細相符,如有不符請盡速於www.momoshop.com.tw之「會員中心」,點選「訂單提問」,「諮詢分類」選擇「商品缺件」並填寫商品狀況,momo將儘速為您服務。
+二、退/換貨須知
+1.本網站產品均享有10天鑑賞期(註 : 鑑賞期非試用期),如需申請退/換貨請至「我的帳戶/訂單相關查詢」查詢訂單並點選退/換貨。
+2.提醒您,申請退貨時,請務必保持商品全新完整狀態(含配件、贈品)且外包裝完整(含原配送包裝/紙箱),並將商品依原配送包裝妥善封裝,否則可能會影響退/換貨；後續將由宅配公司與您聯繫並前往取貨,敬請保持電話暢通；請務必自行存留宅配單據至退貨完成。
+3.加購品/促銷組合商品(如 : 單品任選、滿件、滿額等…)如欲申請退貨,需全數一併退返,恕無法拆件退貨。
+4.各類商品退貨或限制說明請參考網頁「會員中心 / FAQ常見說明 / 取消訂單 / 退換貨」
+三、退款
+退返商品及發票折讓單經確定無誤後,將會盡速為您進行退款作業,相關作業進度可至「會員中心」查詢
+四、防詐騙小叮嚀
+momo不會以電話通知變更付款方式或要求依照指示操作ATM匯款,亦不會委託廠商通知重新匯款!`;
+
+// 狀態值判斷：含這些字視為「不需出貨」預設不勾
+const STATUS_EXCLUDE = ['已出貨','取消','退貨','退款','完成','已配達','已送達','結案','已刪除','作廢','已到貨','已取貨'];
+
+/* ==================== 狀態 ==================== */
+const state = {
+  rows: [],          // 2D array（原始工作表）
+  sheets: {},        // name -> 2D array
+  sheetName: '',
+  headerIdx: 0,
+  mapping: {},       // fieldKey -> colIndex
+  records: [],       // 正規化後逐列
+  shipments: [],     // 分組後
+  excluded: new Set(),   // 手動取消勾選的 key
+  fileName: '',
+};
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem('momoShip.'+k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('momoShip.'+k, JSON.stringify(v)); }catch(e){} },
+};
+const $ = s => document.querySelector(s);
+const el = (tag, attrs={}, ...kids) => { const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs)){ if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v);} for(const c of kids){ if(c==null) continue; e.append(c.nodeType? c : document.createTextNode(String(c))); } return e; };
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ==================== 讀檔 ==================== */
+function normHeader(s){
+  return String(s??'').trim().toLowerCase()
+    .replace(/[\s　_\-\/／（）()\[\]【】:：*＊]/g,'')
+    .replace(/[！-～]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xfee0));
+}
+function fmtDate(d){
+  if(d instanceof Date && !isNaN(d)){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}`; }
+  return d;
+}
+function cellToText(v, field){
+  if(v==null) return '';
+  if(v instanceof Date) return fmtDate(v);
+  if(typeof v==='number'){
+    if(field==='qty' || field==='cod') return v;
+    let s = Number.isInteger(v) ? String(v) : String(+v.toFixed(6));
+    if(field==='phone' && /^9\d{8}$/.test(s)) s='0'+s;  // 手機被 Excel 吃掉前導 0
+    return s;
+  }
+  let s = String(v).trim();
+  if(field==='phone' && /^9\d{8}$/.test(s)) s='0'+s;
+  if(field==='deadline' || field==='orderDate'){
+    const m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+    if(m) s = `${m[1]}/${m[2].padStart(2,'0')}/${m[3].padStart(2,'0')}`;
+  }
+  return s;
+}
+
+function loadWorkbook(data, type, name){
+  let wb;
+  try{ wb = XLSX.read(data, { type, cellDates:true, codepage:950, raw:true }); }
+  catch(e){ showFileInfo(`無法讀取檔案：${e.message}`, 'bad'); return; }
+  state.sheets = {};
+  for(const sn of wb.SheetNames){
+    const ws = wb.Sheets[sn];
+    const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null, blankrows:false });
+    if(rows.length) state.sheets[sn] = rows;
+  }
+  const names = Object.keys(state.sheets);
+  if(!names.length){ showFileInfo('檔案裡沒有資料。', 'bad'); return; }
+  state.fileName = name;
+  resetFilters();
+  // 挑選最像訂單清單的工作表：欄名命中最多者
+  let best = names[0], bestScore = -1;
+  for(const sn of names){ const { score } = detectHeader(state.sheets[sn]); if(score>bestScore){ bestScore=score; best=sn; } }
+  renderSheetPicker(names, best);
+  useSheet(best);
+}
+function renderSheetPicker(names, active){
+  const box = $('#sheetPick'); box.innerHTML='';
+  if(names.length<=1){ box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.append(el('span',{class:'muted small'},'工作表：'));
+  for(const n of names){
+    box.append(el('button',{type:'button', class:'btn sm'+(n===active?' primary':''), onclick:()=>{ renderSheetPicker(names, n); useSheet(n); }}, n));
+  }
+}
+function detectHeader(rows){
+  let bestIdx=0, best=-1;
+  const limit = Math.min(rows.length, 20);
+  for(let i=0;i<limit;i++){
+    const r = rows[i]||[]; let score=0, filled=0;
+    for(const c of r){ if(c==null||c==='') continue; filled++; const h=normHeader(c); if(h && FIELDS.some(f=>f.aliases.some(a=>h===normHeader(a)||h.includes(normHeader(a))))) score+=2; }
+    score += Math.min(filled, 10)*0.1;
+    if(score>best){ best=score; bestIdx=i; }
+  }
+  return { idx:bestIdx, score:best };
+}
+function useSheet(sn){
+  state.sheetName = sn;
+  state.rows = state.sheets[sn];
+  const { idx } = detectHeader(state.rows);
+  state.headerIdx = idx;
+  const hr = $('#headerRow'); hr.innerHTML='';
+  for(let i=0;i<Math.min(state.rows.length,20);i++){
+    const preview = (state.rows[i]||[]).filter(x=>x!=null&&x!=='').slice(0,4).join('、').slice(0,40);
+    hr.append(el('option',{value:i}, `第 ${i+1} 列：${preview}`));
+  }
+  hr.value = idx;
+  autoMap();
+  showFileInfo(`已載入「${state.fileName}」${Object.keys(state.sheets).length>1?`／工作表「${sn}」`:''}，共 ${state.rows.length - idx - 1} 列資料。`, 'ok');
+  setStep(2);
+  $('#secMap').classList.remove('hidden');
+  renderMapping();
+  rebuild();
+}
+function showFileInfo(msg, kind){ const b=$('#fileInfo'); b.innerHTML=''; b.append(el('div',{class:'alert '+(kind||'')}, msg)); }
+
+/* ==================== 欄位對應 ==================== */
+function headers(){ return (state.rows[state.headerIdx]||[]).map(h=>h==null?'':String(h).trim()); }
+function autoMap(){
+  const hs = headers().map(normHeader);
+  const sig = hs.filter(Boolean).join('|');
+  const saved = LS.get('mapping.'+sig, null);
+  if(saved){ state.mapping = saved; return; }
+  const cands = [];
+  FIELDS.forEach(f=>{
+    f.aliases.forEach((a, ai)=>{
+      const na = normHeader(a);
+      hs.forEach((h, ci)=>{
+        if(!h) return;
+        let s = 0;
+        if(h===na) s = 100;
+        else if(h.startsWith(na)) s = 60;
+        else if(h.includes(na)) s = 40;
+        if(!s) return;
+        s += (f.aliases.length - ai) * 0.5 + na.length * 0.2;  // 先列的別名、較長的別名優先
+        // 避免把「訂購人」欄位當成收件人
+        if(['receiver','phone','address'].includes(f.key) && /訂購|購買人|買家|會員/.test(h) && !/收件|收貨/.test(h)) s -= 80;
+        cands.push({ key:f.key, ci, s });
+      });
+    });
+  });
+  cands.sort((a,b)=>b.s-a.s);
+  const usedCol = new Set(), mapping = {};
+  for(const c of cands){ if(c.s<=0 || mapping[c.key]!=null || usedCol.has(c.ci)) continue; mapping[c.key]=c.ci; usedCol.add(c.ci); }
+  state.mapping = mapping;
+}
+function saveMapping(){ const sig = headers().map(normHeader).filter(Boolean).join('|'); LS.set('mapping.'+sig, state.mapping); }
+function renderMapping(){
+  const grid = $('#mapGrid'); grid.innerHTML='';
+  const hs = headers();
+  FIELDS.forEach(f=>{
+    const sel = el('select', { id:'map_'+f.key, onchange:(e)=>{ const v=e.target.value; if(v==='') delete state.mapping[f.key]; else state.mapping[f.key]=+v; saveMapping(); renderMapping(); rebuild(); } });
+    sel.append(el('option',{value:''},'（不使用）'));
+    hs.forEach((h,i)=>{ if(h) sel.append(el('option',{value:i}, `${h}`)); });
+    sel.value = state.mapping[f.key]!=null ? state.mapping[f.key] : '';
+    const wrap = el('div',{class:'field '+(state.mapping[f.key]!=null?'mapped':(f.required?'missing':''))},
+      el('label',{for:'map_'+f.key}, f.label, f.required? el('span',{class:'req'},' ＊'):null), sel);
+    grid.append(wrap);
+  });
+  const missing = FIELDS.filter(f=>f.required && state.mapping[f.key]==null);
+  const ma = $('#mapAlert'); ma.innerHTML='';
+  $('#mapBadge').textContent = `${Object.keys(state.mapping).length} / ${FIELDS.length} 欄已對應`;
+  if(missing.length){ ma.append(el('div',{class:'alert bad'}, `缺少必要欄位：${missing.map(m=>m.label).join('、')}。請在上方選單指定，或確認「標題列」是否選對。`)); }
+  else if(state.mapping.shipNo==null){ ma.append(el('div',{class:'alert warn'}, '未對應「出貨單號」，將改以「訂單編號」把品項併成同一張出貨單。')); }
+}
+
+/* ==================== 正規化與分組 ==================== */
+function rebuild(){
+  const missing = FIELDS.filter(f=>f.required && state.mapping[f.key]==null);
+  if(missing.length){ $('#secFilter').classList.add('hidden'); $('#secExport').classList.add('hidden'); updateExportBar(); return; }
+  const m = state.mapping;
+  const recs = [];
+  for(let i=state.headerIdx+1;i<state.rows.length;i++){
+    const r = state.rows[i]; if(!r) continue;
+    const rec = { _row:i+1 };
+    for(const f of FIELDS){ rec[f.key] = m[f.key]!=null ? cellToText(r[m[f.key]], f.key) : ''; }
+    if(!rec.orderNo && !rec.name) continue;         // 空列
+    const q = parseFloat(String(rec.qty).replace(/[^\d.\-]/g,''));
+    rec.qty = isNaN(q) ? 0 : q;
+    const cod = parseFloat(String(rec.cod).replace(/[^\d.\-]/g,'')); rec.cod = isNaN(cod)?0:cod;
+    if(rec.spec && !rec.name.includes(rec.spec)) rec.name = `${rec.name}-${rec.spec}`;
+    recs.push(rec);
+  }
+  state.records = recs;
+  // 分組
+  const groups = new Map();
+  recs.forEach((rec, order)=>{
+    const key = rec.shipNo || rec.orderNo || `row${rec._row}`;
+    if(!groups.has(key)) groups.set(key, { key, order, lines:[], orderNos:new Set(), status:new Set(), warnings:[] , ...pick(rec, ['shipNo','orderNo','trackNo','carrier','deadline','orderDate','receiver','phone','address','invoice','note','cod']) });
+    const g = groups.get(key);
+    g.lines.push(rec); g.orderNos.add(rec.orderNo); if(rec.status) g.status.add(rec.status);
+    for(const k of ['trackNo','carrier','deadline','receiver','phone','address','invoice','note']) if(!g[k] && rec[k]) g[k]=rec[k];
+    if(rec.cod && !g.cod) g.cod = rec.cod;
+  });
+  const exported = new Set(LS.get('exported', []));
+  state.shipments = [...groups.values()].map(g=>{
+    g.qty = g.lines.reduce((s,l)=>s+(l.qty||0),0);
+    g.statusText = [...g.status].join('、');
+    g.orderNo = [...g.orderNos].filter(Boolean).join('、') || g.orderNo;
+    g.wasExported = exported.has(g.key);
+    if(!g.receiver) g.warnings.push('無收件人');
+    if(g.lines.some(l=>!l.qty)) g.warnings.push('數量為 0');
+    if(m.address!=null && !g.address) g.warnings.push('無地址');
+    if(g.orderNos.size>1) g.warnings.push('一張出貨單含多筆訂單');
+    return g;
+  });
+  renderFilters();
+  applyFilters();
+  setStep(3);
+  $('#secFilter').classList.remove('hidden'); $('#secExport').classList.remove('hidden');
+}
+function pick(o, ks){ const r={}; ks.forEach(k=>r[k]=o[k]); return r; }
+
+/* ==================== 篩選 ==================== */
+const filterSel = { status:null, carrier:null }; // Set 或 null（未初始化）
+function renderFilters(){
+  const statusVals = countBy(state.shipments, s=>s.statusText||'（空白）');
+  const carrierVals = countBy(state.shipments, s=>s.carrier||'（空白）');
+  const hasStatus = state.mapping.status!=null && statusVals.size>0;
+  $('#statusFilterBox').classList.toggle('hidden', !hasStatus);
+  if(hasStatus){
+    // 新出現的狀態值：預設勾選，但「已出貨／取消／退貨…」等不需出貨的狀態預設不勾
+    filterSel.status = filterSel.status || new Set(); filterSel.statusKnown = filterSel.statusKnown || new Set();
+    for(const v of statusVals.keys()){ if(filterSel.statusKnown.has(v)) continue; filterSel.statusKnown.add(v); if(!STATUS_EXCLUDE.some(x=>v.includes(x))) filterSel.status.add(v); }
+    renderChips($('#statusChips'), statusVals, filterSel.status);
+  } else filterSel.status = null;
+  const hasCarrier = state.mapping.carrier!=null && carrierVals.size>1;
+  $('#carrierFilterBox').classList.toggle('hidden', !hasCarrier);
+  if(hasCarrier){
+    filterSel.carrier = filterSel.carrier || new Set(); filterSel.carrierKnown = filterSel.carrierKnown || new Set();
+    for(const v of carrierVals.keys()){ if(filterSel.carrierKnown.has(v)) continue; filterSel.carrierKnown.add(v); filterSel.carrier.add(v); }
+    renderChips($('#carrierChips'), carrierVals, filterSel.carrier);
+  } else filterSel.carrier = null;
+}
+function resetFilters(){ filterSel.status=null; filterSel.statusKnown=null; filterSel.carrier=null; filterSel.carrierKnown=null; state.excluded.clear(); $('#search').value=''; }
+function countBy(arr, fn){ const m=new Map(); arr.forEach(x=>{ const k=fn(x); m.set(k,(m.get(k)||0)+1); }); return m; }
+function renderChips(box, counts, sel){
+  box.innerHTML='';
+  [...counts.entries()].sort((a,b)=>b[1]-a[1]).forEach(([v,c])=>{
+    const cb = el('input',{type:'checkbox'}); cb.checked = sel.has(v);
+    const chip = el('label',{class:'chip'+(cb.checked?' on':'')}, cb, v, el('span',{class:'cnt'},`${c}`));
+    cb.addEventListener('change', ()=>{ if(cb.checked) sel.add(v); else sel.delete(v); chip.classList.toggle('on', cb.checked); applyFilters(); });
+    box.append(chip);
+  });
+}
+function passesFilter(s){
+  if(filterSel.status && !filterSel.status.has(s.statusText||'（空白）')) return false;
+  if(filterSel.carrier && !filterSel.carrier.has(s.carrier||'（空白）')) return false;
+  if($('#skipExported').checked && s.wasExported) return false;
+  if($('#onlyProblem').checked && !s.warnings.length) return false;
+  const q = $('#search').value.trim().toLowerCase();
+  if(q){
+    const hay = [s.key, s.orderNo, s.trackNo, s.receiver, s.phone, s.address, ...s.lines.map(l=>l.name+' '+l.sku+' '+l.vendorCode)].join(' ').toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  return true;
+}
+function selectedShipments(){
+  const list = state.shipments.filter(s=>passesFilter(s) && !state.excluded.has(s.key));
+  const sort = $('#setSort').value;
+  const cmp = { file:(a,b)=>a.order-b.order, deadline:(a,b)=>(a.deadline||'9').localeCompare(b.deadline||'9')||a.order-b.order, receiver:(a,b)=>(a.receiver||'').localeCompare(b.receiver||'','zh-Hant')||a.order-b.order, track:(a,b)=>(a.trackNo||'').localeCompare(b.trackNo||'')||a.order-b.order }[sort];
+  return list.sort(cmp);
+}
+function applyFilters(){
+  const visible = state.shipments.filter(passesFilter);
+  const body = $('#shipBody'); body.innerHTML='';
+  visible.forEach((s, i)=>{
+    const on = !state.excluded.has(s.key);
+    const cb = el('input',{type:'checkbox'}); cb.checked=on;
+    cb.addEventListener('click', e=>e.stopPropagation());
+    cb.addEventListener('change', ()=>{ if(cb.checked) state.excluded.delete(s.key); else state.excluded.add(s.key); tr.classList.toggle('off', !cb.checked); updateTiles(); });
+    const tags = [];
+    if(s.wasExported) tags.push(el('span',{class:'tag dup'},'已匯出過'));
+    s.warnings.forEach(w=>tags.push(el('span',{class:'tag warn'}, w)));
+    const tr = el('tr',{class:'ship'+(on?'':' off')},
+      el('td',{}, cb),
+      el('td',{class:'num'}, i+1),
+      el('td',{class:'num'}, s.shipNo||'—'),
+      el('td',{class:'num'}, s.orderNo),
+      el('td',{class:'num'}, s.trackNo||'—'),
+      el('td',{}, s.receiver||'—', ...tags),
+      el('td',{}, s.carrier||'—'),
+      el('td',{class:'num'}, s.deadline||'—'),
+      el('td',{class:'num'}, s.lines.length),
+      el('td',{class:'num'}, s.qty),
+      el('td',{}, s.statusText||'—'),
+    );
+    const detail = el('tr',{class:'lines hidden'}, el('td',{colspan:11}, linesTable(s)));
+    tr.addEventListener('click', ()=>detail.classList.toggle('hidden'));
+    body.append(tr, detail);
+  });
+  if(!visible.length) body.append(el('tr',{}, el('td',{colspan:11, class:'muted'}, '沒有符合篩選條件的出貨單。')));
+  $('#chkAll').checked = visible.length>0 && visible.every(s=>!state.excluded.has(s.key));
+  updateTiles();
+}
+function linesTable(s){
+  const t = el('table',{}, el('thead',{}, el('tr',{}, ...['序號','商品編碼','商品名稱','國際條碼','數量','商品原廠編號'].map(h=>el('th',{},h)))));
+  const tb = el('tbody');
+  s.lines.forEach((l,i)=> tb.append(el('tr',{}, el('td',{class:'num'}, String(i+1).padStart(3,'0')), el('td',{class:'num'}, l.sku||''), el('td',{class:'wrap'}, l.name||''), el('td',{class:'num'}, l.barcode||''), el('td',{class:'num'}, l.qty), el('td',{class:'num'}, l.vendorCode||''))));
+  t.append(tb);
+  const extra = [s.phone && `電話：${s.phone}`, s.address && `地址：${s.address}`, s.note && `備註：${s.note}`, s.invoice && `發票：${s.invoice}`].filter(Boolean).join('　');
+  return el('div',{}, extra? el('p',{class:'small muted', style:'margin:8px 0'}, extra):null, t);
+}
+function updateTiles(){
+  const sel = selectedShipments();
+  const orders = new Set(); const skus = new Set(); let qty=0;
+  sel.forEach(s=>{ s.orderNos.forEach(o=>orders.add(o)); s.lines.forEach(l=>{ skus.add(l.sku||l.name); qty+=l.qty||0; }); });
+  $('#tShips').textContent = sel.length; $('#tOrders').textContent = orders.size; $('#tQty').textContent = qty; $('#tSkus').textContent = skus.size;
+  $('#tExcluded').textContent = state.shipments.length - sel.length;
+  const fa = $('#filterAlert'); fa.innerHTML='';
+  const dup = state.shipments.filter(s=>s.wasExported).length;
+  if(dup) fa.append(el('div',{class:'alert warn'}, `有 ${dup} 張出貨單先前已匯出過（依出貨單號比對）。${$('#skipExported').checked?'目前已自動排除，取消勾選「排除先前已匯出過的出貨單」可重新匯出。':'目前仍包含在內。'}`));
+  updateExportBar(sel);
+  if(sel.length) setStep(4);
+}
+function updateExportBar(sel){
+  sel = sel || (state.shipments.length ? selectedShipments() : []);
+  $('#exportSummary').textContent = sel.length ? `準備匯出 ${sel.length} 張出貨單，共 ${sel.reduce((a,s)=>a+s.qty,0)} 件商品` : '尚未有可匯出的出貨單';
+  $('#btnExport').disabled = !sel.length; $('#btnPrint').disabled = !sel.length;
+}
+
+/* ==================== 匯出 Excel ==================== */
+const FONT = '微軟正黑體';
+const thin = { style:'thin', color:{argb:'FF000000'} };
+const border = { top:thin, left:thin, bottom:thin, right:thin };
+const f = (extra={}) => ({ name:FONT, size:10, ...extra });
+function settings(){
+  return {
+    supplier: $('#setSupplier').value.trim(),
+    title: $('#setTitle').value.trim() || '裝箱明細',
+    date: ($('#setDate').value || todayISO()).replace(/-/g,'/'),
+    layout: $('#setLayout').value,
+    notice: $('#setNotice').checked,
+    noticeText: $('#setNoticeText').value,
+    pick: $('#setPick').checked,
+    raw: $('#setRaw').checked,
+    sort: $('#setSort').value,
+  };
+}
+function todayISO(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+
+async function exportExcel(){
+  const sel = selectedShipments(); if(!sel.length) return;
+  const cfg = settings();
+  const btn = $('#btnExport'); btn.disabled=true; const old=btn.textContent; btn.textContent='產生中…';
+  try{
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'MOMO 出貨單產生器'; wb.created = new Date();
+    buildSummarySheet(wb, sel, cfg);
+    if(cfg.pick) buildPickSheet(wb, sel, cfg);
+    if(cfg.layout==='multi'){
+      sel.forEach((s,i)=>{ const ws = wb.addWorksheet(sheetName(`${String(i+1).padStart(3,'0')}_${s.receiver||s.key}`), { pageSetup:pageSetup() }); setupShipCols(ws); writeShipment(ws, s, cfg, 1, i+1, sel.length); });
+    } else {
+      const ws = wb.addWorksheet('出貨單', { pageSetup:pageSetup() });
+      setupShipCols(ws);
+      let row = 1;
+      sel.forEach((s,i)=>{ row = writeShipment(ws, s, cfg, row, i+1, sel.length); if(i<sel.length-1){ ws.getRow(row-1).addPageBreak(); } });
+    }
+    if(cfg.raw) buildRawSheet(wb, sel, cfg);
+    const buf = await wb.xlsx.writeBuffer();
+    const stamp = cfg.date.replace(/\//g,'');
+    downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), `momo出貨單_${stamp}_${sel.length}張.xlsx`);
+    // 記錄已匯出（本次載入的資料不受影響，下次匯入同一批訂單時才會標示並排除）
+    const exported = new Set(LS.get('exported', [])); sel.forEach(s=>exported.add(s.key)); LS.set('exported', [...exported].slice(-5000));
+    $('#filterAlert').prepend(el('div',{class:'alert ok'}, `已匯出 ${sel.length} 張出貨單。這些出貨單號已記錄為「已匯出過」，下次匯入同一批訂單時會自動排除，避免重複出貨。`));
+  }catch(e){ console.error(e); alert('匯出失敗：'+e.message); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+function pageSetup(){ return { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0, horizontalCentered:true, margins:{ left:0.5, right:0.5, top:0.6, bottom:0.6, header:0.3, footer:0.3 } }; }
+function sheetName(s){ return s.replace(/[\\\/\?\*\[\]:]/g,'_').slice(0,31) || '出貨單'; }
+function downloadBlob(blob, name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000); }
+
+// 出貨單欄寬：A序號 B商品編碼 C-D商品名稱 E國際條碼 F數量 G原廠編號 H檢查
+function setupShipCols(ws){ ws.columns = [{width:6},{width:16},{width:24},{width:24},{width:16},{width:7},{width:16},{width:6}]; }
+function writeShipment(ws, s, cfg, r, idx, total){
+  const start = r;
+  const put = (ref, val, opt={}) => { const c = ws.getCell(ref); c.value = val; c.font = f(opt.font||{}); c.alignment = { vertical:'middle', wrapText:!!opt.wrap, horizontal:opt.h||'left' }; if(opt.border) c.border = border; if(opt.fill) c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:opt.fill} }; return c; };
+  ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `印單日期：${cfg.date}`, { h:'right', font:{size:9} }); r++;
+  ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, cfg.title, { h:'center', font:{size:18, bold:false} }); ws.getRow(r).height = 30; r++;
+  r++;
+  const kv = (left, right) => { ws.mergeCells(`A${r}:D${r}`); put(`A${r}`, left); ws.mergeCells(`E${r}:H${r}`); put(`E${r}`, right); r++; };
+  kv(`訂單編號：${s.orderNo||''}`, s.carrier ? `配送方式：${s.carrier}` : '');
+  kv(`出貨單號：${s.shipNo||''}`, `最晚出貨日：${s.deadline||''}`);
+  kv(`配送編號：${s.trackNo||''}`, s.phone ? `電　　話：${s.phone}` : (s.orderDate?`訂單日期：${s.orderDate}`:''));
+  kv(`收 件 人：${s.receiver||''}`, s.address ? `地　　址：${s.address}` : '');
+  if(s.address && s.address.length>22){ ws.getRow(r-1).height = 30; ws.getCell(`E${r-1}`).alignment = { vertical:'middle', wrapText:true }; }
+  r++;
+  // 表頭
+  const hdr = ['序號','商品編碼','商品名稱',null,'國際條碼','數量','商品原廠編號','檢查'];
+  ws.mergeCells(`C${r}:D${r}`);
+  hdr.forEach((h,i)=>{ if(h==null) return; const col = String.fromCharCode(65+i); put(`${col}${r}`, h, { h: (i===0||i===5||i===7)?'center':'left', border:true, fill:'FFF2F2F2', font:{bold:true} }); });
+  ws.getCell(`D${r}`).border = border; ws.getCell(`D${r}`).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
+  r++;
+  s.lines.forEach((l,i)=>{
+    ws.mergeCells(`C${r}:D${r}`);
+    put(`A${r}`, String(i+1).padStart(3,'0'), { h:'center', border:true });
+    put(`B${r}`, l.sku||'', { border:true });
+    put(`C${r}`, l.name||'', { border:true, wrap:true }); ws.getCell(`D${r}`).border = border;
+    put(`E${r}`, l.barcode||'', { border:true });
+    put(`F${r}`, l.qty, { h:'center', border:true, font:{bold:true} });
+    put(`G${r}`, l.vendorCode||'', { border:true });
+    put(`H${r}`, '□', { h:'center', border:true });
+    const lines = Math.ceil((l.name||'').length / 22);
+    ws.getRow(r).height = Math.max(18, 15*lines + 4);
+    r++;
+  });
+  // 合計
+  put(`E${r}`, '合計', { h:'right', font:{bold:true} }); put(`F${r}`, s.qty, { h:'center', font:{bold:true, size:12} }); r++;
+  if(s.cod){ ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `代收款：${s.cod}`, { font:{bold:true} }); r++; }
+  if(s.note){ ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `備註：${s.note}`, { wrap:true }); ws.getRow(r).height = Math.max(18, 15*Math.ceil(s.note.length/60)+4); r++; }
+  if(cfg.notice && cfg.noticeText.trim()){
+    r++;
+    ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, '注意事項', { font:{size:9, bold:true} }); r++;
+    ws.mergeCells(`A${r}:H${r}`);
+    put(`A${r}`, cfg.noticeText, { wrap:true, font:{size:7.5} });
+    ws.getCell(`A${r}`).alignment = { vertical:'top', wrapText:true };
+    const n = cfg.noticeText.split('\n').reduce((a,line)=>a+Math.max(1, Math.ceil(line.length/78)), 0);
+    ws.getRow(r).height = n*11 + 6; r++;
+  }
+  ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `第 ${idx} / ${total} 張`, { h:'right', font:{size:8, color:{argb:'FF888888'}} }); r++;
+  return r; // 下一張起始列
+}
+function buildSummarySheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('出貨總表', { pageSetup:{ ...pageSetup(), orientation:'landscape' }, views:[{ state:'frozen', ySplit:3 }] });
+  ws.columns = [{width:5},{width:15},{width:17},{width:16},{width:10},{width:14},{width:36},{width:6},{width:8},{width:9},{width:12},{width:26}];
+  ws.mergeCells('A1:L1'); const t=ws.getCell('A1'); t.value = `${cfg.supplier ? cfg.supplier+'　' : ''}momo 出貨總表`; t.font = f({size:16}); t.alignment={horizontal:'center', vertical:'middle'}; ws.getRow(1).height=28;
+  ws.mergeCells('A2:F2'); ws.getCell('A2').value = `列印日期：${cfg.date}`; ws.getCell('A2').font=f();
+  ws.mergeCells('G2:L2'); ws.getCell('G2').value = `出貨單 ${sel.length} 張／商品 ${sel.reduce((a,s)=>a+s.qty,0)} 件`; ws.getCell('G2').font=f(); ws.getCell('G2').alignment={horizontal:'right'};
+  const hdr = ['NO','宅配單號','訂單編號','出貨單號','收件人','電話','地址','品項','數量','代收款','最晚出貨日','商品摘要'];
+  ws.getRow(3).values = hdr;
+  ws.getRow(3).eachCell(c=>{ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:'center', vertical:'middle', wrapText:true}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}}; });
+  sel.forEach((s,i)=>{
+    const row = ws.getRow(4+i);
+    row.values = [i+1, s.trackNo||'', s.orderNo, s.shipNo||'', s.receiver||'', s.phone||'', s.address||'', s.lines.length, s.qty, s.cod||0, s.deadline||'', s.lines.map(l=>`${l.name}×${l.qty}`).join('；')];
+    row.eachCell({includeEmpty:true}, (c,col)=>{ c.font=f(); c.border=border; c.alignment={vertical:'middle', wrapText: col===7||col===12, horizontal: [1,8,9,10].includes(col)?'center':'left'}; });
+  });
+  const tr = ws.getRow(4+sel.length);
+  tr.values = ['','','','','','','合計', sel.reduce((a,s)=>a+s.lines.length,0), sel.reduce((a,s)=>a+s.qty,0), sel.reduce((a,s)=>a+(s.cod||0),0)];
+  tr.eachCell({includeEmpty:true}, (c,col)=>{ if(col>=7) { c.font=f({bold:true}); c.border=border; c.alignment={horizontal: col===7?'right':'center'}; } });
+  ws.autoFilter = { from:'A3', to:`L${3+sel.length}` };
+}
+function buildPickSheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('揀貨彙總', { pageSetup:pageSetup() });
+  ws.columns = [{width:5},{width:16},{width:50},{width:16},{width:16},{width:8},{width:10}];
+  ws.mergeCells('A1:G1'); ws.getCell('A1').value = `揀貨彙總　${cfg.date}`; ws.getCell('A1').font=f({size:14}); ws.getCell('A1').alignment={horizontal:'center'};
+  const hdr = ['NO','商品編碼','商品名稱','商品原廠編號','國際條碼','總數量','出貨單數'];
+  ws.getRow(2).values = hdr; ws.getRow(2).eachCell(c=>{ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:'center'}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}}; });
+  const agg = new Map();
+  sel.forEach(s=>s.lines.forEach(l=>{ const k = `${l.sku}|${l.name}|${l.vendorCode}`; if(!agg.has(k)) agg.set(k,{...l, qty:0, ships:new Set()}); const a=agg.get(k); a.qty+=l.qty||0; a.ships.add(s.key); }));
+  [...agg.values()].sort((a,b)=>b.qty-a.qty).forEach((a,i)=>{
+    const row = ws.getRow(3+i); row.values=[i+1, a.sku||'', a.name||'', a.vendorCode||'', a.barcode||'', a.qty, a.ships.size];
+    row.eachCell({includeEmpty:true},(c,col)=>{ c.font=f(); c.border=border; c.alignment={vertical:'middle', wrapText:col===3, horizontal:[1,6,7].includes(col)?'center':'left'}; });
+  });
+  const tr = ws.getRow(3+agg.size); tr.values=['','','','','合計', [...agg.values()].reduce((s,a)=>s+a.qty,0), sel.length];
+  tr.eachCell({includeEmpty:true},(c,col)=>{ if(col>=5){ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:col===5?'right':'center'}; } });
+}
+function buildRawSheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('原始明細', { views:[{ state:'frozen', ySplit:1 }] });
+  const cols = ['出貨單序','出貨單號','訂單編號','配送編號','配送方式','最晚出貨日','訂單日期','狀態','收件人','電話','地址','商品編碼','商品名稱','國際條碼','商品原廠編號','數量','代收款','發票號碼','備註','來源列'];
+  ws.columns = cols.map(c=>({ header:c, width: c==='商品名稱'?44 : c==='地址'?32 : 14 }));
+  ws.getRow(1).eachCell(c=>{ c.font=f({bold:true}); c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}}; });
+  sel.forEach((s,i)=>s.lines.forEach(l=>{ ws.addRow([i+1, s.shipNo||'', l.orderNo, s.trackNo||'', s.carrier||'', s.deadline||'', l.orderDate||'', l.status||'', s.receiver||'', s.phone||'', s.address||'', l.sku||'', l.name||'', l.barcode||'', l.vendorCode||'', l.qty, l.cod||0, l.invoice||'', l.note||'', l._row]).eachCell({includeEmpty:true}, c=>c.font=f()); }));
+  ws.autoFilter = { from:'A1', to:`T${1+sel.reduce((a,s)=>a+s.lines.length,0)}` };
+}
+
+/* ==================== 瀏覽器列印 ==================== */
+function printShipments(){
+  const sel = selectedShipments(); if(!sel.length) return;
+  const cfg = settings();
+  const area = $('#printArea'); area.innerHTML='';
+  sel.forEach((s,i)=>{
+    const rows = s.lines.map((l,j)=>`<tr><td class="c num">${String(j+1).padStart(3,'0')}</td><td class="num">${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="num">${esc(l.barcode)}</td><td class="c num">${esc(l.qty)}</td><td class="num">${esc(l.vendorCode)}</td><td class="c"><span class="box"></span></td></tr>`).join('');
+    area.insertAdjacentHTML('beforeend', `<section class="sheet">
+      <div class="pdate">印單日期：${esc(cfg.date)}</div>
+      <h1>${esc(cfg.title)}</h1>
+      <div class="meta">
+        <div>訂單編號：${esc(s.orderNo)}</div><div>${s.carrier?`配送方式：${esc(s.carrier)}`:''}</div>
+        <div>出貨單號：${esc(s.shipNo)}</div><div>最晚出貨日：${esc(s.deadline)}</div>
+        <div>配送編號：${esc(s.trackNo)}</div><div>${s.phone?`電　　話：${esc(s.phone)}`:''}</div>
+        <div>收 件 人：${esc(s.receiver)}</div><div>${s.address?`地　　址：${esc(s.address)}`:''}</div>
+      </div>
+      <table><thead><tr><th class="c">序號</th><th>商品編碼</th><th>商品名稱</th><th>國際條碼</th><th class="c">數量</th><th>商品原廠編號</th><th class="c">檢查</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="total">${esc(s.qty)}</div>
+      ${s.cod?`<div class="note">代收款：${esc(s.cod)}</div>`:''}
+      ${s.note?`<div class="note">備註：${esc(s.note)}</div>`:''}
+      ${cfg.notice && cfg.noticeText.trim() ? `<div class="notice"><b>注意事項</b>\n${esc(cfg.noticeText)}</div>` : ''}
+      <div class="pdate" style="margin-top:8px">第 ${i+1} / ${sel.length} 張</div>
+    </section>`);
+  });
+  window.print();
+}
+
+/* ==================== UI 綁定 ==================== */
+function setStep(n){ [1,2,3,4].forEach(i=>{ const s=$('#step'+i); s.classList.toggle('active', i===n); s.classList.toggle('done', i<n); }); }
+function readFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  const isText = /\.(csv|txt|tsv|htm|html)$/i.test(file.name);
+  reader.onload = e => loadWorkbook(e.target.result, isText?'string':'array', file.name);
+  if(isText){
+    // 先試 UTF-8，若含亂碼再以 Big5 重讀
+    reader.onload = e => { const s = e.target.result; if(/�/.test(s)){ const r2=new FileReader(); r2.onload=ev=>loadWorkbook(ev.target.result,'array',file.name); r2.readAsArrayBuffer(file); } else loadWorkbook(s,'string',file.name); };
+    reader.readAsText(file, 'utf-8');
+  } else reader.readAsArrayBuffer(file);
+}
+const drop = $('#drop');
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); readFile(e.dataTransfer.files[0]); });
+$('#file').addEventListener('change', e=>readFile(e.target.files[0]));
+$('#btnPaste').addEventListener('click', ()=>{ const t=$('#pasteBox').value; if(!t.trim()) return; loadWorkbook(t, 'string', '貼上的表格'); });
+$('#btnLoadSample').addEventListener('click', async ()=>{
+  try{ const res = await fetch('sample/momo訂單匯出範例.xlsx'); if(!res.ok) throw new Error(res.status); loadWorkbook(await res.arrayBuffer(), 'array', 'momo訂單匯出範例.xlsx'); }
+  catch(e){ showFileInfo('無法自動載入範例（以 file:// 開啟時瀏覽器會阻擋）。請改點「下載範例檔」後再拖進來。', 'warn'); }
+});
+$('#headerRow').addEventListener('change', e=>{ state.headerIdx=+e.target.value; autoMap(); renderMapping(); rebuild(); });
+['#search','#skipExported','#onlyProblem'].forEach(s=>$(s).addEventListener('input', applyFilters));
+$('#setSort').addEventListener('change', applyFilters);
+$('#btnAllOn').addEventListener('click', ()=>{ state.excluded.clear(); applyFilters(); });
+$('#btnAllOff').addEventListener('click', ()=>{ state.shipments.filter(passesFilter).forEach(s=>state.excluded.add(s.key)); applyFilters(); });
+$('#chkAll').addEventListener('change', e=>{ const vis=state.shipments.filter(passesFilter); vis.forEach(s=>{ if(e.target.checked) state.excluded.delete(s.key); else state.excluded.add(s.key); }); applyFilters(); });
+$('#btnExport').addEventListener('click', exportExcel);
+$('#btnPrint').addEventListener('click', printShipments);
+// 設定持久化
+$('#setDate').value = todayISO();
+$('#setNoticeText').value = LS.get('noticeText', DEFAULT_NOTICE);
+$('#setSupplier').value = LS.get('supplier', '');
+$('#setTitle').value = LS.get('title', '裝箱明細');
+$('#setLayout').value = LS.get('layout', 'single');
+$('#setNotice').checked = LS.get('notice', true);
+$('#setPick').checked = LS.get('pick', true);
+$('#setRaw').checked = LS.get('raw', true);
+$('#setSupplier').addEventListener('input', e=>LS.set('supplier', e.target.value));
+$('#setTitle').addEventListener('input', e=>LS.set('title', e.target.value));
+$('#setLayout').addEventListener('change', e=>LS.set('layout', e.target.value));
+$('#setNotice').addEventListener('change', e=>LS.set('notice', e.target.checked));
+$('#setPick').addEventListener('change', e=>LS.set('pick', e.target.checked));
+$('#setRaw').addEventListener('change', e=>LS.set('raw', e.target.checked));
+$('#setNoticeText').addEventListener('input', e=>LS.set('noticeText', e.target.value));
+</script>
+</body>
+</html>
