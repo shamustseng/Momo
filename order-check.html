@@ -260,7 +260,7 @@
 
   <section class="card" id="drive">
     <h2><span class="step-no">1</span>從 Google Drive 讀取當天的兩個資料夾</h2>
-    <p class="sub">在 Drive 的「出貨記錄」底下，依日期找到訂單與出貨資料夾（例如 <span class="num">0908 訂單</span>／<span class="num">0908 出貨</span>，或 <span class="num">20260908</span> 底下的「訂單」「出貨」），把檔案讀進下面兩區。第一次會跳 Google 登入並要求唯讀權限。不想用 Drive 的話，直接跳到下面手動拖資料夾。</p>
+    <p class="sub">在 Drive 的「出貨記錄」底下，依日期找到訂單與出貨資料夾（例如 <span class="num">0908 訂單</span>／<span class="num">0908 出貨</span>，或 <span class="num">20260908</span> 底下的「訂單」「出貨」），把檔案讀進下面兩區。<span data-drive-mode="gis">第一次會跳 Google 登入並要求唯讀權限。</span><span data-drive-mode="mcp" class="hide">在 claude.ai 上開這頁時，用的是你在 claude.ai 連好的 Google Drive 連接器，第一次會問你是否允許這個頁面使用它。</span>不想用 Drive 的話，直接跳到下面手動拖資料夾。</p>
     <div class="card-body">
       <div class="field-grid">
         <div class="field">
@@ -272,12 +272,12 @@
           <label for="driveRoot">Drive 根資料夾名稱</label>
           <input type="text" id="driveRoot" value="出貨記錄">
         </div>
-        <div class="field">
+        <div class="field" data-drive-mode="gis">
           <label for="driveHint">Google 帳號（選填）</label>
           <input type="text" id="driveHint" placeholder="name@company.com" autocomplete="off">
           <span class="hint">填了登入時會預選這個帳號</span>
         </div>
-        <div class="field">
+        <div class="field" data-drive-mode="gis">
           <label for="driveClientId">Google OAuth 用戶端 ID</label>
           <input type="text" id="driveClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off">
           <span class="hint">一次性設定，做法見 README「連 Google Drive」。存在這台電腦</span>
@@ -285,7 +285,7 @@
       </div>
       <div class="btn-row">
         <button class="btn primary" id="driveBtn">連線 Google Drive 並讀取</button>
-        <button class="btn ghost" id="driveForget">登出 Google</button>
+        <button class="btn ghost" id="driveForget" data-drive-mode="gis">登出 Google</button>
       </div>
       <div id="driveMsg" class="alert info hide"></div>
       <p id="driveEnv" class="note hide"></p>
@@ -2211,7 +2211,8 @@ function driveEnvCheck(){
   if (location.protocol === 'file:') {
     msg = '目前是從本機檔案開啟。Google 登入不能在 file:// 使用，請把這個工具放到 https 網址（例如 GitHub Pages）再用這顆按鈕；手動拖資料夾不受影響。';
   } else if (window.claude && typeof window.claude.use === 'function') {
-    msg = '目前是 claude.ai 預覽環境，不允許連到 Google。請用部署後的 https 網址；手動拖資料夾不受影響。';
+    /* 線上版：等 claude.use('mcp') 回來再決定是連接器模式還是沒得用 */
+    msg = '正在連接 claude.ai 的 Google Drive 連接器…';
   }
   if (msg && DRIVE_API === 'https://www.googleapis.com') { el.textContent = msg; el.classList.remove('hide'); $('#driveBtn').disabled = true; }
 }
@@ -2292,22 +2293,135 @@ function driveDownload(f){
   }
   return req.then(function(r){ return r.arrayBuffer(); }).then(function(buf){ return new File([buf], name, { type: f.mimeType || '' }); });
 }
+/* 兩種讀 Drive 的方式，同一條流程：
+   gis：頁面自己向 Google 要權杖、打 Drive API（GitHub Pages、任何 https 網址）。
+   mcp：在 claude.ai 上開這頁時，透過看頁面的人在 claude.ai 連好的 Google Drive 連接器讀，
+        用的是他自己的授權，頁面拿不到權杖，也不用設 OAuth 用戶端。 */
+var GIS_BACKEND = {
+  roots: function(name){ return driveList('name = ' + dq(name) + ' and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false'); },
+  folders: function(pid){ return driveList(dq(pid) + ' in parents and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false'); },
+  files: function(pid){ return driveList(dq(pid) + ' in parents and mimeType != ' + dq(DRIVE_FOLDER) + ' and trashed = false'); },
+  download: driveDownload
+};
+var DRIVE_SERVER = 'Google Drive', mcpNs = null;
+function mcpErrorText(err){
+  var code = err && err.code, msg = err && err.message ? err.message : '';
+  var m = {
+    needs_reauth: 'Google Drive 連接器的授權已過期。請到 claude.ai 設定 → 連接器（Connectors）重新連接 Google Drive，再按一次。',
+    server_not_connected: '你的 claude.ai 帳號還沒加入 Google Drive 連接器。請到 claude.ai 設定 → 連接器（Connectors）加入 Google Drive，然後重新整理這頁。',
+    selection_required: '你有不只一個 Google Drive 連接器。請在 claude.ai 的提示裡選一個，再按一次。',
+    not_granted: '你沒有允許這個頁面使用 Google Drive 連接器。重新整理後，在提示裡選擇允許。',
+    not_in_manifest: '這個頁面的發佈設定沒有包含所需的 Google Drive 功能，請通知開發者重新發佈。',
+    blocked_by_policy: '公司的 claude.ai 政策不允許這個頁面讀取 Google Drive。手動拖資料夾不受影響。',
+    approval_required: '公司的 claude.ai 政策要求每次讀取都逐筆核准，頁面內目前做不到。請改用手動拖資料夾。',
+    server_unavailable: 'Google Drive 暫時連不上（已重試一次）。請稍等再按一次。',
+    tool_error: 'Google Drive 回報錯誤：' + (msg || '未知原因'),
+    cancelled: '讀取被取消了。',
+    capability_disabled: '這個環境目前無法使用連接器。請改用手動拖資料夾。'
+  };
+  return m[code] || ('讀取 Google Drive 失敗' + (msg ? '：' + msg : '') + (code ? '（' + code + '）' : '') + '。');
+}
+function mcpCall(tool, input, retried){
+  return mcpNs.callTool(DRIVE_SERVER, tool, input).then(function(r){
+    var p = r && r.payload;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) {} }
+    if ((p == null || typeof p !== 'object') && r && r.content && r.content[0] && r.content[0].text) {
+      try { p = JSON.parse(r.content[0].text); } catch (e2) {}
+    }
+    return (p && typeof p === 'object') ? p : {};
+  }).catch(function(err){
+    /* 只有標了可重試的暫時性錯誤才自動重來，而且只重來一次（這裡全是讀取） */
+    if (!retried && err && err.retryable) {
+      var wait = Math.min(60000, (err.retryAfterMs || 800) + Math.random() * 600);
+      return new Promise(function(res){ setTimeout(res, wait); }).then(function(){ return mcpCall(tool, input, true); });
+    }
+    var e = new Error(mcpErrorText(err)); e.code = err && err.code; throw e;
+  });
+}
+/* 連接器的搜尋語法跟 Drive API 不同：title / parentId / mimeType，回傳的檔名欄位叫 title */
+function mcpSearch(query){
+  var files = [], seen = {}, token = null, pages = 0;
+  function page(){
+    var inp = { query: query, pageSize: 100, excludeContentSnippets: true };
+    if (token) inp.pageToken = token;
+    return mcpCall('search_files', inp).then(function(j){
+      /* 連接器就算結果只有幾筆也會給 nextPageToken，下一頁才是空的；只收沒看過的 id，沒新東西就停 */
+      var fresh = 0;
+      (j.files || []).forEach(function(f){
+        if (!f || !f.id || seen[f.id]) return;
+        seen[f.id] = 1; fresh++;
+        files.push({ id: f.id, name: f.title || f.name || '', mimeType: f.mimeType || '', size: f.fileSize });
+      });
+      token = j.nextPageToken || null;
+      pages++;
+      return (token && fresh && pages < 20) ? page() : files;
+    });
+  }
+  return page();
+}
+function base64ToBytes(b64){
+  var bin = atob(String(b64 || '').replace(/\s+/g, '')), out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function mcpDownload(f){
+  var name = f.name, inp = { fileId: f.id };
+  if (/^application\/vnd\.google-apps\./.test(f.mimeType)) {
+    var exp = f.mimeType === 'application/vnd.google-apps.spreadsheet' ? ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx']
+            : f.mimeType === 'application/vnd.google-apps.document' ? ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.docx'] : null;
+    if (!exp) return Promise.resolve(null);
+    inp.exportMimeType = exp[0];
+    if (!/\.[a-z0-9]+$/i.test(name)) name += exp[1];
+  }
+  return mcpCall('download_file_content', inp).then(function(j){
+    if (!j.content) throw new Error('「' + name + '」下載回來是空的。');
+    return new File([base64ToBytes(j.content)], name, { type: j.mimeType || f.mimeType || '' });
+  });
+}
+var MCP_BACKEND = {
+  roots: function(name){ return mcpSearch('title = ' + dq(name) + ' and mimeType = ' + dq(DRIVE_FOLDER)); },
+  folders: function(pid){ return mcpSearch('parentId = ' + dq(pid) + ' and mimeType = ' + dq(DRIVE_FOLDER)); },
+  files: function(pid){ return mcpSearch('parentId = ' + dq(pid)).then(function(fs){ return fs.filter(function(f){ return f.mimeType !== DRIVE_FOLDER; }); }); },
+  download: mcpDownload
+};
+function setDriveMode(mode){
+  $$('[data-drive-mode]').forEach(function(el){ el.classList.toggle('hide', el.getAttribute('data-drive-mode') !== mode); });
+  var env = $('#driveEnv');
+  if (mode === 'mcp') {
+    env.textContent = '透過 claude.ai 的 Google Drive 連接器讀取，用的是你自己在 claude.ai 的 Google 授權。這個頁面拿不到任何密碼或權杖。';
+    env.classList.remove('hide');
+    $('#driveBtn').disabled = false;
+    $('#driveBtn').textContent = '從我的 Google Drive 讀取';
+  }
+}
+if (window.claude && typeof window.claude.use === 'function') {
+  try {
+    window.claude.use('mcp').then(function(m){
+      if (m) { mcpNs = m; setDriveMode('mcp'); return; }
+      var env = $('#driveEnv');
+      env.textContent = '這個 claude.ai 頁面拿不到 Google Drive 連接器（帳號沒有加入 Google Drive 連接器，或沒有允許這個頁面使用）。請到 claude.ai 設定 → 連接器加入 Google Drive 後重新整理；手動拖資料夾不受影響。';
+      env.classList.remove('hide');
+    }, function(){});
+  } catch (e) {}
+}
+
 function driveRun(){
   var clientId = trim($('#driveClientId').value), root = trim($('#driveRoot').value) || '出貨記錄';
   var hint = trim($('#driveHint').value), date = $('#driveDate').value;
-  if (!clientId && DRIVE_API === 'https://www.googleapis.com') { driveMsg('請先填 Google OAuth 用戶端 ID。做法見 README「連 Google Drive」。', 'err'); return; }
+  var api = mcpNs ? MCP_BACKEND : GIS_BACKEND;
+  if (!mcpNs && !clientId && DRIVE_API === 'https://www.googleapis.com') { driveMsg('請先填 Google OAuth 用戶端 ID。做法見 README「連 Google Drive」。', 'err'); return; }
   if (!date) { driveMsg('請先選日期。', 'err'); return; }
   db.settings.driveClientId = clientId; db.settings.driveRoot = root; db.settings.driveHint = hint; saveDB();
   var keys = dateKeys(date), btn = $('#driveBtn');
   btn.disabled = true;
-  driveMsg('連線 Google…');
-  (driveToken ? Promise.resolve(driveToken) : driveGetToken(clientId, hint)).then(function(tok){
-    driveToken = tok;
+  driveMsg(mcpNs ? '透過 claude.ai 連接器連到 Google Drive…' : '連線 Google…');
+  (mcpNs ? Promise.resolve(null) : (driveToken ? Promise.resolve(driveToken) : driveGetToken(clientId, hint))).then(function(tok){
+    if (tok) driveToken = tok;
     driveMsg('在 Drive 找「' + root + '」…');
-    return driveList('name = ' + dq(root) + ' and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false');
+    return api.roots(root);
   }).then(function(roots){
     if (!roots.length) throw new Error('Drive 裡找不到名為「' + root + '」的資料夾。請確認名稱，或這個帳號看得到它。');
-    return driveList(dq(roots[0].id) + ' in parents and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false');
+    return api.folders(roots[0].id);
   }).then(function(children){
     var found = { order: null, ship: null };
     var dated = children.filter(function(c){ return folderMatchesDate(c.name, keys); });
@@ -2316,7 +2430,7 @@ function driveRun(){
     var step = Promise.resolve();
     if ((!found.order || !found.ship) && plain.length) {
       /* 另一種擺法：20260908／訂單、20260908／出貨 */
-      step = driveList(dq(plain[0].id) + ' in parents and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false').then(function(subs){
+      step = api.folders(plain[0].id).then(function(subs){
         subs.forEach(function(c){ var r = roleOf(c.name); if (r && !found[r]) found[r] = c; });
       });
     }
@@ -2330,9 +2444,13 @@ function driveRun(){
   }).then(function(found){
     return Promise.all(['order', 'ship'].filter(function(k){ return found[k]; }).map(function(side){
       var f = found[side];
-      return driveList(dq(f.id) + ' in parents and mimeType != ' + dq(DRIVE_FOLDER) + ' and trashed = false').then(function(files){
+      return api.files(f.id).then(function(files){
         driveMsg('下載「' + f.name + '」' + files.length + ' 個檔案…');
-        return Promise.all(files.map(driveDownload)).then(function(fs){ return { side: side, name: f.name, files: fs.filter(Boolean) }; });
+        /* 一次最多三個並行，連接器那邊有速率限制 */
+        var out = [], i = 0;
+        function lane(){ if (i >= files.length) return Promise.resolve(); var k = i++; return api.download(files[k]).then(function(fl){ out[k] = fl; return lane(); }); }
+        var lanes = []; for (var c = 0; c < Math.min(3, files.length); c++) lanes.push(lane());
+        return Promise.all(lanes).then(function(){ return { side: side, name: f.name, files: out.filter(Boolean) }; });
       });
     }));
   }).then(function(sets){

@@ -121,13 +121,33 @@ momo 後台匯出的訂單 `.xls` 是用 **Excel 預設密碼加密的舊版 Exc
 資料夾名稱裡的數字等於 `0908`、`20260908` 或 `260908` 都算同一天；含「訂單」的是訂單側、
 含「出貨」的是出貨側。Google 試算表／文件會自動匯出成 xlsx／docx 再解析。
 
-### 前提：要有 https 網址
+有兩種連法，工具會依所在環境自己選：
 
-Google 登入不能在本機雙擊開的 `file://` 上跑，claude.ai 的預覽環境也不允許連 Google。
-把 `order-check.html` 放到任何 https 靜態網址即可，最省事的是 GitHub Pages。這個 repo
-含公司文件不宜公開，做法是另建一個只放工具的公開 repo 開 Pages。手動拖資料夾不受此限制。
+| 開啟方式 | 連法 | 要設定什麼 |
+|---|---|---|
+| claude.ai 上的線上版（Artifact） | 用你在 claude.ai 連好的 **Google Drive 連接器** | 不用設定。第一次會問你是否允許這個頁面使用連接器 |
+| GitHub Pages 等 https 網址 | 頁面自己向 Google 登入取唯讀權杖 | 一次性建 OAuth 用戶端 ID（見下方） |
+| 本機雙擊 `file://` | 不能連 Drive | 手動拖資料夾 |
 
-### 一次性設定（Google Cloud，約 10 分鐘）
+### 線上版：claude.ai 連接器
+
+在 claude.ai 開這個工具時，讀 Drive 走的是看頁面的人自己在 claude.ai 連好的 Google Drive
+連接器，用的是他自己的 Google 授權；頁面拿不到任何密碼或權杖，只呼叫「搜尋檔案」與
+「下載檔案內容」兩個唯讀功能。前提：
+
+- 帳號要在 claude.ai 設定 → 連接器（Connectors）加入 Google Drive。
+- 第一次按讀取時，claude.ai 會問是否允許這個頁面使用 Google Drive 連接器，選允許。
+- 讀得到哪些資料夾，取決於那個 Google 帳號在 Drive 上看得到什麼。
+
+頁面會依錯誤原因提示下一步（授權過期→到連接器重新連接；沒加連接器→去加；公司政策
+擋住→改手動拖）。這個模式只給同組織的人用；要給外部人員用，請用 GitHub Pages 版。
+
+### https 網址版：要先建 OAuth 用戶端
+
+Google 登入不能在本機雙擊開的 `file://` 上跑。把 `order-check.html` 放到任何 https
+靜態網址即可，最省事的是 GitHub Pages（本 repo 的 Actions 會自動部署）。手動拖資料夾不受此限制。
+
+#### 一次性設定（Google Cloud，約 10 分鐘）
 
 1. 到 Google Cloud Console 建一個專案（或用現有的）。
 2. 「API 和服務 → 程式庫」啟用 **Google Drive API**。
