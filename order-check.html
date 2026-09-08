@@ -536,6 +536,21 @@ function commonRunLength(a, b){
 }
 function normHeader(s){ return toHalf(s).replace(/\s+/g, '').replace(/[()（）\[\]{}:：*＊#]/g, '').toLowerCase(); }
 function normName(s){ return toHalf(s).replace(/\s+/g, '').replace(/[*＊·・.,]/g, '').toLowerCase(); }
+/* 平台匯出的姓名常被遮罩（徐O馨、林*鳳），出貨單上卻是全名。
+   遮罩字元當萬用字元、長度要一樣，其餘逐字比。 */
+var NAME_MASK = /[oO○◯●Ｏ*＊]/;
+function namesMatch(a, b){
+  var x = toHalf(a).replace(/\s+/g, '').toLowerCase(), y = toHalf(b).replace(/\s+/g, '').toLowerCase();
+  if (x === y) return true;
+  if (normName(a) === normName(b)) return true;
+  if (!x.length || x.length !== y.length) return false;
+  for (var i = 0; i < x.length; i++) {
+    if (x.charAt(i) === y.charAt(i)) continue;
+    if (NAME_MASK.test(x.charAt(i)) || NAME_MASK.test(y.charAt(i))) continue;
+    return false;
+  }
+  return true;
+}
 function digitsOf(s){ return toHalf(s).replace(/\D/g, ''); }
 function normPhone(s, mode){
   if (mode === 'strict') return trim(s);
@@ -1992,7 +2007,7 @@ function reconcile(){
     var diffs = [];
     checks.forEach(function(k){
       if (k === 'name') {
-        if (normName(o.name) !== normName(s.name)) diffs.push({ key: 'name', label: '收件人', o: o.name, s: s.name });
+        if (!namesMatch(o.name, s.name)) diffs.push({ key: 'name', label: '收件人', o: o.name, s: s.name });
       } else if (k === 'phone') {
         if (normPhone(o.phone, rules.phoneMode) !== normPhone(s.phone, rules.phoneMode)) diffs.push({ key: 'phone', label: '電話', o: o.phone, s: s.phone });
       } else if (k === 'addr') {
