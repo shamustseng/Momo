@@ -213,6 +213,7 @@
       <h1>訂單出貨核對</h1>
     </div>
     <nav class="tabs">
+      <a href="#drive">Google Drive</a>
       <a href="#upload">上傳資料夾</a>
       <a href="#filesCard">逐檔擷取</a>
       <a href="#rules">核對規則</a>
@@ -230,7 +231,7 @@
     <h2 style="font-size:24px;">每天兩個資料夾，逐張核對出貨是否正確</h2>
     <p>左邊放當天「全部訂單」的資料夾，右邊放打完單的「實際出貨明細」資料夾。Excel、CSV、Word、PDF 混著丟沒關係，系統逐檔讀出訂單編號、收件人、電話、地址、數量與金額，再以訂單編號逐張比對，把不一致的單挑出來。核完存檔，月底直接產出當月出貨報表。</p>
     <div class="steps">
-      <span>1 · 丟進兩個資料夾</span><span>2 · 檢查逐檔擷取結果</span><span>3 · 核對並檢視差異</span><span>4 · 存成當日紀錄</span><span>5 · 月底輸出報表</span>
+      <span>1 · 從 Drive 讀取或丟進兩個資料夾</span><span>2 · 檢查逐檔擷取結果</span><span>3 · 核對並檢視差異</span><span>4 · 存成當日紀錄</span><span>5 · 月底輸出報表</span>
     </div>
     <div class="btn-row">
       <button class="btn ghost" id="demoBtn">載入範例資料試跑</button>
@@ -257,9 +258,43 @@
     </div>
   </section>
 
+  <section class="card" id="drive">
+    <h2><span class="step-no">1</span>從 Google Drive 讀取當天的兩個資料夾</h2>
+    <p class="sub">在 Drive 的「出貨記錄」底下，依日期找到訂單與出貨資料夾（例如 <span class="num">0908 訂單</span>／<span class="num">0908 出貨</span>，或 <span class="num">20260908</span> 底下的「訂單」「出貨」），把檔案讀進下面兩區。第一次會跳 Google 登入並要求唯讀權限。不想用 Drive 的話，直接跳到下面手動拖資料夾。</p>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field">
+          <label for="driveDate">日期</label>
+          <input type="date" id="driveDate">
+          <span class="hint">會找資料夾名稱含 0908、20260908 或 260908 的</span>
+        </div>
+        <div class="field">
+          <label for="driveRoot">Drive 根資料夾名稱</label>
+          <input type="text" id="driveRoot" value="出貨記錄">
+        </div>
+        <div class="field">
+          <label for="driveHint">Google 帳號（選填）</label>
+          <input type="text" id="driveHint" placeholder="name@company.com" autocomplete="off">
+          <span class="hint">填了登入時會預選這個帳號</span>
+        </div>
+        <div class="field">
+          <label for="driveClientId">Google OAuth 用戶端 ID</label>
+          <input type="text" id="driveClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off">
+          <span class="hint">一次性設定，做法見 README「連 Google Drive」。存在這台電腦</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="driveBtn">連線 Google Drive 並讀取</button>
+        <button class="btn ghost" id="driveForget">登出 Google</button>
+      </div>
+      <div id="driveMsg" class="alert info hide"></div>
+      <p id="driveEnv" class="note hide"></p>
+    </div>
+  </section>
+
   <div class="upload-grid" id="upload">
     <section class="card" data-side="order">
-      <h2><span class="step-no">1</span>當天全部訂單（資料夾）</h2>
+      <h2><span class="step-no">2</span>當天全部訂單（資料夾）</h2>
       <p class="sub">把當天所有訂單檔案放在同一個資料夾裡丟進來。一個檔案一張單，或一份檔案含整天的單，都讀得到。</p>
       <div class="card-body">
         <div class="drop" data-drop="order">
@@ -1710,7 +1745,7 @@ function renderSideStatus(side, busyText){
   $('[data-clear="' + side + '"]').classList.remove('hide');
 }
 
-function ingest(side, fileList){
+function ingest(side, fileList, label){
   var files = Array.prototype.slice.call(fileList || []).filter(function(f){
     return f && f.name && !/^~\$/.test(f.name) && !/^\./.test(f.name) && !/(^|\/)\.DS_Store$/.test(f.name);
   });
@@ -1720,7 +1755,7 @@ function ingest(side, fileList){
   s.files = [];
   s.busy = true;
   var rel = files[0].webkitRelativePath || '';
-  s.label = rel ? rel.split('/')[0] : '';
+  s.label = label || (rel ? rel.split('/')[0] : '');
   renderSideStatus(side, '解析中… 0 / ' + files.length);
   var done = 0, i = 0, CONC = 4, results = [];
   function next(){
@@ -1753,6 +1788,165 @@ function clearSide(side){
   var input2 = $('[data-files="' + side + '"]');
   if (input2) input2.value = '';
   renderReview();
+}
+
+/* ---------- Google Drive ----------
+   瀏覽器端直接向 Google 取唯讀權杖，再用 Drive API 找資料夾、下載檔案，餵進同一條解析路徑。
+   只能在 https 網址上用：file:// 與預覽環境不允許載入 Google 登入元件。
+   下面兩個 localStorage 鍵是測試用的替身（指向假的 Drive API），一般使用不會設定。 */
+var DRIVE_API = 'https://www.googleapis.com', driveToken = null;
+try {
+  DRIVE_API = localStorage.getItem('alpha-order-check-drive-api') || DRIVE_API;
+  driveToken = localStorage.getItem('alpha-order-check-drive-token') || null;
+} catch (e) {}
+var DRIVE_FOLDER = 'application/vnd.google-apps.folder';
+
+function driveMsg(text, cls){
+  var el = $('#driveMsg');
+  el.className = 'alert ' + (cls || 'info');
+  el.textContent = text;
+  el.classList.remove('hide');
+}
+function driveEnvCheck(){
+  var el = $('#driveEnv'), msg = '';
+  if (location.protocol === 'file:') {
+    msg = '目前是從本機檔案開啟。Google 登入不能在 file:// 使用，請把這個工具放到 https 網址（例如 GitHub Pages）再用這顆按鈕；手動拖資料夾不受影響。';
+  } else if (window.claude && typeof window.claude.use === 'function') {
+    msg = '目前是 claude.ai 預覽環境，不允許連到 Google。請用部署後的 https 網址；手動拖資料夾不受影響。';
+  }
+  if (msg && DRIVE_API === 'https://www.googleapis.com') { el.textContent = msg; el.classList.remove('hide'); $('#driveBtn').disabled = true; }
+}
+function loadGis(){
+  if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  return new Promise(function(res, rej){
+    var done = false, sc = document.createElement('script');
+    sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+    sc.onload = function(){ done = true; if (window.google && google.accounts && google.accounts.oauth2) res(); else rej(new Error('Google 登入元件載入了但無法使用')); };
+    sc.onerror = function(){ done = true; rej(new Error('無法載入 Google 登入元件。這個頁面所在的環境不允許連到 Google，請改從 https 網址開啟。')); };
+    setTimeout(function(){ if (!done) rej(new Error('Google 登入元件載入逾時，請確認網路或環境限制。')); }, 10000);
+    document.head.appendChild(sc);
+  });
+}
+function driveGetToken(clientId, hint){
+  return loadGis().then(function(){
+    return new Promise(function(res, rej){
+      var cfg = {
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/drive.readonly',
+        callback: function(resp){
+          if (resp && resp.access_token) res(resp.access_token);
+          else rej(new Error('Google 沒有給存取權：' + ((resp && (resp.error_description || resp.error)) || '未知原因')));
+        },
+        error_callback: function(err){ rej(new Error('登入沒有完成（視窗被關閉或被瀏覽器擋下）' + (err && err.type ? '：' + err.type : ''))); }
+      };
+      if (hint) cfg.hint = hint;
+      google.accounts.oauth2.initTokenClient(cfg).requestAccessToken();
+    });
+  });
+}
+function driveFetch(path, params){
+  var qs = params ? '?' + Object.keys(params).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&') : '';
+  return fetch(DRIVE_API + path + qs, { headers: { Authorization: 'Bearer ' + driveToken } }).then(function(r){
+    if (r.ok) return r;
+    return r.text().then(function(t){
+      var e = new Error('Drive API 回應 ' + r.status + '：' + t.slice(0, 200));
+      e.status = r.status; throw e;
+    });
+  });
+}
+function dq(v){ return "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"; }
+function driveList(query){
+  var files = [], pageToken = null;
+  function page(){
+    var p = { q: query, fields: 'nextPageToken,files(id,name,mimeType,size,modifiedTime)', pageSize: 200,
+              supportsAllDrives: 'true', includeItemsFromAllDrives: 'true', corpora: 'allDrives' };
+    if (pageToken) p.pageToken = pageToken;
+    return driveFetch('/drive/v3/files', p).then(function(r){ return r.json(); }).then(function(j){
+      files = files.concat(j.files || []);
+      pageToken = j.nextPageToken || null;
+      return pageToken ? page() : files;
+    });
+  }
+  return page();
+}
+function dateKeys(iso){ var d = String(iso).replace(/-/g, ''); return [d, d.slice(4), d.slice(2)]; }
+function folderMatchesDate(name, keys){
+  var d = (String(name).match(/\d+/g) || []).join('');
+  return keys.indexOf(d) >= 0;
+}
+function roleOf(name){
+  if (/訂單|订单|order/i.test(name)) return 'order';
+  if (/出貨|出货|ship/i.test(name)) return 'ship';
+  return null;
+}
+function driveDownload(f){
+  var name = f.name, req;
+  if (/^application\/vnd\.google-apps\./.test(f.mimeType)) {
+    /* Google 試算表／文件不能直接下載，要匯出成 xlsx／docx */
+    var exp = f.mimeType === 'application/vnd.google-apps.spreadsheet' ? ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx']
+            : f.mimeType === 'application/vnd.google-apps.document' ? ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.docx'] : null;
+    if (!exp) return Promise.resolve(null);
+    req = driveFetch('/drive/v3/files/' + encodeURIComponent(f.id) + '/export', { mimeType: exp[0] });
+    if (!/\.[a-z0-9]+$/i.test(name)) name += exp[1];
+  } else {
+    req = driveFetch('/drive/v3/files/' + encodeURIComponent(f.id), { alt: 'media', supportsAllDrives: 'true' });
+  }
+  return req.then(function(r){ return r.arrayBuffer(); }).then(function(buf){ return new File([buf], name, { type: f.mimeType || '' }); });
+}
+function driveRun(){
+  var clientId = trim($('#driveClientId').value), root = trim($('#driveRoot').value) || '出貨記錄';
+  var hint = trim($('#driveHint').value), date = $('#driveDate').value;
+  if (!clientId && DRIVE_API === 'https://www.googleapis.com') { driveMsg('請先填 Google OAuth 用戶端 ID。做法見 README「連 Google Drive」。', 'err'); return; }
+  if (!date) { driveMsg('請先選日期。', 'err'); return; }
+  db.settings.driveClientId = clientId; db.settings.driveRoot = root; db.settings.driveHint = hint; saveDB();
+  var keys = dateKeys(date), btn = $('#driveBtn');
+  btn.disabled = true;
+  driveMsg('連線 Google…');
+  (driveToken ? Promise.resolve(driveToken) : driveGetToken(clientId, hint)).then(function(tok){
+    driveToken = tok;
+    driveMsg('在 Drive 找「' + root + '」…');
+    return driveList('name = ' + dq(root) + ' and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false');
+  }).then(function(roots){
+    if (!roots.length) throw new Error('Drive 裡找不到名為「' + root + '」的資料夾。請確認名稱，或這個帳號看得到它。');
+    return driveList(dq(roots[0].id) + ' in parents and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false');
+  }).then(function(children){
+    var found = { order: null, ship: null };
+    var dated = children.filter(function(c){ return folderMatchesDate(c.name, keys); });
+    dated.forEach(function(c){ var r = roleOf(c.name); if (r && !found[r]) found[r] = c; });
+    var plain = dated.filter(function(c){ return !roleOf(c.name); });
+    var step = Promise.resolve();
+    if ((!found.order || !found.ship) && plain.length) {
+      /* 另一種擺法：20260908／訂單、20260908／出貨 */
+      step = driveList(dq(plain[0].id) + ' in parents and mimeType = ' + dq(DRIVE_FOLDER) + ' and trashed = false').then(function(subs){
+        subs.forEach(function(c){ var r = roleOf(c.name); if (r && !found[r]) found[r] = c; });
+      });
+    }
+    return step.then(function(){
+      if (!found.order && !found.ship) {
+        throw new Error('「' + root + '」底下找不到 ' + keys[1] + ' 的訂單／出貨資料夾。目前看到：' +
+          (children.length ? children.slice(0, 8).map(function(c){ return c.name; }).join('、') : '（空）'));
+      }
+      return found;
+    });
+  }).then(function(found){
+    return Promise.all(['order', 'ship'].filter(function(k){ return found[k]; }).map(function(side){
+      var f = found[side];
+      return driveList(dq(f.id) + ' in parents and mimeType != ' + dq(DRIVE_FOLDER) + ' and trashed = false').then(function(files){
+        driveMsg('下載「' + f.name + '」' + files.length + ' 個檔案…');
+        return Promise.all(files.map(driveDownload)).then(function(fs){ return { side: side, name: f.name, files: fs.filter(Boolean) }; });
+      });
+    }));
+  }).then(function(sets){
+    sets.forEach(function(x){ ingest(x.side, x.files, x.name); });
+    var missing = ['order', 'ship'].filter(function(k){ return !sets.some(function(x){ return x.side === k; }); });
+    driveMsg('已從 Drive 讀入 ' + sets.map(function(x){ return '「' + x.name + '」' + x.files.length + ' 個檔案'; }).join('、') +
+      (missing.length ? '；找不到' + missing.map(function(m){ return m === 'order' ? '訂單' : '出貨'; }).join('與') + '資料夾' : '') +
+      '。解析完成後到下面「逐檔擷取結果」確認，再按「開始核對」。', missing.length ? 'warn' : 'info');
+    $('#batchDate').value = date;
+  }).catch(function(err){
+    if (err.status === 401 || /invalid_token|Invalid Credentials/i.test(err.message || '')) { driveToken = null; }
+    driveMsg(err.message || String(err), 'err');
+  }).then(function(){ btn.disabled = false; });
 }
 
 /* ---------- 逐檔檢視 ---------- */
@@ -2489,6 +2683,20 @@ function bindSide(side){
 }
 bindSide('order'); bindSide('ship');
 renderSideStatus('order'); renderSideStatus('ship');
+
+$('#driveBtn').addEventListener('click', driveRun);
+$('#driveForget').addEventListener('click', function(){
+  driveToken = null;
+  try { if (window.google && google.accounts && google.accounts.oauth2 && driveToken) google.accounts.oauth2.revoke(driveToken); } catch (e) {}
+  driveMsg('已清除這次的 Google 授權，下次讀取會重新登入。');
+});
+(function driveInit(){
+  $('#driveDate').value = todayISO();
+  if (db.settings.driveClientId) $('#driveClientId').value = db.settings.driveClientId;
+  if (db.settings.driveRoot) $('#driveRoot').value = db.settings.driveRoot;
+  if (db.settings.driveHint) $('#driveHint').value = db.settings.driveHint;
+  driveEnvCheck();
+})();
 
 $('#reviewTabs').addEventListener('click', function(e){
   var c = e.target.closest('.chip');
