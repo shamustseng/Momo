@@ -539,7 +539,8 @@ function normName(s){ return toHalf(s).replace(/\s+/g, '').replace(/[*＊·・.,
 function digitsOf(s){ return toHalf(s).replace(/\D/g, ''); }
 function normPhone(s, mode){
   if (mode === 'strict') return trim(s);
-  var d = digitsOf(s);
+  /* 分機不算電話本體 */
+  var d = digitsOf(String(s == null ? '' : s).split(/#|分機|ext|轉/i)[0]);
   if (d.indexOf('886') === 0) d = '0' + d.slice(3);
   if (mode === 'tail9') return d.length > 9 ? d.slice(-9) : d;
   return d;
@@ -945,7 +946,7 @@ function pdfSplitObjects(raw){
   }
   return objs;
 }
-function pdfStreamBytes(body){
+function pdfStreamBytes(body, objs){
   var i = body.indexOf('stream');
   if (i < 0) return null;
   var j = i + 6;
@@ -954,12 +955,18 @@ function pdfStreamBytes(body){
   var k = body.lastIndexOf('endstream');
   if (k < 0 || k <= j) return null;
   /* /Length 是權威值；用搜尋到的 endstream 會把中間的換行也算進去，
-     解壓縮器會把那個尾巴當成壞資料而整個失敗。 */
-  var lm = /\/Length\s+(\d+)[^0-9R]/.exec(body.slice(0, i));
-  if (lm) {
-    var n = parseInt(lm[1], 10);
-    if (n > 0 && j + n <= k + 2) return latinToBytes(body.substr(j, n));
+     解壓縮器會把那個尾巴當成壞資料而整個失敗。
+     但 /Length 常寫成「14 0 R」間接引用另一個物件——之前只看數字後一個字元，
+     把 14 當長度、只切 14 bytes，整份 PDF 就讀不到了。要真的去解那個物件。 */
+  var dict = body.slice(0, i), n = 0;
+  var ind = /\/Length\s+(\d+)\s+\d+\s+R/.exec(dict);
+  if (ind) {
+    if (objs && objs[ind[1]] != null) n = parseInt(String(objs[ind[1]]).replace(/[^0-9]/g, ''), 10) || 0;
+  } else {
+    var lm = /\/Length\s+(\d+)/.exec(dict);
+    if (lm) n = parseInt(lm[1], 10);
   }
+  if (n > 0 && j + n <= k + 2) return latinToBytes(body.substr(j, n));
   var end = k;
   while (end > j && (body.charAt(end - 1) === '\n' || body.charAt(end - 1) === '\r')) end--;
   return latinToBytes(body.slice(j, end));
@@ -994,8 +1001,8 @@ function pngUnpredict(data, columns, colors, bpc){
   }
   return out;
 }
-function pdfDecodeStream(body){
-  var bytes = pdfStreamBytes(body);
+function pdfDecodeStream(body, objs){
+  var bytes = pdfStreamBytes(body, objs);
   if (!bytes) return Promise.resolve(null);
   var dict = pdfDict(body);
   if (dict.indexOf('FlateDecode') < 0) return Promise.resolve(bytes);
@@ -1018,7 +1025,7 @@ function pdfExpandObjStms(objs){
   Object.keys(objs).forEach(function(k){
     var body = objs[k], dict = pdfDict(body);
     if (!/\/Type\s*\/ObjStm/.test(dict)) return;
-    jobs.push(pdfDecodeStream(body).then(function(bytes){
+    jobs.push(pdfDecodeStream(body, objs).then(function(bytes){
       if (!bytes) return;
       var text = bytesToLatin(bytes);
       var n = parseInt((/\/N\s+(\d+)/.exec(dict) || [0, 0])[1], 10);
@@ -1218,7 +1225,7 @@ function parsePdf(buf){
     if (!fbody) return;
     var tm = /\/ToUnicode\s+(\d+)\s+\d+\s+R/.exec(fbody);
     if (!tm || !objs[tm[1]]) return;
-    toUniJobs.push(pdfDecodeStream(objs[tm[1]]).then(function(bytes){
+    toUniJobs.push(pdfDecodeStream(objs[tm[1]], objs).then(function(bytes){
       if (bytes) fontMaps[fref] = parseToUnicode(bytesToLatin(bytes));
     }).catch(function(){}));
   });
@@ -1227,7 +1234,7 @@ function parsePdf(buf){
     return pages.reduce(function(chain, pg){
       return chain.then(function(){
         return Promise.all(pg.contents.map(function(cref){
-          return objs[cref] ? pdfDecodeStream(objs[cref]) : Promise.resolve(null);
+          return objs[cref] ? pdfDecodeStream(objs[cref], objs) : Promise.resolve(null);
         })).then(function(parts){
           var content = parts.filter(Boolean).map(bytesToLatin).join('\n');
           if (content) lines = lines.concat(pdfScanContent(content, fontMaps, pg.fonts));
@@ -1251,7 +1258,8 @@ var LABELS = {
 var ALL_LABELS = [];
 Object.keys(LABELS).forEach(function(k){ ALL_LABELS = ALL_LABELS.concat(LABELS[k]); });
 /* 這些欄位在單據上很常見，但不是我們要的值，遇到就當作值的結尾 */
-var STOP_LABELS = ALL_LABELS.concat(['託運單號', '物流單號', '配送方式', '列印時間', '出貨日期', '訂單日期', '備註', '溫層', '付款方式']);
+var STOP_LABELS = ALL_LABELS.concat(['託運單號', '物流單號', '宅配單號', '配送編號', '配送單號', '客戶單號', '客戶代碼', '物流編號',
+  '發票號碼', '識別碼', '配送方式', '列印時間', '印單日期', '出貨日期', '訂單日期', '備註', '溫層', '付款方式', '最晚出貨日']);
 
 function compact(line){
   var s = toHalf(line), out = '', map = [];
@@ -1320,34 +1328,45 @@ function valueFor(lines, key){
 }
 function pickOrderNo(raw){
   var m = /[A-Za-z0-9][A-Za-z0-9_\-\/]{3,}/.exec(toHalf(raw));
-  return m ? m[0] : trim(raw);
+  return m ? m[0] : '';
 }
 function pickName(raw){
   var v = trim(toHalf(raw));
   var m = /^[^\d]{1,20}/.exec(v);
   v = m ? m[0] : v.slice(0, 20);
-  return trim(v.replace(/[,，、|｜]+$/, ''));
+  v = trim(v.replace(/[,，、|｜:：]+$/, ''));
+  /* 簽名欄、欄位說明不是名字 */
+  if (/簽|請|備註|注意|電話|地址|收件|寄件|姓名|件數|代收|款/.test(v) || v.length < 2) return '';
+  return v;
+}
+/* 主號碼後面可以接分機（momo 的隱碼電話是同一個轉接號＋每張單不同的分機） */
+var PHONE_RE = /(?<!\d)(?:\+?886[\s\-]?\d[\d\s\-]{7,}|\(0\d{1,2}\)[\s\-]?\d[\d\s\-]{5,}|0\d{1,2}[\s\-]?\d{3,4}[\s\-]?\d{3,4})(?!\d)(?:\s*(?:#|分機|ext\.?|轉)\s*\d{1,8})?/i;
+function validPhone(str){
+  var main = String(str).split(/#|分機|ext|轉/i)[0].replace(/[\s\-()]/g, '').replace(/^\+?886/, '0');
+  return /^09\d{8}$/.test(main) || /^0[2-8]\d{7,8}$/.test(main);
 }
 function pickPhone(raw){
-  var v = toHalf(raw);
-  var m = /(\+?886[\s\-]?\d[\d\s\-]{7,})|(\(0\d{1,2}\)[\s\-]?\d[\d\s\-]{5,})|(0\d{1,2}[\s\-]?\d{3,4}[\s\-]?\d{3,4})/.exec(v);
-  return trim(m ? m[0] : v);
+  var m = PHONE_RE.exec(toHalf(raw));
+  if (!m) return '';
+  var v = trim(m[0]);
+  return validPhone(v) ? v : '';
 }
 function pickAddr(raw){
   return trim(toHalf(raw).replace(/[|｜]+$/, ''));
 }
 function numOrNull(raw){
   if (isBlank(raw)) return null;
-  var t = toHalf(raw).replace(/[^0-9.\-]/g, '');
-  if (t === '' || t === '-' || t === '.') return null;
-  var v = parseFloat(t);
+  /* 只取第一個數值。「件數 1/1」是第 1 件共 1 件，把所有數字黏起來會變 11。 */
+  var m = /-?\d+(?:[.,]\d+)?/.exec(toHalf(raw).replace(/(\d),(\d{3})(?!\d)/g, '$1$2'));
+  if (!m) return null;
+  var v = parseFloat(m[0].replace(',', '.'));
   return isFinite(v) ? v : null;
 }
 function orderNoFromFileName(name){
   var base = String(name || '').replace(/\.[a-z0-9]+$/i, '');
   var toks = toHalf(base).split(/[\s_\-–—()（）\[\]．.]+/).filter(Boolean);
   for (var i = toks.length - 1; i >= 0; i--) {
-    if (/^[A-Za-z]{0,5}\d{3,}[A-Za-z0-9]*$/.test(toks[i])) return toks[i];
+    if (/^[A-Za-z]{0,5}\d{3,}[A-Za-z0-9]*$/.test(toks[i]) && toks[i].length >= 5) return toks[i];
   }
   return '';
 }
@@ -1362,14 +1381,133 @@ function recordFromLines(lines, fileName){
     amount: numOrNull(valueFor(lines, 'amount'))
   };
   var joined = lines.join('\n');
-  if (!rec.phone) rec.phone = pickPhone((/(09\d{2}[\s\-]?\d{3}[\s\-]?\d{3})|(\(0\d{1,2}\)[\s\-]?\d{6,8})/.exec(toHalf(joined)) || [''])[0]);
+  if (!rec.phone) {
+    /* 沒有電話標籤時，在收件人附近找；不要撿到寄件人（客服）電話，也不要撿到訂單編號裡的數字 */
+    var senderZone = -99;
+    for (var pi = 0; pi < lines.length && !rec.phone; pi++) {
+      var PL = toHalf(lines[pi]);
+      if (/^寄$|寄\s*件|發貨|出貨人/.test(PL)) senderZone = pi;
+      if (pi - senderZone <= 4) continue;
+      var pm = PHONE_RE.exec(PL);
+      if (pm && validPhone(pm[0])) rec.phone = trim(pm[0]);
+    }
+  }
   if (!rec.addr) {
+    var senderAt = -99;
     for (var i = 0; i < lines.length; i++) {
-      if (/[縣市].*(路|街|大道|巷|弄|號)/.test(toHalf(lines[i]))) { rec.addr = pickAddr(lines[i]); break; }
+      var L = toHalf(lines[i]);
+      if (/^寄$|寄\s*件|發貨人|出貨人/.test(L)) senderAt = i;
+      if (i - senderAt <= 4) continue;   /* 寄件人那幾行的地址不是收件地址（標籤常被拆成「寄／件／人」三行） */
+      if (/[縣市].*(路|街|大道|巷|弄|號)/.test(L) && !/\*{3,}/.test(L)) { rec.addr = pickAddr(L); break; }
     }
   }
   if (!rec.orderNo) rec.orderNo = orderNoFromFileName(fileName);
   return rec;
+}
+
+/* 一份文件裡連續多張單（出貨明細、宅配單）：每張單都有自己的「訂單編號」標籤。
+   以這些標籤為錨點，把文字切成一段一段，各自擷取。
+   段的邊界取兩個錨點的中點，這樣不管單號寫在每張單的開頭還是結尾都吃得到。 */
+function orderAnchors(lines){
+  /* 一份文件裡每張單可能同時印「訂單編號」「出貨單號」「配送編號」。
+     只挑優先順序最高、且出現兩次以上的那一種當錨點，否則一張單會被切成三段。 */
+  var comp = lines.map(function(l){ return compact(l).low; });
+  for (var li = 0; li < LABELS.orderNo.length; li++) {
+    var lab = compact(LABELS.orderNo[li]).low;
+    if (!lab) continue;
+    var idx = [];
+    for (var i = 0; i < comp.length; i++) {
+      var p = comp[i].indexOf(lab);
+      if (p < 0 || labelBlockedAt(comp[i], p, lab.length, 'orderNo')) continue;
+      var after = comp[i].slice(p + lab.length);
+      var nextHas = i + 1 < comp.length && /[0-9a-z]{4}/.test(comp[i + 1]);
+      if (!/[0-9a-z]{4}/.test(after) && !nextHas) continue;   /* 表格標題列不是一張單 */
+      idx.push(i);
+    }
+    if (idx.length >= 2) return idx;
+  }
+  return [];
+}
+var FIELD_LABELS_RE = null;
+function fieldHits(lines, from, to){
+  if (!FIELD_LABELS_RE) {
+    var all = [].concat(LABELS.name, LABELS.phone, LABELS.addr).map(function(l){ return compact(l).low; }).filter(Boolean);
+    FIELD_LABELS_RE = new RegExp(all.map(function(x){ return x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|'));
+  }
+  var n = 0;
+  for (var i = Math.max(0, from); i < Math.min(lines.length, to); i++) {
+    var c = compact(lines[i]).low;
+    if (FIELD_LABELS_RE.test(c) || /[縣市].*(路|街|大道|巷|弄|號)/.test(c)) n++;
+  }
+  return n;
+}
+function recordsFromDocument(lines, fileName){
+  var anchors = orderAnchors(lines);
+  if (anchors.length < 2) return [recordFromLines(lines, fileName)];
+  /* 欄位在錨點後面（明細：單號開頭）還是前面（宅配單：單號印在最下面）？看第一段就知道 */
+  var gap = anchors[1] - anchors[0];
+  var after = fieldHits(lines, anchors[0], anchors[0] + gap);
+  var before = fieldHits(lines, anchors[0] - gap, anchors[0]);
+  var forward = after >= before;
+  var out = [];
+  for (var k = 0; k < anchors.length; k++) {
+    var start, end;
+    if (forward) { start = anchors[k]; end = k + 1 < anchors.length ? anchors[k + 1] : lines.length; }
+    else { start = k === 0 ? 0 : anchors[k - 1] + 1; end = anchors[k] + 1; }
+    var block = lines.slice(start, end);
+    var r = recordFromLines(block, '');
+    if (!r.orderNo) continue;
+    var tbl = itemTable(block);
+    if (tbl) { if (tbl.qty != null) r.qty = tbl.qty; if (tbl.item) r.item = tbl.item; }
+    out.push(r);
+  }
+  return dedupeWithinFile(out);
+}
+/* 出貨明細常見的品項表：標題列含「商品」與「數量」，之後每個品項一列（序號 001、002…），
+   數量那一欄印成「1□」（數字＋核對框）。只有看到這種形狀才用，不然不碰。 */
+function itemTable(block){
+  var header = -1;
+  for (var i = 0; i < block.length; i++) {
+    var c = compact(block[i]).low;
+    if (c.indexOf('商品') >= 0 && c.indexOf('數量') >= 0 && c.length < 40) { header = i; break; }
+  }
+  if (header < 0) return null;
+  var qty = 0, seen = false, item = '';
+  for (var j = header + 1; j < block.length; j++) {
+    var L = toHalf(block[j]);
+    if (/注意事項|退\s*\/\s*換貨|合計/.test(L)) break;
+    var q = /^(\d{1,3})\s*[□☐■]\s*$/.exec(L);
+    if (q) { qty += parseInt(q[1], 10); seen = true; continue; }
+    var it = /^\d{3}\s*(\S.*)$/.exec(L);
+    if (it && !item) item = trim(it[1].replace(/^[*\d\-]+/, ''));
+  }
+  return seen || item ? { qty: seen ? qty : null, item: item } : null;
+}
+function masked(v){ return /\*{2,}/.test(String(v || '')); }
+function better(a, b, field){
+  /* 非空優先、沒遮罩優先；地址取較完整（較長）者，名字與電話保留先到的 */
+  if (isBlank(a)) return b; if (isBlank(b)) return a;
+  if (masked(a) && !masked(b)) return b; if (masked(b) && !masked(a)) return a;
+  if (field === 'addr' && String(b).length > String(a).length) return b;
+  return a;
+}
+/* 同一檔內同一單號重複出現：宅配單的貨件聯／收執聯是同一張單印兩份，
+   內容一樣就是重複聯、只留一份；內容不同（跨頁的品項）才加總數量。 */
+function dedupeWithinFile(recs){
+  var byKey = new Map(), order = [];
+  recs.forEach(function(r){
+    var k = normKey(r.orderNo);
+    var g = byKey.get(k);
+    if (!g) { byKey.set(k, r); order.push(k); return; }
+    var same = (g.qty === r.qty) && (g.amount === r.amount) && normKey(g.item) === normKey(r.item);
+    g.name = better(g.name, r.name, 'name'); g.phone = better(g.phone, r.phone, 'phone'); g.addr = better(g.addr, r.addr, 'addr');
+    g.item = better(g.item, r.item, 'item');
+    if (!same) {
+      if (r.qty != null) g.qty = (g.qty || 0) + r.qty;
+      if (r.amount != null) g.amount = (g.amount || 0) + r.amount;
+    }
+  });
+  return order.map(function(k){ return byKey.get(k); });
 }
 
 /* ---------- 表格型檔案（一份檔含多張單） ---------- */
@@ -1449,7 +1587,8 @@ function extractFile(file){
           var t = gridIsTable(d.tables[i]);
           if (t) { out.records = recordsFromTable(t); out.note = '表格（' + out.records.length + ' 張單）'; return out; }
         }
-        out.records = [recordFromLines(d.lines, name)];
+        out.records = recordsFromDocument(d.lines, name);
+        if (out.records.length > 1) out.note = '一份文件含 ' + out.records.length + ' 張單';
         return out;
       });
     }
@@ -1457,7 +1596,8 @@ function extractFile(file){
       out.kind = 'PDF';
       return parsePdf(buf).then(function(d){
         if (!d.lines.length) { out.status = 'fail'; out.note = '這份 PDF 有頁面但沒有可抽取的文字，應該是掃描或拍照的影像檔'; return out; }
-        out.records = [recordFromLines(d.lines, name)];
+        out.records = recordsFromDocument(d.lines, name);
+        if (out.records.length > 1) out.note = '一份文件含 ' + out.records.length + ' 張單';
         return out;
       });
     }
@@ -1709,15 +1849,16 @@ function buildIndex(recs){
       idx.set(key, g);
     }
     g.lines++;
-    if (r.file && g.files.indexOf(r.file) < 0) g.files.push(r.file);
-    if (isBlank(g.name) && !isBlank(r.name)) g.name = trim(r.name);
-    if (isBlank(g.phone) && !isBlank(r.phone)) g.phone = trim(r.phone);
-    if (isBlank(g.addr) && !isBlank(r.addr)) g.addr = trim(r.addr);
+    var newFile = !!(r.file && g.files.indexOf(r.file) < 0);
+    if (newFile) g.files.push(r.file);
+    g.name = trim(better(g.name, r.name, 'name')); g.phone = trim(better(g.phone, r.phone, 'phone')); g.addr = trim(better(g.addr, r.addr, 'addr'));
     if (!isBlank(r.name)) has.name = true;
     if (!isBlank(r.phone)) has.phone = true;
     if (!isBlank(r.addr)) has.addr = true;
-    if (r.qty != null) { g.qty += r.qty; has.qty = true; }
-    if (r.amount != null) { g.amount += r.amount; has.amount = true; }
+    /* 同一張單出現在不同檔案（明細、宅配單、總表各一份）是同一筆出貨的多份文件，
+       數量、金額不能加總；只有同一份檔案裡的多列（多品項）才加。 */
+    if (r.qty != null) { has.qty = true; if (g.files.length <= 1 || !newFile) g.qty += r.qty; else g.qty = Math.max(g.qty, r.qty); }
+    if (r.amount != null) { has.amount = true; if (g.files.length <= 1 || !newFile) g.amount += r.amount; else g.amount = Math.max(g.amount, r.amount); }
     if (!isBlank(r.item)) {
       has.item = true;
       var it = normKey(r.item);
