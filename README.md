@@ -30,19 +30,21 @@
 
 ---
 
-# MOMO 出貨單產生器（`shipping/`）
+# MOMO／Cyberbiz 出貨單產生器（`shipping/`）
 
-把 momo SCM 下載的出貨文件（PDF）或訂單清單（Excel／Word）整理成可以直接列印的**出貨單 Excel**，
+同一套程式支援兩個平台，打包成兩個單一 HTML：`MOMO出貨單產生器.html` 與 `Cyberbiz出貨單產生器.html`。
+把 momo SCM 下載的出貨文件（PDF）或訂單清單（Excel／Word），或 Cyberbiz 後台匯出的訂單檔，整理成可以直接列印的**出貨單 Excel**，
 並依出貨 SOP 一次產出「新零售銷售報表」列、「NS 銷售訂單」打單清單、「愛上出貨」建單資料與給倉庫的回報訊息。
 純前端單頁工具，資料與密碼都不會離開你的電腦。
 
 ## 使用方式
 
-1. 用瀏覽器開啟 `shipping/MOMO出貨單產生器.html`（單一檔案版，雙擊即可、離線可用），或開發版 `shipping/index.html`。
+1. 用瀏覽器開啟 `shipping/MOMO出貨單產生器.html` 或 `shipping/Cyberbiz出貨單產生器.html`（單一檔案版，雙擊即可、離線可用），或開發版 `shipping/index.html`（加 `?platform=cyberbiz` 切換平台）。
 2. **匯入**：把檔案拖進頁面，可一次多個，支援：
    - **momo PDF**：第三方「列印明細」（裝箱明細）、「列印宅配單」、「列印出貨總表」。程式自動辨識三種版面並依出貨單號／宅配單號合併：
      明細給品項、宅配單給完整地址／電話／發票號碼／溫層、總表給材積與件數。只有宅配單沒有明細的出貨單會標「缺列印明細」。
    - **Excel 各格式**：xlsx／xlsm／xlsb／xls／ods／csv／tsv（每列一個商品品項，進入欄位對應）。
+   - **Cyberbiz 匯出檔**：欄名自動對應（訂單編號、訂單成立時間、訂單狀態、付款狀態、配送方式、配送狀態、物流單號、顧客姓名、收件人、收件地址、超商門市／店號、商品名稱、商品選項、SKU、數量、商品單價／小計、顧客備註）；「依訂單」匯出時一格多品項（換行分隔、`x 數量`）會自動拆成多列；超商取貨會把門市名稱與店號當地址；欄名含「單價」自動視為單價、否則視為該列合計。付款狀態可篩選（未付款、已退款預設不勾）。
    - **Word docx**：有表格就當訂單清單對應欄位；內文若是貼上的 momo 裝箱明細文字也會解析。
    - **zip 壓縮包**：自動展開裡面的 Excel／PDF／Word。
    - **有密碼的檔案**：PDF、Excel、Word 都會自動用「momo 檔案密碼」欄位的密碼解鎖（預設 `90754866MOMO`，可修改並會記住），
@@ -70,10 +72,10 @@
 
 ## 檔案
 
-- `shipping/MOMO出貨單產生器.html` — **單一檔案版**，所有函式庫與範例檔已內嵌，下載一個檔案雙擊即可使用（離線可用）。
+- `shipping/MOMO出貨單產生器.html`、`shipping/Cyberbiz出貨單產生器.html` — **單一檔案版**，所有函式庫與範例檔已內嵌，下載一個檔案雙擊即可使用（離線可用）。Cyberbiz 版預設不帶密碼、Channel＝Cyberbiz、NS 客戶＝官網(Cyberbiz)、愛上平台＝Cyberbiz-宅配／Cyberbiz-超商取貨，這些都可在「打單資料參數」修改。
 - `shipping/index.html` — 開發用原始版本，搭配 `vendor/` 與 `sample/` 使用。
-- `shipping/build-standalone.js` — 執行 `node shipping/build-standalone.js` 重新產生單一檔案版。
+- `shipping/build-standalone.js` — 執行 `node shipping/build-standalone.js` 一次重新產生兩個平台的單一檔案版。
 - `shipping/vendor/` — SheetJS 0.18.5（讀 Excel／CSV）、ExcelJS 4.4.0（輸出 Excel）、pdf.js 4.10（讀 PDF）、mammoth 1.8（讀 Word）、
   JSZip 3.10（解壓縮）、officecrypto-tool 0.0.19 瀏覽器版（解開加密 Office 檔；由 `shipping/tools/officecrypto/build.sh` 打包，
   pdf.js 由 `shipping/tools/build-pdfjs.sh` 打包）。
-- `shipping/sample/` — 範例輸入檔（虛構資料）：momo 三份 PDF、訂單清單 Excel、訂單清單 Word。
+- `shipping/sample/` — 範例輸入檔（虛構資料）：momo 三份 PDF、momo 訂單清單 Excel、Cyberbiz 訂單匯出 Excel、訂單清單 Word。
