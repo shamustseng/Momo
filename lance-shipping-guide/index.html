@@ -100,6 +100,17 @@
   .banner .ico{ font-size:20px; line-height:1.3; }
   .greet{ font-size:19px; font-weight:700; padding:4px 2px 0; }
   .greet small{ display:block; font-size:15px; font-weight:500; color:var(--ink-muted); margin-top:2px; }
+  .done-note{ display:flex; gap:12px; align-items:flex-start; border-radius:12px; padding:12px 16px; background:var(--good-soft); color:var(--good-ink); font-weight:700; font-size:15.5px; border-left:5px solid var(--good); }
+  .done-note .ico{ width:26px; height:26px; border-radius:50%; background:var(--good); color:#fff; display:grid; place-items:center; font-size:14px; flex:0 0 auto; margin-top:1px; }
+  .done-note small{ display:block; font-weight:500; margin-top:2px; }
+  .memo{ margin-top:12px; border-radius:12px; padding:12px 14px; background:var(--tape-soft); border-left:5px solid var(--tape); font-size:15px; }
+  .memo .from{ font-size:12.5px; font-weight:800; letter-spacing:.06em; color:var(--ink-muted); }
+  .memo p{ margin-top:4px; white-space:pre-line; font-weight:600; }
+  .milestone{ display:inline-flex; align-items:center; gap:8px; margin-top:10px; padding:6px 14px; border-radius:999px; background:var(--surface); color:var(--good-ink); font-weight:900; font-size:15px; border:2px solid var(--good); }
+  .reflect{ margin-top:14px; }
+  .reflect label{ display:block; font-size:14px; font-weight:800; color:var(--good-ink); }
+  .reflect input{ width:100%; min-height:44px; margin-top:6px; border:1px solid color-mix(in srgb, var(--good) 40%, transparent); border-radius:10px; padding:8px 12px; background:var(--surface); font-size:15.5px; }
+  .reflect .prev{ font-size:14px; color:var(--ink-muted); margin-top:8px; }
 
   /* ---------- 截單時間 ---------- */
   .deadlines{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
@@ -269,7 +280,8 @@
   .finish .stats div{ font-size:14px; font-weight:700; }
   .finish .stats b{ display:block; font-size:26px; font-family:var(--font-mono); }
   .history{ margin-top:14px; font-size:14.5px; color:var(--ink-muted); }
-  .streak{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .streak-wrap{ margin-top:10px; font-size:13px; color:var(--ink-muted); font-weight:700; }
+  .streak{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
   .streak span{ width:22px; height:22px; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); }
   .streak span.on{ background:var(--good); border-color:var(--good); }
 
@@ -327,6 +339,7 @@
       <div class="sup"><span>找誰：</span><input type="text" id="supervisor" placeholder="主管的名字" aria-label="主管的名字"></div>
       <label for="dayNotes" style="display:block;margin-top:14px;font-size:14px;font-weight:800;color:var(--ink-muted)">今天想問或遇到的事，先記在這裡</label>
       <textarea id="dayNotes" placeholder="例：第三方有一張已延遲，不知道是不是取消了"></textarea>
+      <div id="railMemo"></div>
       <details class="q">
         <summary>還在等主管回答的問題</summary>
         <div id="questions"></div>
@@ -337,6 +350,7 @@
   <section class="main">
     <p class="greet" id="greet"></p>
     <div id="dayBanner" class="banner warn hide"><span class="ico">⚠</span><span id="dayBannerText"></span></div>
+    <div id="doneNote" class="done-note hide"></div>
     <article class="card lift" id="stepCard"></article>
     <section class="card" id="ordersCard">
       <div class="orders-head">
@@ -409,6 +423,11 @@
       <input type="text" id="sChannel" placeholder="MOMO">
     </div>
     <div class="field">
+      <label for="sMemo">主管給 Lance 的一句話</label>
+      <textarea id="sMemo" placeholder="例：這兩週的單都出得很準，謝謝你。"></textarea>
+      <span class="hint">會顯示在側欄和每天的收工畫面，直到你改掉或清空。真的想說的話才寫，他會認真看。</span>
+    </div>
+    <div class="field">
       <label for="sOrderFolder">第 7 步「當天全部訂單」那一格要放的資料夾</label>
       <textarea id="sOrderFolder" placeholder="例：SCM 匯出的當天訂單 Excel"></textarea>
     </div>
@@ -466,15 +485,34 @@ var XT_CONTACT = { weekday: '湯恩齊 Keith', thursday: '王傳斌' };
 var METHOD = { cvs: '超商', home: '宅配' };
 var WH = { ai: '愛上倉', xt: '希塔倉', stock: 'MOMO 寄倉' };
 
-/* 每一步做完時的一句話：說出他做到了什麼，不誇大 */
+/* 每一步做完時的一句話：說出他做到了什麼，不誇大。每天輪一句，不會天天一樣。 */
 var STEP_DONE_MSG = {
-  scm: '第 1 步完成。今天有哪些單、先出哪些，你已經掌握了。',
-  sheet: '第 2 步完成。報表填好，後面的人就有數字可以用。',
-  print: '第 3 步完成。文件都歸位、解鎖了。',
-  ns: '第 4 步完成。SO 都建好了，帳上有了這些單。',
-  wh: '第 5 步完成。倉庫已經收到你的單。',
-  deliver: '第 6 步完成。帳上也對齊了。'
+  scm: ['今天有哪些單、先出哪些，你已經掌握了。', '第一步最容易漏，你沒有漏。', '開頭穩，後面就順。'],
+  sheet: ['報表填好，後面的人就有數字可以用。', '這張表會被會計和主管拿去用，你填的每一格都有人看。', '最多欄位的一步，做完了。'],
+  print: ['文件都歸位、解鎖了，倉庫拿到就能出。', '檔案存對地方，下班前核對會很快。', '三個文件、一個資料夾，都到位。'],
+  ns: ['SO 都建好了，帳上有了這些單。', 'NS 是最需要專心的一步，你把它做完了。', '每張單都有 SO，後面倉庫和交貨都接得上。'],
+  wh: ['倉庫已經收到你的單，貨會動起來。', '單子交出去了。接下來是倉庫的事，你可以先做別的。', '出貨這一步，是客人會真的收到東西的那一步。'],
+  deliver: ['帳上也對齊了。今天的單，從頭到尾都是完整的。', '交貨做完，這批單才算真的結束。做完了。', '最容易忘的一步，你記得了。']
 };
+/* 過半、里程碑 */
+var MILESTONES = { 1: '這是你的第一個完整出貨日。從今天開始有紀錄了。', 5: '第 5 個出貨日。一整個星期的量。', 10: '第 10 個出貨日。這已經是穩定的工作節奏。', 20: '第 20 個出貨日。一個月的工作天，你走完了。', 30: '第 30 個出貨日。', 50: '第 50 個出貨日。這是老手的數字。', 100: '第 100 個出貨日。', 200: '第 200 個出貨日。' };
+function dayIndex(){ var d = new Date(); return d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(); }
+function pickMsg(list){ return list[dayIndex() % list.length]; }
+/* 在截單前做完，就把這件事說出來 */
+function beforeDeadlineNote(stepId){
+  var now = new Date(), h = now.getHours() + now.getMinutes() / 60;
+  if (stepId === 'print' && h < 13.5) return '而且在 13:30 宅配截單前就印好了。';
+  if (stepId === 'wh' && h < 14 && now.getDay() !== 4) return '而且在 14:00 給單前就交出去了。';
+  if (stepId === 'scm' && h < 10) return '10:00 超取截單前就開始了，時間很夠。';
+  return '';
+}
+function stepDoneMessage(stepIdx){
+  var step = STEPS[stepIdx], pool = STEP_DONE_MSG[step.id];
+  var main = '第 ' + (stepIdx + 1) + ' 步完成。' + (pool ? pickMsg(pool) : '');
+  var extra = beforeDeadlineNote(step.id);
+  if (stepIdx === 3) extra = (extra ? extra + ' ' : '') + '過一半了。';
+  return { main: main, extra: extra };
+}
 
 /* =========================================================
    流程定義（依 Lance 整理的出貨流程與他的優化意見）
@@ -713,9 +751,14 @@ function greeting(){
   var name = userName();
   if (d.completedAt) return { main: hi + '，' + name + '。今天的單都出完了。', sub: '剩下的時間是你的。' };
   var doneCount = STEPS.filter(function(s){ return d.done[s.id]; }).length;
-  var sub = doneCount === 0 ? '照順序走就好：先超商，再第三方常溫，最後第三方冷凍。'
-          : doneCount < STEPS.length - 1 ? '已經走完 ' + doneCount + ' 步，剩 ' + (STEPS.length - doneCount) + ' 步。'
-          : '只剩最後一步了。';
+  var total = Object.keys(db.days).filter(function(k){ return db.days[k].completedAt; }).length;
+  var sub;
+  if (doneCount === 0) {
+    sub = total === 0 ? '這套流程是你自己整理的，這個工具只是把它排好。照順序走就好：先超商，再第三方常溫，最後第三方冷凍。'
+        : '到今天你已經完成 ' + total + ' 個出貨日。照順序走就好：先超商，再第三方常溫，最後第三方冷凍。';
+  } else if (doneCount < STEPS.length - 1) {
+    sub = '已經走完 ' + doneCount + ' 步，剩 ' + (STEPS.length - doneCount) + ' 步。' + (doneCount >= 4 ? '過一半了。' : '');
+  } else sub = '只剩最後一步了。';
   return { main: hi + '，' + name + '。今天星期' + WEEK[new Date().getDay()] + '。', sub: sub };
 }
 function renderClock(){
@@ -741,7 +784,21 @@ function renderClock(){
   } else banner.classList.add('hide');
   var g = greeting();
   $('#greet').innerHTML = esc(g.main) + '<small>' + esc(g.sub) + '</small>';
+  renderDoneNote(); renderRailMemo();
 }
+/* 剛做完的那一步，留在畫面上，不是三秒就消失 */
+function renderDoneNote(){
+  var d = day(), el = $('#doneNote'), ld = d.lastDone;
+  if (!ld || d.completedAt || d.step !== ld.next) { el.classList.add('hide'); return; }
+  el.innerHTML = '<span class="ico">✓</span><span>' + esc(ld.main) + (ld.extra ? '<small>' + esc(ld.extra) + '</small>' : '') + '</span>';
+  el.classList.remove('hide');
+}
+function memoHTML(){
+  var m = (db.settings.memo || '').trim();
+  if (!m) return '';
+  return '<div class="memo"><div class="from">主管留給你的話</div><p>' + esc(m) + '</p></div>';
+}
+function renderRailMemo(){ $('#railMemo').innerHTML = memoHTML(); }
 
 /* =========================================================
    步驟狀態
@@ -938,12 +995,21 @@ function helperHTML(kind, step){
     var stats = orderStats(orders);
     var name = userName();
     if (d.completedAt) {
-      var t = new Date(d.completedAt);
-      return '<div class="finish"><h4>今天完成了。辛苦了，' + esc(name) + '。</h4>' +
-        '<p>' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ' 收工。今天的每一張單，你都照流程走完了。</p>' +
+      var t = new Date(d.completedAt), n = doneDays.length;
+      var headline = pickMsg(['今天完成了。辛苦了，' + name + '。', '收工。今天做得很完整，' + name + '。', '今天的單都出去了。做得好，' + name + '。']);
+      var wk = weekDoneCount();
+      var wkTxt = (new Date().getDay() === 5 && wk >= 2) ? '這一週你完成了 ' + wk + ' 天。週末好好休息。' : '';
+      var prevGood = lastReflection();
+      return '<div class="finish"><h4>' + esc(headline) + '</h4>' +
+        '<p>' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ' 收工。今天的每一張單，你都照流程走完了。' + (wkTxt ? ' ' + esc(wkTxt) : '') + '</p>' +
         (orders.length ? '<div class="stats"><div>今天的單<b>' + stats.total + '</b></div><div>超商<b>' + stats.cvs + '</b></div><div>宅配<b>' + stats.home + '</b></div><div>愛上倉<b>' + stats.ai + '</b></div><div>希塔倉<b>' + stats.xt + '</b></div></div>' : '') +
-        '<div class="history">這是你完成的第 ' + doneDays.length + ' 個出貨日。' + streakText(doneDays) + '</div>' + streakHTML() +
-        '<div style="margin-top:12px"><button class="btn sm ghost" data-unfinish="1">還有事沒做完，取消收工</button></div></div>';
+        (MILESTONES[n] ? '<div class="milestone">★ ' + esc(MILESTONES[n]) + '</div>' : '') +
+        '<div class="history">這是你完成的第 ' + n + ' 個出貨日。' + streakText(doneDays) + '</div>' + streakHTML() +
+        '<div class="reflect"><label for="goodToday">今天哪一件事做得順？寫一句就好，明天的你會看到。</label>' +
+        '<input type="text" id="goodToday" data-good="1" value="' + esc(d.good || '') + '" placeholder="例：宅配的檔名一次就對">' +
+        (prevGood ? '<div class="prev">上次你寫：「' + esc(prevGood) + '」</div>' : '') + '</div>' +
+        memoHTML() +
+        '<div style="margin-top:14px"><button class="btn sm ghost" data-unfinish="1">還有事沒做完，取消收工</button></div></div>';
     }
     return '<div class="helper"><h4>收工</h4><p class="sub">核對完、該問的問了，就按下面。今天的紀錄會留下來。</p>' +
       '<div style="margin-top:12px"><button class="btn primary big" data-finish="1">今天全部完成，收工</button></div>' +
@@ -958,7 +1024,18 @@ function streakHTML(){
     if (dt.getDay() !== 0 && dt.getDay() !== 6) { var k = dateKey(dt); out.unshift('<span class="' + (db.days[k] && db.days[k].completedAt ? 'on' : '') + '" title="' + k + '"></span>'); n++; }
     dt.setDate(dt.getDate() - 1);
   }
-  return '<div class="streak" aria-label="最近 14 個工作日">' + out.join('') + '</div>';
+  return '<div class="streak-wrap">最近 14 個工作日<div class="streak" aria-label="最近 14 個工作日">' + out.join('') + '</div></div>';
+}
+/* 這一週（週一起）完成了幾天 */
+function weekDoneCount(){
+  var dt = new Date(), dow = dt.getDay() || 7, n = 0;
+  for (var i = 0; i < dow; i++) { var k = dateKey(dt); if (db.days[k] && db.days[k].completedAt) n++; dt.setDate(dt.getDate() - 1); }
+  return n;
+}
+/* 上一次寫的「做得順的事」 */
+function lastReflection(){
+  var keys = Object.keys(db.days).filter(function(k){ return k !== todayKey() && db.days[k].good; }).sort();
+  return keys.length ? db.days[keys[keys.length - 1]].good : '';
 }
 function streakText(doneDays){
   /* 連續幾個工作日完成（含今天，如果今天已完成） */
@@ -1056,7 +1133,9 @@ $('#stepCard').addEventListener('input', function(e){
     return;
   }
   var c = e.target.closest('[data-count]');
-  if (c) { d.counts[c.getAttribute('data-count')] = c.value.trim(); save(); }
+  if (c) { d.counts[c.getAttribute('data-count')] = c.value.trim(); save(); return; }
+  var g = e.target.closest('[data-good]');
+  if (g) { d.good = g.value.trim(); save(); }
 });
 $('#stepCard').addEventListener('click', function(e){
   var d = day();
@@ -1066,8 +1145,11 @@ $('#stepCard').addEventListener('click', function(e){
   if (nav) {
     var dir = parseInt(nav.getAttribute('data-nav'), 10), step = STEPS[d.step];
     if (dir > 0) {
-      d.done[step.id] = true; save();
-      toast(STEP_DONE_MSG[step.id] || ('第 ' + (d.step + 1) + ' 步完成。'), true);
+      var m = stepDoneMessage(d.step);
+      d.done[step.id] = true;
+      d.lastDone = { id: step.id, next: d.step + 1, main: m.main, extra: m.extra, at: new Date().toISOString() };
+      save();
+      toast(m.main, true);
     }
     goStep(d.step + dir);
     return;
@@ -1075,7 +1157,7 @@ $('#stepCard').addEventListener('click', function(e){
   var fin = e.target.closest('[data-finish]');
   if (fin) {
     if (!confirm('確定今天的出貨都完成了？')) return;
-    d.completedAt = new Date().toISOString(); save(); renderAll(); toast('今天完成。辛苦了，' + userName() + '。', true);
+    d.completedAt = new Date().toISOString(); save(); renderAll(); toast('今天完成。辛苦了，' + userName() + '。', true); window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   var unf = e.target.closest('[data-unfinish]');
@@ -1110,12 +1192,14 @@ $('#questions').addEventListener('input', function(e){
 $('#settingsBtn').addEventListener('click', function(){
   $('#sName').value = db.settings.name || ''; $('#sChannel').value = db.settings.channel || '';
   $('#sOrderFolder').value = db.settings.orderFolder || ''; $('#sShipFolder').value = db.settings.shipFolder || '';
+  $('#sMemo').value = db.settings.memo || '';
   $('#settings').classList.add('show');
 });
 $('#closeSettings').addEventListener('click', function(){ $('#settings').classList.remove('show'); });
 $('#settings').addEventListener('click', function(e){ if (e.target === $('#settings')) $('#settings').classList.remove('show'); });
 $('#sName').addEventListener('input', function(){ db.settings.name = $('#sName').value.trim(); save(); renderClock(); });
 $('#sChannel').addEventListener('input', function(){ db.settings.channel = $('#sChannel').value.trim(); save(); renderStep(); });
+$('#sMemo').addEventListener('input', function(){ db.settings.memo = $('#sMemo').value; save(); renderRailMemo(); renderStep(); });
 $('#sOrderFolder').addEventListener('input', function(){ db.settings.orderFolder = $('#sOrderFolder').value.trim(); save(); renderStep(); });
 $('#sShipFolder').addEventListener('input', function(){ db.settings.shipFolder = $('#sShipFolder').value.trim(); save(); renderStep(); });
 $('#resetDayBtn').addEventListener('click', function(){
