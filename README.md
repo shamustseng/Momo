@@ -40,6 +40,8 @@
 1. 用瀏覽器開啟 `shipping/index.html`（雙擊即可；所需函式庫已放在 `shipping/vendor/`，離線可用）。
 2. **匯入**：把後台匯出的 `.xlsx / .xls / .csv` 拖進頁面，或直接貼上從後台網頁複製的表格。
    第一次可以按「載入範例試用」或「下載範例檔」（`shipping/sample/momo訂單匯出範例.xlsx`，內容為虛構資料）。
+   **有密碼保護的檔案**會自動用「momo 檔案密碼」欄位的密碼解鎖（預設 `90754866MOMO`，可修改並會記住）；
+   密碼不對會再詢問一次。解鎖在瀏覽器內完成，支援 Office 標準／Agile 加密的 xlsx 與 RC4／XOR 加密的舊版 xls。
 3. **對應欄位**：程式依欄名自動對應「訂單編號、出貨單號、配送編號、收件人、商品名稱、數量…」等 19 個欄位，
    必要欄位為訂單編號／收件人／商品名稱／數量。若後台欄名不同可手動指定，對應結果會記住，同格式檔案下次自動套用。
 4. **篩選**：依「訂單／出貨狀態」勾選要出貨的狀態（已出貨、取消、退貨等預設不勾）、依配送方式、關鍵字過濾，
@@ -64,4 +66,5 @@
 - `shipping/build-standalone.js` — 執行 `node shipping/build-standalone.js` 重新產生單一檔案版。
 - `shipping/vendor/xlsx.full.min.js` — SheetJS 0.18.5，讀取 xlsx / xls / csv / 貼上表格。
 - `shipping/vendor/exceljs.min.js` — ExcelJS 4.4.0，輸出含格式、分頁與列印設定的 Excel。
+- `shipping/vendor/officecrypto.browser.js` — officecrypto-tool 0.0.19 瀏覽器版，解開密碼保護的 Excel；由 `shipping/tools/officecrypto/build.sh` 打包。
 - `shipping/sample/momo訂單匯出範例.xlsx` — 範例輸入檔（虛構資料）。

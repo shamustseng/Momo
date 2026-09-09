@@ -183,6 +183,13 @@
       <strong>把 momo 供應商後台匯出的訂單清單拖到這裡，或點擊選擇檔案</strong>
       <span class="muted small">支援 .xlsx / .xls / .csv；每一列是一個商品品項，程式會自動依「出貨單號」（或訂單編號）把品項併成一張出貨單。</span>
     </label>
+    <div class="grid two" style="margin-top:12px">
+      <div class="field">
+        <label for="filePassword">momo 檔案密碼（檔案有密碼保護時自動用它解鎖）</label>
+        <input type="text" id="filePassword" autocomplete="off" spellcheck="false" placeholder="例：90754866MOMO">
+      </div>
+      <div class="hint" style="align-self:end">momo 後台匯出的 Excel 通常有密碼；解鎖在你的瀏覽器內完成，檔案與密碼都不會上傳。若密碼不對會再詢問一次。</div>
+    </div>
     <details class="paste">
       <summary>或直接貼上從後台網頁複製的表格（含標題列）</summary>
       <textarea id="pasteBox" placeholder="在後台選取整張表格 → 複製 → 貼到這裡"></textarea>
@@ -308,6 +315,7 @@
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/exceljs.min.js"></script>
+<script src="vendor/officecrypto.browser.js"></script>
 <script>
 /* ==================== 欄位定義 ==================== */
 const FIELDS = [
@@ -394,10 +402,51 @@ function cellToText(v, field){
   return s;
 }
 
-function loadWorkbook(data, type, name){
+/* ---- 密碼保護檔案：CFB 容器 + EncryptionInfo（xlsx）或 FilePass（xls）---- */
+const CFB_SIG = [0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1];
+function isCfb(u8){ return u8.length>8 && CFB_SIG.every((b,i)=>u8[i]===b); }
+function isEncryptedFile(u8){
+  if(!isCfb(u8) || typeof OfficeCrypto==='undefined') return false;
+  try{ return OfficeCrypto.isEncrypted(u8); }catch(e){ return false; }
+}
+async function unlockIfNeeded(data, type, name){
+  if(type!=='array') return data;
+  const u8 = data instanceof Uint8Array ? data : new Uint8Array(data);
+  if(!isEncryptedFile(u8)) return u8;
+  let pw = $('#filePassword').value.trim();
+  let unlocked = null, tried = false;
+  while(true){
+    if(!pw){
+      pw = window.prompt(`「${name}」有密碼保護，請輸入開啟密碼：`, '');
+      if(pw==null) throw new Error('已取消：檔案需要密碼才能讀取。');
+      pw = pw.trim();
+    }
+    try{ unlocked = await OfficeCrypto.decrypt(u8, { password: pw }); break; }
+    catch(e){
+      if(!/incorrect|password/i.test(e.message)) throw new Error('解鎖失敗：'+e.message);
+      tried = true;
+      pw = window.prompt(`密碼不正確，無法開啟「${name}」。請重新輸入密碼：`, pw);
+      if(pw==null) throw new Error('已取消：密碼不正確，無法讀取檔案。');
+      pw = pw.trim();
+    }
+  }
+  $('#filePassword').value = pw; LS.set('password', pw);
+  state.unlocked = true;
+  return unlocked instanceof Uint8Array ? unlocked : new Uint8Array(unlocked);
+}
+
+async function loadWorkbook(data, type, name){
   let wb;
-  try{ wb = XLSX.read(data, { type, cellDates:true, codepage:950, raw:true }); }
-  catch(e){ showFileInfo(`無法讀取檔案：${e.message}`, 'bad'); return; }
+  state.unlocked = false;
+  try{
+    showFileInfo(`讀取「${name}」中…`);
+    data = await unlockIfNeeded(data, type, name);
+    wb = XLSX.read(data, { type, cellDates:true, codepage:950, raw:true });
+  }
+  catch(e){
+    const msg = /password-protected/i.test(e.message) ? '檔案有密碼保護但無法解鎖，請確認密碼。' : e.message;
+    showFileInfo(`無法讀取檔案：${msg}`, 'bad'); return;
+  }
   state.sheets = {};
   for(const sn of wb.SheetNames){
     const ws = wb.Sheets[sn];
@@ -446,7 +495,7 @@ function useSheet(sn){
   }
   hr.value = idx;
   autoMap();
-  showFileInfo(`已載入「${state.fileName}」${Object.keys(state.sheets).length>1?`／工作表「${sn}」`:''}，共 ${state.rows.length - idx - 1} 列資料。`, 'ok');
+  showFileInfo(`已載入「${state.fileName}」${state.unlocked?'（已用密碼解鎖）':''}${Object.keys(state.sheets).length>1?`／工作表「${sn}」`:''}，共 ${state.rows.length - idx - 1} 列資料。`, 'ok');
   setStep(2);
   $('#secMap').classList.remove('hidden');
   renderMapping();
@@ -847,7 +896,7 @@ const drop = $('#drop');
 drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('over'); });
 drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
 drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); readFile(e.dataTransfer.files[0]); });
-$('#file').addEventListener('change', e=>readFile(e.target.files[0]));
+$('#file').addEventListener('change', e=>{ readFile(e.target.files[0]); e.target.value=''; });
 $('#btnPaste').addEventListener('click', ()=>{ const t=$('#pasteBox').value; if(!t.trim()) return; loadWorkbook(t, 'string', '貼上的表格'); });
 $('#btnLoadSample').addEventListener('click', async ()=>{
   try{ const res = await fetch('sample/momo訂單匯出範例.xlsx'); if(!res.ok) throw new Error(res.status); loadWorkbook(await res.arrayBuffer(), 'array', 'momo訂單匯出範例.xlsx'); }
@@ -862,6 +911,8 @@ $('#chkAll').addEventListener('change', e=>{ const vis=state.shipments.filter(pa
 $('#btnExport').addEventListener('click', exportExcel);
 $('#btnPrint').addEventListener('click', printShipments);
 // 設定持久化
+$('#filePassword').value = LS.get('password', '90754866MOMO');
+$('#filePassword').addEventListener('input', e=>LS.set('password', e.target.value));
 $('#setDate').value = todayISO();
 $('#setNoticeText').value = LS.get('noticeText', DEFAULT_NOTICE);
 $('#setSupplier').value = LS.get('supplier', '');

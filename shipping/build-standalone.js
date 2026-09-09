@@ -9,6 +9,7 @@ const inline = (file) => {
 };
 html = html.replace('<script src="vendor/xlsx.full.min.js"></script>', () => inline('xlsx.full.min.js'));
 html = html.replace('<script src="vendor/exceljs.min.js"></script>', () => inline('exceljs.min.js'));
+html = html.replace('<script src="vendor/officecrypto.browser.js"></script>', () => inline('officecrypto.browser.js'));
 const sampleB64 = fs.readFileSync(path.join(here, 'sample', 'momo訂單匯出範例.xlsx')).toString('base64');
 html = html.replace('<a class="btn sm" href="sample/momo訂單匯出範例.xlsx" download>下載範例檔</a>', '<button class="btn sm" id="btnDownloadSample" type="button">下載範例檔</button>');
 const oldLoader = html.slice(html.indexOf("$('#btnLoadSample').addEventListener"), html.indexOf("$('#headerRow').addEventListener"));
