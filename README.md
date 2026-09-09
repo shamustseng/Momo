@@ -59,7 +59,9 @@
 
 ## 檔案
 
-- `shipping/index.html` — 出貨單產生器（HTML + CSS + JavaScript）。
+- `shipping/MOMO出貨單產生器.html` — **單一檔案版**，函式庫與範例檔已內嵌，下載這一個檔案雙擊即可使用（離線可用）。
+- `shipping/index.html` — 開發用原始版本（HTML + CSS + JavaScript），搭配 `vendor/` 與 `sample/` 使用。
+- `shipping/build-standalone.js` — 執行 `node shipping/build-standalone.js` 重新產生單一檔案版。
 - `shipping/vendor/xlsx.full.min.js` — SheetJS 0.18.5，讀取 xlsx / xls / csv / 貼上表格。
 - `shipping/vendor/exceljs.min.js` — ExcelJS 4.4.0，輸出含格式、分頁與列印設定的 Excel。
 - `shipping/sample/momo訂單匯出範例.xlsx` — 範例輸入檔（虛構資料）。
