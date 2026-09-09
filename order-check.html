@@ -2637,6 +2637,7 @@ function extractFile(file){
     return o;
   }).catch(function(err){
     out.status = (err && err.code === 'password') ? 'warn' : 'fail';
+    out.code = err && err.code ? err.code : '';
     out.note = err.message || '解析失敗';
     return out;
   });
@@ -2717,6 +2718,7 @@ function ingest(side, fileList, label){
   if (!files.length) { showErr(side, '這個資料夾裡沒有看到檔案。'); return; }
   var s = src[side];
   s.files = [];
+  s.rawFiles = files;
   s.busy = true;
   ingestHooks.forEach(function(fn){ fn(side, 'start'); });
   var rel = files[0].webkitRelativePath || '';
@@ -4119,8 +4121,21 @@ function gRenderIngest(){
   if (src.order.busy) { box.innerHTML = '<div class="g-note info">正在讀檔，等我一下…</div>'; return; }
   if (!src.order.files.length) { box.innerHTML = ''; return; }
   var st = sideStats('order');
-  var bad = src.order.files.filter(function(f){ return f.status === 'fail' || f.status === 'warn' || f.status === 'skip'; });
+  var locked = src.order.files.filter(function(f){ return f.code === 'password'; });
+  var bad = src.order.files.filter(function(f){ return (f.status === 'fail' || f.status === 'warn' || f.status === 'skip') && f.code !== 'password'; });
   var n = G.orders.length;
+  if (locked.length) {
+    /* 有鎖的檔：直接在這裡問一次密碼，記住之後每天就自動開。不用切到主管模式。 */
+    var hasPw = docPasswords().length > 0;
+    var html0 = '<div class="g-note warn"><strong>有 ' + locked.length + ' 個檔案鎖了密碼' + (hasPw ? '，目前記住的密碼打不開' : '') + '。</strong>' +
+      '<div style="margin-top:6px;font-size:16px">請主管輸入 momo 文件密碼，輸入一次會記住，以後自動打開。</div>' +
+      '<div class="g-actions" style="margin-top:12px;align-items:stretch">' +
+      '<input type="password" id="gPw" class="cell-input" style="flex:1 1 220px;font-size:18px;padding:12px 14px;min-height:56px" placeholder="文件密碼" autocomplete="off">' +
+      '<button class="g-big" id="gPwGo" type="button" style="flex:0 1 auto">好了，重新讀取</button></div>' +
+      '<ul style="margin-top:10px;font-size:15px">' + locked.slice(0, 6).map(function(f){ return '<li>' + esc(f.file) + '</li>'; }).join('') + '</ul></div>';
+    box.innerHTML = html0 + (n ? '<p class="note" style="font-size:15px">其他檔案已讀到 ' + n + ' 張單，等密碼解開再一起檢查。</p>' : '');
+    return;
+  }
   var html = '<div class="g-count"><span class="num-big">' + n + '</span><span class="lbl">張單要出</span>' +
     '<span class="sub">從 ' + st.files + ' 個檔案讀出來' + (G.warehouse ? '，從「' + esc(G.warehouse) + '」出貨' : '') + '</span></div>';
   if (bad.length) {
@@ -4267,6 +4282,13 @@ $('#gStage1').addEventListener('click', function(e){
     gRender(); window.scrollTo({ top: 0, behavior: 'smooth' }); return;
   }
   if (e.target.closest('#gReset1')) { clearSide('order'); G.orders = []; gRender(); return; }
+  if (e.target.closest('#gPwGo')) {
+    var pw = trim(($('#gPw') || {}).value || '');
+    if (!pw) { $('#gPw').focus(); return; }
+    $('#xlsPassword').value = pw; db.settings.docPassword = pw; saveDB();
+    if (src.order.rawFiles && src.order.rawFiles.length) ingest('order', src.order.rawFiles, src.order.label);
+    return;
+  }
   if (e.target.closest('#gDrop')) { $('[data-files="order"]').click(); return; }
   if (e.target.closest('#gPickFolder')) { $('[data-file="order"]').click(); return; }
   if (e.target.closest('#gDriveBtn')) {
@@ -4276,6 +4298,7 @@ $('#gStage1').addEventListener('click', function(e){
   }
 });
 $('#gDrop').addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('[data-files="order"]').click(); } });
+$('#gStage1').addEventListener('keydown', function(e){ if (e.key === 'Enter' && e.target.id === 'gPw') { e.preventDefault(); $('#gPwGo').click(); } });
 (function(){
   var drop = $('#gDrop');
   drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('over'); });
