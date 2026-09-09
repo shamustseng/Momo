@@ -290,6 +290,14 @@
     .g-steps{ grid-template-columns:1fr; } .g-count .num-big{ font-size:52px; } .g-panel{ padding:20px; }
   }
 
+  /* 頁面自己的確認框：在 claude.ai 的框架裡瀏覽器的 confirm/alert 會被擋掉 */
+  .dlg-back{ position:fixed; inset:0; background:rgba(20,18,13,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .dlg{ background:var(--surface); color:var(--ink); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); padding:24px 26px; max-width:520px; width:100%; font-size:17px; line-height:1.6; }
+  .dlg p{ margin:0 0 18px; white-space:pre-wrap; }
+  .dlg .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
+  .dlg button{ min-height:52px; padding:0 20px; border-radius:12px; border:2px solid var(--border); background:var(--surface-2); color:var(--ink); font-size:17px; font-weight:800; cursor:pointer; }
+  .dlg button.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .dlg button.danger{ background:var(--bad-soft); border-color:var(--bad); color:var(--bad-ink); }
   @media print{
     .topbar,.btn-row,.chips,.drop,.toolbar{ display:none !important; }
     .card{ box-shadow:none; break-inside:avoid; }
@@ -355,7 +363,6 @@
     <div class="g-panel hide" id="gStage3"></div>
     <p class="g-foot">看不懂或不確定的時候，找主管一起看就好。</p>
   </section>
-  <div class="g-toast" id="gToast" aria-live="polite"></div>
 
 
   <section class="hero">
@@ -695,6 +702,8 @@
   </section>
 
 </main>
+  <div class="g-toast" id="gToast" aria-live="polite"></div>
+  <div class="dlg-back hide" id="dlgBack" role="dialog" aria-modal="true"><div class="dlg"><p id="dlgMsg"></p><div class="row" id="dlgRow"></div></div></div>
 
 <script>
 (function(){
@@ -812,9 +821,29 @@ function loadDB(){
     }
   } catch (e) { /* 讀不到就用空的 */ }
 }
+/* 頁面自己的對話框。buttons：[{ label, value, cls }]，回傳 Promise<value>；按 Esc 或點背景回傳 null */
+function uiChoice(message, buttons){
+  return new Promise(function(res){
+    var back = $('#dlgBack'), row = $('#dlgRow');
+    $('#dlgMsg').textContent = message;
+    row.innerHTML = buttons.map(function(b, i){ return '<button type="button" data-i="' + i + '" class="' + (b.cls || '') + '">' + esc(b.label) + '</button>'; }).join('');
+    back.classList.remove('hide');
+    function done(v){ back.classList.add('hide'); row.onclick = null; back.onclick = null; document.removeEventListener('keydown', onKey); res(v); }
+    function onKey(e){ if (e.key === 'Escape') done(null); }
+    row.onclick = function(e){ var b = e.target.closest('[data-i]'); if (b) done(buttons[parseInt(b.getAttribute('data-i'), 10)].value); };
+    back.onclick = function(e){ if (e.target === back) done(null); };
+    document.addEventListener('keydown', onKey);
+    var first = row.querySelector('.primary, .danger') || row.querySelector('button');
+    if (first) first.focus();
+  });
+}
+function uiConfirm(message, okLabel, danger){
+  return uiChoice(message, [{ label: '取消', value: false }, { label: okLabel || '確定', value: true, cls: danger ? 'danger' : 'primary' }]).then(function(v){ return v === true; });
+}
+function uiAlert(message){ return uiChoice(message, [{ label: '好', value: true, cls: 'primary' }]); }
 function saveDB(){
   try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
-  catch (e) { alert('資料存不進瀏覽器（可能空間已滿）。請先用「備份全部紀錄」匯出，再清掉舊資料。'); }
+  catch (e) { uiAlert('資料存不進瀏覽器（可能空間已滿）。請先用「備份全部紀錄」匯出，再清掉舊資料。'); }
 }
 
 /* ---------- 欄位定義 ---------- */
@@ -3495,7 +3524,7 @@ function saveFile(filename, text, mime){
   if (hostedSave) {
     hostedSave.save({ filename: filename, data: text }).then(null, function(err){
       if (err && err.code === 'declined') return;
-      alert('檔案沒有存成功：' + ((err && err.message) || '未知原因'));
+      uiAlert('檔案沒有存成功：' + ((err && err.message) || '未知原因'));
     });
     return;
   }
@@ -3537,7 +3566,10 @@ function saveBatch(){
   var note = trim($('#batchNote').value);
   var channel = trim($('#batchChannel').value);
   var existing = db.records.filter(function(r){ return r.date === date && r.channel === channel; });
-  if (existing.length && !confirm(date + (channel ? '（' + channel + '）' : '') + ' 已經有紀錄了，要覆蓋嗎？')) return;
+  var go = existing.length ? uiConfirm(date + (channel ? '（' + channel + '）' : '') + ' 已經有紀錄了，要覆蓋嗎？', '覆蓋') : Promise.resolve(true);
+  go.then(function(ok){ if (ok) saveBatchNow(date, note, channel); });
+}
+function saveBatchNow(date, note, channel){
   db.records = db.records.filter(function(r){ return !(r.date === date && r.channel === channel); });
   var issues = result.rows.filter(function(r){ return r.status !== 'ok'; }).slice(0, 2000).map(function(r){
     var o = r.o || {}, s = r.s || {};
@@ -3677,7 +3709,7 @@ function renderMonth(){
 function exportMonth(){
   var m = $('#reportMonth').value || '全部';
   var recs = monthRecords();
-  if (!recs.length) { alert('這個月份沒有資料可以匯出。'); return; }
+  if (!recs.length) { uiAlert('這個月份沒有資料可以匯出。'); return; }
   var t = sumTotals(recs);
   var rows = [['當月出貨報表', m], [], 
     ['日期', '通路', '備註', '訂單張數', '出貨張數', '出貨數量', '出貨金額', '正確張數', '資料不符', '未出貨', '多出貨', '正確率']];
@@ -3698,11 +3730,11 @@ function exportMonthIssues(){
     head = x.head;
     all = all.concat(x.rows);
   });
-  if (!all.length) { alert('這個月份沒有異常明細。'); return; }
+  if (!all.length) { uiAlert('這個月份沒有異常明細。'); return; }
   downloadCSV('出貨異常明細_' + m + '.csv', [head].concat(all));
 }
 function exportYear(){
-  if (!db.records.length) { alert('還沒有任何紀錄。'); return; }
+  if (!db.records.length) { uiAlert('還沒有任何紀錄。'); return; }
   var byMonth = {};
   db.records.forEach(function(r){
     var k = r.date.slice(0, 7) + '|' + (r.channel || '');
@@ -3930,7 +3962,7 @@ $('#saveBatchBtn').addEventListener('click', saveBatch);
 $('#exportIssuesBtn').addEventListener('click', function(){
   if (!result) return;
   var rows = resultToRows(true);
-  if (rows.length <= 1) { alert('這次核對沒有差異，不用匯出。'); return; }
+  if (rows.length <= 1) { uiAlert('這次核對沒有差異，不用匯出。'); return; }
   downloadCSV('出貨差異_' + ($('#batchDate').value || todayISO()) + '.csv', rows);
 });
 $('#exportAllBtn').addEventListener('click', function(){
@@ -3944,10 +3976,11 @@ $('#dailyBody').addEventListener('click', function(e){
   if (del) {
     var id = del.getAttribute('data-del');
     var rec = db.records.filter(function(r){ return r.id === id; })[0];
-    if (rec && confirm('確定刪除 ' + rec.date + ' 的紀錄？')) {
+    if (rec) uiConfirm('確定刪除 ' + rec.date + ' 的紀錄？', '刪除', true).then(function(ok){
+      if (!ok) return;
       db.records = db.records.filter(function(r){ return r.id !== id; });
       saveDB(); renderDaily(); renderChannels(); renderMonth();
-    }
+    });
     return;
   }
   var det = e.target.closest('[data-detail]');
@@ -3955,7 +3988,7 @@ $('#dailyBody').addEventListener('click', function(e){
     var rec2 = db.records.filter(function(r){ return r.id === det.getAttribute('data-detail'); })[0];
     if (!rec2) return;
     var x = recordIssueRows(rec2);
-    if (!x.rows.length) { alert(rec2.date + ' 全部核對正確，沒有異常明細。'); return; }
+    if (!x.rows.length) { uiAlert(rec2.date + ' 全部核對正確，沒有異常明細。'); return; }
     downloadCSV('出貨異常明細_' + rec2.date + (rec2.channel ? '_' + rec2.channel : '') + '.csv', [x.head].concat(x.rows));
   }
 });
@@ -3972,27 +4005,32 @@ $('#restoreFile').addEventListener('change', function(){
     try {
       var o = JSON.parse(rd.result);
       if (!o || !Array.isArray(o.records)) throw new Error('格式不對');
-      var mode = confirm('按「確定」合併到現有紀錄，按「取消」則完全取代。');
-      if (mode) {
-        var have = {};
-        db.records.forEach(function(r){ have[r.date + '|' + (r.channel || '')] = true; });
-        o.records.forEach(function(r){ if (!have[r.date + '|' + (r.channel || '')]) db.records.push(r); });
-      } else {
-        db.records = o.records;
-      }
-      db.maps = Object.assign({}, o.maps || {}, db.maps);
-      db.records.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
-      saveDB(); renderDaily(); renderChannels(); renderMonth();
-      alert('已還原 ' + o.records.length + ' 筆紀錄。');
-    } catch (err) { alert('還原失敗：' + err.message); }
+      uiChoice('備份裡有 ' + o.records.length + ' 筆紀錄。要合併到現有紀錄，還是完全取代？',
+        [{ label: '取消', value: null }, { label: '完全取代', value: 'replace', cls: 'danger' }, { label: '合併', value: 'merge', cls: 'primary' }]).then(function(mode){
+        if (!mode) return;
+        if (mode === 'merge') {
+          var have = {};
+          db.records.forEach(function(r){ have[r.date + '|' + (r.channel || '')] = true; });
+          o.records.forEach(function(r){ if (!have[r.date + '|' + (r.channel || '')]) db.records.push(r); });
+        } else {
+          db.records = o.records;
+        }
+        db.maps = Object.assign({}, o.maps || {}, db.maps);
+        db.records.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+        saveDB(); renderDaily(); renderChannels(); renderMonth();
+        uiAlert('已還原 ' + o.records.length + ' 筆紀錄。');
+      });
+    } catch (err) { uiAlert('還原失敗：' + err.message); }
     $('#restoreFile').value = '';
   };
   rd.readAsText(f);
 });
 $('#clearAllBtn').addEventListener('click', function(){
-  if (!confirm('這會刪掉全部每日紀錄，無法復原。建議先備份。確定要清空嗎？')) return;
-  db.records = [];
-  saveDB(); renderDaily(); renderChannels(); renderMonth();
+  uiConfirm('這會刪掉全部每日紀錄，無法復原。建議先備份。確定要清空嗎？', '清空', true).then(function(ok){
+    if (!ok) return;
+    db.records = [];
+    saveDB(); renderDaily(); renderChannels(); renderMonth();
+  });
 });
 
 $('#reportMonth').addEventListener('change', renderMonth);
@@ -4351,8 +4389,11 @@ $('#gStage3').addEventListener('click', function(e){
     gRender(); return;
   }
   if (e.target.closest('#gRestart')) {
-    if (!confirm('今天的檢查進度會清掉，重新開始。確定嗎？')) return;
-    clearSide('order'); G = gFresh(); gRender(); return;
+    uiConfirm('今天的檢查進度會清掉，從第 1 步重新開始。確定嗎？', '重新開始', true).then(function(ok){
+      if (!ok) return;
+      clearSide('order'); G = gFresh(); gRender();
+    });
+    return;
   }
 });
 document.addEventListener('keydown', function(e){
@@ -4374,7 +4415,8 @@ $('#modeSwitch').addEventListener('click', function(e){
   var b = e.target.closest('[data-mode]');
   if (b) setMode(b.getAttribute('data-mode'), true);
 });
-/* 主管設定 */
+/* 主管設定與引導模式初始化：要等 loadDB() 讀完設定才能跑，在「啟動」那段被呼叫 */
+function guidedInit(){
 (function lanceSettings(){
   var s = db.settings.guided || {};
   $('#gName').value = s.name || '';
@@ -4398,6 +4440,7 @@ $('#modeSwitch').addEventListener('click', function(e){
 gLoad();
 /* 網址加 #pro 直接進主管對帳、#guided 直接進出貨檢查（做書籤用） */
 setMode(location.hash === '#pro' ? 'pro' : location.hash === '#guided' ? 'guided' : (db.settings.mode || 'guided'), false);
+}
 
 /* ---------- 主題 ---------- */
 (function theme(){
@@ -4420,6 +4463,7 @@ $('#batchDate').value = todayISO();
 if (db.settings.channel) $('#batchChannel').value = db.settings.channel;
 $('#reportMonth').value = todayISO().slice(0, 7);
 renderDaily(); renderChannels(); renderMonth();
+guidedInit();
 
 /* ---------- 從「Lance 出貨導航」帶入 ----------
    出貨導航在最後一步用 ?date=YYYY-MM-DD&channel=MOMO（也放一份在 #hash）開這頁，
