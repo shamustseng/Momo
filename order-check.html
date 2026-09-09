@@ -4398,6 +4398,37 @@ if (db.settings.channel) $('#batchChannel').value = db.settings.channel;
 $('#reportMonth').value = todayISO().slice(0, 7);
 renderDaily(); renderChannels(); renderMonth();
 
+/* ---------- 從「Lance 出貨導航」帶入 ----------
+   出貨導航在最後一步用 ?date=YYYY-MM-DD&channel=MOMO（也放一份在 #hash）開這頁，
+   這裡直接把日期與通路填好，Lance 不用再選。沒有帶參數就照平常。
+   帶了參數就是要做「訂單 vs 出貨」對帳，直接進主管對帳模式。 */
+(function handoff(){
+  function parse(str){
+    var o = {};
+    String(str || '').replace(/^[?#]/, '').split('&').forEach(function(kv){
+      if (!kv) return;
+      var i = kv.indexOf('='), k = i < 0 ? kv : kv.slice(0, i), v = i < 0 ? '' : kv.slice(i + 1);
+      try { o[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); } catch (e) {}
+    });
+    return o;
+  }
+  var p = Object.assign({}, parse(location.hash), parse(location.search));
+  var date = /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : '';
+  var channel = trim(p.channel || '').slice(0, 40);
+  if (!date && !channel) return;
+  setMode('pro', false);
+  if (date) { $('#batchDate').value = date; $('#driveDate').value = date; }
+  if (channel) $('#batchChannel').value = channel;
+  if (p.note) $('#batchNote').value = trim(p.note).slice(0, 80);
+  var hero = $('.hero'), box = document.createElement('div');
+  box.className = 'alert info';
+  box.textContent = '已從「出貨導航」帶入' + (date ? '出貨日期 ' + date : '') + (date && channel ? '、' : '') + (channel ? '通路 ' + channel : '') +
+    '。接下來把今天的訂單資料夾和出貨資料夾放進下面兩格，再按「開始核對」。';
+  hero.appendChild(box);
+  var up = $('#upload');
+  if (up) setTimeout(function(){ up.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 400);
+})();
+
 })();
 </script>
 </body>
