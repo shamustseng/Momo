@@ -57,20 +57,22 @@
   .muted{ color:var(--ink-muted); }
   .small{ font-size:12.5px; }
 
-  .drop{ display:block; border:2px dashed var(--border); border-radius:14px; padding:26px 20px; text-align:center; background:var(--surface-2); cursor:pointer; transition:border-color .15s, background .15s; }
+  .drop{ display:block; border:2px dashed var(--border); border-radius:14px; padding:22px 20px; text-align:center; background:var(--surface-2); cursor:pointer; transition:border-color .15s, background .15s; }
   .drop.over{ border-color:var(--accent); background:var(--accent-soft); }
   .drop strong{ display:block; font-size:16px; margin-bottom:4px; }
   .drop input{ display:none; }
+  .formats{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
+  .formats span{ font-size:11.5px; padding:2px 9px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink-muted); }
   .paste{ margin-top:12px; display:grid; gap:8px; }
   .paste textarea{ width:100%; min-height:72px; border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--surface); resize:vertical; font-family:var(--font-mono); font-size:12.5px; }
 
-  .btn{ display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-weight:700; cursor:pointer; transition:background .15s, border-color .15s, transform .05s; }
+  .btn{ display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-weight:700; cursor:pointer; transition:background .15s, border-color .15s, transform .05s; text-decoration:none; }
   .btn:hover{ background:var(--surface-2); }
   .btn:active{ transform:translateY(1px); }
   .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .btn.primary:hover{ background:var(--accent-hover); }
-  .btn.momo{ background:var(--momo); border-color:var(--momo); color:#fff; }
   .btn.sm{ padding:6px 11px; font-size:12.5px; border-radius:8px; }
+  .btn.xs{ padding:2px 8px; font-size:11.5px; border-radius:6px; font-weight:600; }
   .btn:disabled{ opacity:.5; cursor:not-allowed; }
   .btn-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 
@@ -101,6 +103,15 @@
   .switch{ display:inline-flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
   .switch input{ accent-color:var(--accent); width:16px; height:16px; }
 
+  .files{ display:grid; gap:6px; margin-top:12px; }
+  .file{ display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border); border-radius:10px; background:var(--surface); font-size:13px; flex-wrap:wrap; }
+  .file .name{ font-weight:700; }
+  .file .kind{ font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--surface-2); color:var(--ink-muted); }
+  .file .kind.pdf{ background:var(--momo-soft); color:var(--momo-ink); }
+  .file .kind.table{ background:var(--accent-soft); color:var(--accent-ink); }
+  .file .kind.bad{ background:var(--bad-soft); color:var(--bad); }
+  .file .desc{ color:var(--ink-muted); margin-right:auto; }
+
   .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
   table{ border-collapse:collapse; width:100%; font-size:13px; }
   th,td{ padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; white-space:nowrap; }
@@ -116,6 +127,7 @@
   .tag.dup{ background:var(--warn-soft); color:var(--warn-ink); }
   .tag.warn{ background:var(--bad-soft); color:var(--bad); }
   .tag.ok{ background:var(--accent-soft); color:var(--accent-ink); }
+  .tag.info{ background:var(--momo-soft); color:var(--momo-ink); }
 
   .alert{ border-radius:10px; padding:10px 14px; font-size:13px; border:1px solid var(--border); background:var(--surface-2); }
   .alert.warn{ background:var(--warn-soft); border-color:transparent; color:var(--warn-ink); }
@@ -127,6 +139,7 @@
   .sticky-inner .summary{ margin-right:auto; font-size:13.5px; }
   .hidden{ display:none !important; }
   code{ font-family:var(--font-mono); font-size:12px; background:var(--surface-2); padding:1px 5px; border-radius:5px; }
+  .msgbox{ width:100%; min-height:120px; border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--surface-2); font-family:var(--font-mono); font-size:12.5px; white-space:pre-wrap; }
 
   /* 列印用出貨單（瀏覽器直接列印） */
   #printArea{ display:none; }
@@ -160,10 +173,10 @@
       <h1>MOMO 出貨單產生器</h1>
     </div>
     <nav class="steps" aria-label="步驟">
-      <span class="step active" id="step1"><span class="dot">1</span>匯入訂單清單</span>
+      <span class="step active" id="step1"><span class="dot">1</span>匯入檔案</span>
       <span class="step" id="step2"><span class="dot">2</span>對應欄位</span>
       <span class="step" id="step3"><span class="dot">3</span>篩選與確認</span>
-      <span class="step" id="step4"><span class="dot">4</span>匯出出貨單</span>
+      <span class="step" id="step4"><span class="dot">4</span>匯出</span>
     </nav>
   </div>
 </header>
@@ -172,23 +185,25 @@
   <!-- STEP 1: 匯入 -->
   <section class="card" id="secImport">
     <div class="card-head">
-      <h2>1. 匯入 momo 後台訂單清單</h2>
+      <h2>1. 匯入 momo 訂單資料</h2>
       <div class="btn-row">
-        <a class="btn sm" href="sample/momo訂單匯出範例.xlsx" download>下載範例檔</a>
-        <button class="btn sm" id="btnLoadSample" type="button">載入範例試用</button>
+        <button class="btn sm" id="btnSampleXlsx" type="button">載入範例：訂單清單 Excel</button>
+        <button class="btn sm" id="btnSamplePdf" type="button">載入範例：momo 三份 PDF</button>
+        <a class="btn sm" id="lnkSample" href="sample/momo訂單匯出範例.xlsx" download>下載範例 Excel</a>
       </div>
     </div>
     <label class="drop" id="drop">
-      <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt,.tsv,.htm,.html">
-      <strong>把 momo 供應商後台匯出的訂單清單拖到這裡，或點擊選擇檔案</strong>
-      <span class="muted small">支援 .xlsx / .xls / .csv；每一列是一個商品品項，程式會自動依「出貨單號」（或訂單編號）把品項併成一張出貨單。</span>
+      <input type="file" id="file" multiple accept=".xlsx,.xlsm,.xlsb,.xls,.ods,.csv,.tsv,.txt,.htm,.html,.pdf,.docx,.zip">
+      <strong>把 momo SCM 下載的檔案拖到這裡（可一次多個），或點擊選擇</strong>
+      <span class="muted small">momo 的「列印明細」「宅配單」「出貨總表」PDF 會自動辨識並合併成出貨單；訂單清單 Excel／Word 表格會進入欄位對應。有密碼的檔案自動解鎖。</span>
+      <div class="formats"><span>xlsx / xls / xlsm / xlsb / ods</span><span>csv / tsv</span><span>PDF（含加密）</span><span>Word docx</span><span>zip 壓縮包</span><span>加密 Excel</span></div>
     </label>
     <div class="grid two" style="margin-top:12px">
       <div class="field">
-        <label for="filePassword">momo 檔案密碼（檔案有密碼保護時自動用它解鎖）</label>
+        <label for="filePassword">momo 檔案密碼（PDF／Excel／Word 有密碼保護時自動用它解鎖）</label>
         <input type="text" id="filePassword" autocomplete="off" spellcheck="false" placeholder="例：90754866MOMO">
       </div>
-      <div class="hint" style="align-self:end">momo 後台匯出的 Excel 通常有密碼；解鎖在你的瀏覽器內完成，檔案與密碼都不會上傳。若密碼不對會再詢問一次。</div>
+      <div class="hint" style="align-self:end">解鎖在你的瀏覽器內完成，檔案與密碼都不會上傳。若密碼不對會再詢問一次。</div>
     </div>
     <details class="paste">
       <summary>或直接貼上從後台網頁複製的表格（含標題列）</summary>
@@ -196,7 +211,22 @@
       <div><button class="btn sm" id="btnPaste" type="button">解析貼上的內容</button></div>
     </details>
     <div id="fileInfo" class="hint"></div>
+    <div class="files" id="fileList"></div>
     <div id="sheetPick" class="btn-row hidden" style="margin-top:10px"></div>
+  </section>
+
+  <!-- 商品主檔 -->
+  <section class="card" id="secMaster">
+    <div class="card-head">
+      <h2>商品主檔（選用）<span class="badge" id="masterBadge">未載入</span></h2>
+      <div class="btn-row">
+        <label class="btn sm" for="masterFile">上傳商品品號清單</label>
+        <input type="file" id="masterFile" class="hidden" accept=".xlsx,.xls,.csv">
+        <button class="btn sm" id="btnMasterClear" type="button">清除</button>
+      </div>
+    </div>
+    <p class="hint">上傳「商品品號清單」Excel（欄位例：品號／商品編碼、品名、Brand、出貨倉別、NS 品項代碼、售價、進價、商品成本、入數）。程式會依商品編碼比對出貨品項，自動填入新零售銷售報表、NS 銷售訂單、愛上出貨與回報訊息所需的 Brand、倉別、代碼與價格。只需上傳一次，會記在這個瀏覽器。</p>
+    <div id="masterInfo" style="margin-top:8px"></div>
   </section>
 
   <!-- STEP 2: 欄位對應 -->
@@ -210,7 +240,7 @@
         </div>
       </div>
     </div>
-    <p class="hint">程式已依欄名自動對應，<span class="req" style="color:var(--momo)">＊</span> 為必要欄位。若後台匯出的欄名不同，請手動調整；對應結果會記住，下次同格式檔案自動套用。</p>
+    <p class="hint">表格類檔案（Excel／CSV／Word 表格／貼上）依欄名自動對應，<span style="color:var(--momo)">＊</span> 為必要欄位。欄名不同可手動調整；對應結果會記住，同格式檔案下次自動套用。momo PDF 不需要這一步。</p>
     <div class="map-grid" id="mapGrid" style="margin-top:12px"></div>
     <div id="mapAlert" style="margin-top:12px"></div>
   </section>
@@ -233,6 +263,10 @@
         <label>配送方式</label>
         <div class="chips" id="carrierChips"></div>
       </div>
+      <div class="field" id="whFilterBox">
+        <label>出貨倉別（依商品主檔）</label>
+        <div class="chips" id="whChips"></div>
+      </div>
       <div class="field">
         <label for="search">搜尋（訂單編號、收件人、商品、宅配單號）</label>
         <input type="text" id="search" placeholder="輸入關鍵字即時過濾">
@@ -253,12 +287,12 @@
       <div class="tile"><div class="label">品項種類</div><div class="value num" id="tSkus">0</div></div>
       <div class="tile momo"><div class="label">被過濾掉 / 未勾選</div><div class="value num" id="tExcluded">0</div></div>
     </div>
-    <div id="filterAlert"></div>
+    <div id="filterAlert" class="grid" style="gap:6px"></div>
     <div class="table-wrap" style="margin-top:10px">
       <table id="shipTable">
         <thead><tr>
           <th style="width:36px"><input type="checkbox" id="chkAll" checked aria-label="全選"></th>
-          <th>#</th><th>出貨單號</th><th>訂單編號</th><th>宅配／配送編號</th><th>收件人</th><th>配送方式</th><th>最晚出貨日</th><th>品項</th><th>數量</th><th>狀態</th>
+          <th>#</th><th>出貨單號</th><th>訂單編號</th><th>宅配／配送編號</th><th>收件人</th><th>配送方式</th><th>倉別</th><th>最晚出貨日</th><th>品項</th><th>數量</th><th>來源</th>
         </tr></thead>
         <tbody id="shipBody"></tbody>
       </table>
@@ -269,12 +303,12 @@
   <!-- STEP 4: 匯出 -->
   <section class="card hidden" id="secExport">
     <div class="card-head">
-      <h2>4. 出貨單格式與匯出</h2>
+      <h2>4. 匯出內容與格式</h2>
     </div>
     <div class="grid three">
       <div class="field"><label for="setSupplier">供應商名稱（出貨總表抬頭）</label><input type="text" id="setSupplier" placeholder="例：希塔食品股份有限公司"></div>
       <div class="field"><label for="setTitle">出貨單標題</label><input type="text" id="setTitle" value="裝箱明細"></div>
-      <div class="field"><label for="setDate">印單日期</label><input type="date" id="setDate"></div>
+      <div class="field"><label for="setDate">印單日期／出貨日</label><input type="date" id="setDate"></div>
       <div class="field"><label for="setSort">出貨單排序</label>
         <select id="setSort">
           <option value="file">依檔案原順序</option>
@@ -285,15 +319,26 @@
       </div>
       <div class="field"><label for="setLayout">出貨單版面</label>
         <select id="setLayout">
-          <option value="single">全部放在一個工作表，每張自動分頁（建議，直接整份列印）</option>
+          <option value="single">全部放在一個工作表，每張自動分頁（建議）</option>
           <option value="multi">每張出貨單一個工作表</option>
         </select>
       </div>
-      <div class="field"><label>附帶內容</label>
+      <div class="field"><label for="setNotifyName">回報訊息收件人稱呼</label><input type="text" id="setNotifyName" placeholder="例：湯先生"></div>
+    </div>
+    <div class="grid two" style="margin-top:12px">
+      <div class="field"><label>出貨單工作表</label>
         <div class="grid" style="gap:6px">
           <label class="switch"><input type="checkbox" id="setNotice" checked> 出貨單底部印「注意事項」</label>
           <label class="switch"><input type="checkbox" id="setPick" checked> 加「揀貨彙總」工作表（各品項總量）</label>
           <label class="switch"><input type="checkbox" id="setRaw" checked> 加「原始明細」工作表（整理後逐列資料）</label>
+        </div>
+      </div>
+      <div class="field"><label>依出貨 SOP 產生的打單資料</label>
+        <div class="grid" style="gap:6px">
+          <label class="switch"><input type="checkbox" id="setRetail" checked> 「新零售銷售報表」列（含售價／進價／成本公式）</label>
+          <label class="switch"><input type="checkbox" id="setNS" checked> 「NS 銷售訂單」打單清單（富邦 MOMO／創新事業部／零售客戶倉）</label>
+          <label class="switch"><input type="checkbox" id="setIfresh" checked> 「愛上出貨」建單資料（MOMO-CAT／超取）</label>
+          <label class="switch"><input type="checkbox" id="setNotify" checked> 「回報訊息」工作表（給倉庫的出貨通知）</label>
         </div>
       </div>
     </div>
@@ -301,11 +346,16 @@
       <summary>編輯「注意事項」文字</summary>
       <div class="field" style="margin-top:8px"><textarea id="setNoticeText"></textarea></div>
     </details>
+    <details style="margin-top:8px" open>
+      <summary>回報訊息預覽（可直接複製貼到 Lark／LINE）</summary>
+      <div class="btn-row" style="margin:8px 0"><button class="btn sm" id="btnCopyMsg" type="button">複製訊息</button><span class="hint" id="msgHint"></span></div>
+      <div class="msgbox" id="msgBox"></div>
+    </details>
     <div class="sticky-actions">
       <div class="sticky-inner">
         <div class="summary" id="exportSummary">尚未載入資料</div>
-        <button class="btn" id="btnPrint" type="button" disabled>🖨 直接用瀏覽器列印</button>
-        <button class="btn primary" id="btnExport" type="button" disabled>⬇ 匯出出貨單 Excel</button>
+        <button class="btn" id="btnPrint" type="button" disabled>🖨 直接用瀏覽器列印出貨單</button>
+        <button class="btn primary" id="btnExport" type="button" disabled>⬇ 匯出 Excel</button>
       </div>
     </div>
   </section>
@@ -316,28 +366,47 @@
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/exceljs.min.js"></script>
 <script src="vendor/officecrypto.browser.js"></script>
+<script src="vendor/pdfjs.iife.js"></script>
+<script src="vendor/pdf.worker.iife.js"></script>
+<script src="vendor/mammoth.browser.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
 <script>
-/* ==================== 欄位定義 ==================== */
+/* ==================== 欄位定義（表格類來源） ==================== */
 const FIELDS = [
-  { key:'orderNo',   label:'訂單編號',        required:true,  aliases:['訂單編號','訂單號碼','訂單號','訂單序號','orderno','orderid','order'] },
+  { key:'orderNo',   label:'訂單編號',        required:true,  aliases:['訂單編號','平台訂單號','訂單號碼','訂單號','訂單序號','orderno','orderid','order'] },
   { key:'shipNo',    label:'出貨單號',        aliases:['出貨單號','出貨編號','出貨單','shipno','shipmentno'] },
   { key:'trackNo',   label:'配送編號／宅配單號', aliases:['配送編號','宅配單號','託運單號','托運單號','物流單號','貨運單號','配送單號','trackingno','tracking'] },
-  { key:'carrier',   label:'配送方式',        aliases:['配送方式','物流方式','出貨方式','配送商','物流商','配送類型','物流公司'] },
+  { key:'carrier',   label:'配送方式',        aliases:['配送方式','物流方式','出貨方式','配送商','物流商','配送類型','物流公司','送貨方式'] },
   { key:'deadline',  label:'最晚出貨日',      aliases:['最晚出貨日','最後出貨日','出貨期限','預計出貨日','應出貨日','出貨日'] },
-  { key:'orderDate', label:'訂單日期',        aliases:['訂單日期','成立日期','訂購日期','下單日期','訂單成立時間','訂單時間'] },
+  { key:'orderDate', label:'訂單日期',        aliases:['訂單日期','成立日期','訂購日期','下單日期','訂單成立時間','訂單時間','ordercreatedate'] },
   { key:'status',    label:'訂單／出貨狀態',  aliases:['出貨狀態','訂單狀態','處理狀態','狀態','status'] },
   { key:'receiver',  label:'收件人',          required:true,  aliases:['收件人姓名','收件人','收貨人姓名','收貨人','收件者','受貨人'] },
   { key:'phone',     label:'收件人電話',      aliases:['收件人電話','收件人手機','收件人聯絡電話','收貨人電話','收件電話','收件人行動電話','聯絡電話','手機','電話'] },
   { key:'address',   label:'收件人地址',      aliases:['收件人地址','收貨人地址','收件地址','配送地址','送貨地址','地址'] },
   { key:'sku',       label:'商品編碼',        aliases:['商品編碼','商品編號','品號','商品代碼','商品代號','貨號','商品id','productno','sku'] },
-  { key:'name',      label:'商品名稱',        required:true,  aliases:['商品名稱','品名','商品名','產品名稱','商品'] },
+  { key:'name',      label:'商品名稱',        required:true,  aliases:['商品名稱','品名','品項','商品名','產品名稱','商品'] },
   { key:'spec',      label:'規格',            aliases:['規格','款式','規格名稱','顏色','尺寸','商品規格'] },
   { key:'barcode',   label:'國際條碼',        aliases:['國際條碼','條碼','barcode','ean','upc'] },
   { key:'vendorCode',label:'商品原廠編號',    aliases:['商品原廠編號','原廠編號','原廠型號','廠商編號','廠商貨號','廠商料號','供應商編號','供應商貨號','料號','型號'] },
   { key:'qty',       label:'數量',            required:true,  aliases:['出貨數量','訂購數量','購買數量','數量','件數','qty','quantity'] },
   { key:'cod',       label:'代收款',          aliases:['代收款','代收金額','貨到付款金額','代收'] },
   { key:'invoice',   label:'發票號碼',        aliases:['發票號碼','發票編號','發票'] },
+  { key:'invoiceDate',label:'發票日期',       aliases:['發票日期','開立日期'] },
   { key:'note',      label:'備註',            aliases:['訂單備註','客戶備註','買家備註','備註','留言','附註'] },
+];
+/* 商品主檔欄位 */
+const MASTER_FIELDS = [
+  { key:'sku',       label:'品號／商品編碼', aliases:['商品品號','品號','商品編碼','商品編號','商品代碼','貨號','sku','productno'] },
+  { key:'name',      label:'品名',           aliases:['商品名稱','品名','品項','商品','名稱'] },
+  { key:'brand',     label:'Brand',          aliases:['brand','品牌'] },
+  { key:'warehouse', label:'出貨倉別',       aliases:['出貨倉別','出貨倉','倉別','倉庫','warehouse'] },
+  { key:'nsCode',    label:'NS 品項代碼',    aliases:['ns品項代碼','ns代碼','ns品項','品項代碼','ns','netsuite','item'] },
+  { key:'price',     label:'售價（含稅）',   aliases:['售價','單價','售價/單價','含稅售價','price'] },
+  { key:'cost',      label:'進價（含稅）',   aliases:['進價','進貨價','含稅進價'] },
+  { key:'unitCost',  label:'商品成本（未稅）', aliases:['商品成本','成本','單位成本','cost'] },
+  { key:'packQty',   label:'入數',           aliases:['入數','每箱入數','包裝數'] },
+  { key:'temp',      label:'溫層',           aliases:['溫層','溫度','常溫冷凍'] },
+  { key:'gift',      label:'贈品',           aliases:['贈品','是否贈品','gift'] },
 ];
 const DEFAULT_NOTICE = `一、商品確認
 為保障消費者權益,請務必核對商品內容是否與上述商品明細相符,如有不符請盡速於www.momoshop.com.tw之「會員中心」,點選「訂單提問」,「諮詢分類」選擇「商品缺件」並填寫商品狀況,momo將儘速為您服務。
@@ -350,22 +419,18 @@ const DEFAULT_NOTICE = `一、商品確認
 退返商品及發票折讓單經確定無誤後,將會盡速為您進行退款作業,相關作業進度可至「會員中心」查詢
 四、防詐騙小叮嚀
 momo不會以電話通知變更付款方式或要求依照指示操作ATM匯款,亦不會委託廠商通知重新匯款!`;
-
-// 狀態值判斷：含這些字視為「不需出貨」預設不勾
 const STATUS_EXCLUDE = ['已出貨','取消','退貨','退款','完成','已配達','已送達','結案','已刪除','作廢','已到貨','已取貨'];
+const BRAND_RULES = [['賴山嶼','賴山嶼'],['雞湯大叔','雞湯大叔'],['BROTH MASTER','雞湯大叔'],['一燈','麵屋一燈'],['雞湯桑','雞湯桑']];
 
 /* ==================== 狀態 ==================== */
 const state = {
-  rows: [],          // 2D array（原始工作表）
-  sheets: {},        // name -> 2D array
-  sheetName: '',
-  headerIdx: 0,
-  mapping: {},       // fieldKey -> colIndex
-  records: [],       // 正規化後逐列
-  shipments: [],     // 分組後
-  excluded: new Set(),   // 手動取消勾選的 key
-  fileName: '',
+  sources: [],      // 已載入的檔案：{id,name,kind,desc,rows?,sheets?,sheetName?,headerIdx?,mapping?,momo?}
+  records: [],      // 正規化後逐列（品項）
+  shipments: [],
+  excluded: new Set(),
+  master: [],       // 商品主檔
 };
+let seq = 0;
 const LS = {
   get(k, d){ try{ const v = localStorage.getItem('momoShip.'+k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem('momoShip.'+k, JSON.stringify(v)); }catch(e){} },
@@ -373,16 +438,14 @@ const LS = {
 const $ = s => document.querySelector(s);
 const el = (tag, attrs={}, ...kids) => { const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs)){ if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k,v);} for(const c of kids){ if(c==null) continue; e.append(c.nodeType? c : document.createTextNode(String(c))); } return e; };
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-/* ==================== 讀檔 ==================== */
+const pad2 = n => String(n).padStart(2,'0');
+function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function fmtDate(d){ if(d instanceof Date && !isNaN(d)) return `${d.getFullYear()}/${pad2(d.getMonth()+1)}/${pad2(d.getDate())}`; return d; }
+function normDate(s){ const m = String(s||'').match(/(\d{4})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})/); return m ? `${m[1]}/${pad2(m[2])}/${pad2(m[3])}` : String(s||'').trim(); }
 function normHeader(s){
   return String(s??'').trim().toLowerCase()
     .replace(/[\s　_\-\/／（）()\[\]【】:：*＊]/g,'')
     .replace(/[！-～]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xfee0));
-}
-function fmtDate(d){
-  if(d instanceof Date && !isNaN(d)){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}`; }
-  return d;
 }
 function cellToText(v, field){
   if(v==null) return '';
@@ -390,92 +453,337 @@ function cellToText(v, field){
   if(typeof v==='number'){
     if(field==='qty' || field==='cod') return v;
     let s = Number.isInteger(v) ? String(v) : String(+v.toFixed(6));
-    if(field==='phone' && /^9\d{8}$/.test(s)) s='0'+s;  // 手機被 Excel 吃掉前導 0
+    if(field==='phone' && /^9\d{8}$/.test(s)) s='0'+s;
     return s;
   }
   let s = String(v).trim();
   if(field==='phone' && /^9\d{8}$/.test(s)) s='0'+s;
-  if(field==='deadline' || field==='orderDate'){
-    const m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
-    if(m) s = `${m[1]}/${m[2].padStart(2,'0')}/${m[3].padStart(2,'0')}`;
-  }
+  if(field==='deadline' || field==='orderDate' || field==='invoiceDate') s = normDate(s);
   return s;
 }
+const num = v => { const n = parseFloat(String(v??'').replace(/[^\d.\-]/g,'')); return isNaN(n) ? 0 : n; };
+function showFileInfo(msg, kind){ const b=$('#fileInfo'); b.innerHTML=''; if(msg) b.append(el('div',{class:'alert '+(kind||'')}, msg)); }
+function setStep(n){ [1,2,3,4].forEach(i=>{ const s=$('#step'+i); s.classList.toggle('active', i===n); s.classList.toggle('done', i<n); }); }
 
-/* ---- 密碼保護檔案：CFB 容器 + EncryptionInfo（xlsx）或 FilePass（xls）---- */
+/* ==================== 密碼保護 ==================== */
 const CFB_SIG = [0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1];
-function isCfb(u8){ return u8.length>8 && CFB_SIG.every((b,i)=>u8[i]===b); }
-function isEncryptedFile(u8){
-  if(!isCfb(u8) || typeof OfficeCrypto==='undefined') return false;
-  try{ return OfficeCrypto.isEncrypted(u8); }catch(e){ return false; }
+const isCfb = u8 => u8.length>8 && CFB_SIG.every((b,i)=>u8[i]===b);
+const isZip = u8 => u8.length>4 && u8[0]===0x50 && u8[1]===0x4B && (u8[2]===3||u8[2]===5||u8[2]===7);
+const isPdf = u8 => u8.length>5 && u8[0]===0x25 && u8[1]===0x50 && u8[2]===0x44 && u8[3]===0x46;
+function askPassword(name, wrong, current){
+  const msg = wrong ? `密碼不正確，無法開啟「${name}」。請重新輸入密碼：` : `「${name}」有密碼保護，請輸入開啟密碼：`;
+  const pw = window.prompt(msg, current||'');
+  if(pw==null) throw new Error('已取消：檔案需要密碼才能讀取。');
+  return pw.trim();
 }
-async function unlockIfNeeded(data, type, name){
-  if(type!=='array') return data;
-  const u8 = data instanceof Uint8Array ? data : new Uint8Array(data);
-  if(!isEncryptedFile(u8)) return u8;
+function rememberPassword(pw){ $('#filePassword').value = pw; LS.set('password', pw); }
+async function unlockOffice(u8, name){
+  if(!isCfb(u8) || typeof OfficeCrypto==='undefined') return { data:u8, unlocked:false };
+  let enc=false; try{ enc = OfficeCrypto.isEncrypted(u8); }catch(e){}
+  if(!enc) return { data:u8, unlocked:false };
   let pw = $('#filePassword').value.trim();
-  let unlocked = null, tried = false;
-  while(true){
-    if(!pw){
-      pw = window.prompt(`「${name}」有密碼保護，請輸入開啟密碼：`, '');
-      if(pw==null) throw new Error('已取消：檔案需要密碼才能讀取。');
-      pw = pw.trim();
-    }
-    try{ unlocked = await OfficeCrypto.decrypt(u8, { password: pw }); break; }
-    catch(e){
-      if(!/incorrect|password/i.test(e.message)) throw new Error('解鎖失敗：'+e.message);
-      tried = true;
-      pw = window.prompt(`密碼不正確，無法開啟「${name}」。請重新輸入密碼：`, pw);
-      if(pw==null) throw new Error('已取消：密碼不正確，無法讀取檔案。');
-      pw = pw.trim();
-    }
+  for(;;){
+    if(!pw) pw = askPassword(name, false, '');
+    try{ const out = await OfficeCrypto.decrypt(u8, { password: pw }); rememberPassword(pw); return { data: out instanceof Uint8Array ? out : new Uint8Array(out), unlocked:true }; }
+    catch(e){ if(!/incorrect|password/i.test(e.message)) throw new Error('解鎖失敗：'+e.message); pw = askPassword(name, true, pw); }
   }
-  $('#filePassword').value = pw; LS.set('password', pw);
-  state.unlocked = true;
-  return unlocked instanceof Uint8Array ? unlocked : new Uint8Array(unlocked);
+}
+function pdfIsEncrypted(u8){
+  // 在檔尾（trailer／xref stream 通常在最後）找 /Encrypt；找不到再掃整份
+  const needle = [0x2F,0x45,0x6E,0x63,0x72,0x79,0x70,0x74]; // "/Encrypt"
+  const scan = (from, to) => { outer: for(let i=from;i<to-8;i++){ for(let k=0;k<8;k++) if(u8[i+k]!==needle[k]) continue outer; return true; } return false; };
+  return scan(Math.max(0, u8.length-4096), u8.length) || scan(0, u8.length);
+}
+async function openPdf(u8, name){
+  let pw = $('#filePassword').value.trim();
+  const encrypted = pdfIsEncrypted(u8);
+  let asked = false;
+  const task = pdfjsLib.getDocument({ data: u8, password: pw || undefined, useSystemFonts:true, isEvalSupported:false });
+  task.onPassword = (cb, reason) => {
+    try{ pw = askPassword(name, reason===2, reason===2 ? pw : ''); asked = true; cb(pw); }
+    catch(e){ task.destroy(); }
+  };
+  let doc;
+  try{ doc = await task.promise; }
+  catch(e){ if(/password/i.test(e.name||'')||/password/i.test(e.message||'')) throw new Error(asked ? '已取消：密碼不正確，無法讀取。' : '已取消：檔案需要密碼才能讀取。'); throw e; }
+  if(encrypted && pw) rememberPassword(pw);
+  return { doc, unlocked: encrypted };
 }
 
-async function loadWorkbook(data, type, name){
+/* ==================== 檔案讀取：多格式派發 ==================== */
+async function handleFiles(fileList){
+  const files = [...fileList]; if(!files.length) return;
+  showFileInfo(`讀取 ${files.length} 個檔案中…`);
+  const results = [];
+  for(const f of files){
+    try{ const u8 = new Uint8Array(await f.arrayBuffer()); results.push(...await ingestBytes(u8, f.name)); }
+    catch(e){ console.error(e); results.push({ name:f.name, kind:'bad', desc: e.message }); }
+  }
+  results.forEach(r=>{ r.id = ++seq; state.sources.push(r); });
+  afterLoad(results);
+}
+function afterLoad(results){
+  const ok = results.filter(r=>r.kind!=='bad' && r.kind!=='skip');
+  const bad = results.filter(r=>r.kind==='bad');
+  const parts = [];
+  if(ok.length) parts.push(`已載入 ${ok.length} 個檔案：${ok.map(r=>`${r.name}（${r.desc}）`).join('、')}`);
+  if(bad.length) parts.push(`無法讀取：${bad.map(r=>`${r.name}：${r.desc}`).join('；')}`);
+  showFileInfo(parts.join('　'), bad.length && !ok.length ? 'bad' : bad.length ? 'warn' : 'ok');
+  renderFileList();
+  rebuildAll();
+}
+async function ingestBytes(u8, name){
+  const ext = (name.match(/\.([a-z0-9]+)$/i)||[])[1]?.toLowerCase() || '';
+  if(isPdf(u8) || ext==='pdf') return [await ingestPdf(u8, name)];
+  if(isZip(u8)){
+    if(ext==='docx' || (await zipHas(u8, 'word/document.xml'))) return [await ingestDocx(u8, name)];
+    if(['xlsx','xlsm','xlsb','ods'].includes(ext) || (await zipHas(u8, 'xl/workbook.xml')) || (await zipHas(u8, 'content.xml'))) return [ingestTable(u8, 'array', name)];
+    if(ext==='pptx') return [{ name, kind:'skip', desc:'PowerPoint 不含訂單資料，已略過' }];
+    return ingestZip(u8, name);
+  }
+  if(isCfb(u8)){
+    const { data, unlocked } = await unlockOffice(u8, name);
+    const tag = unlocked ? '，已用密碼解鎖' : '';
+    if(isZip(data)){ const r = await ingestBytes(data, name); r.forEach(x=>{ if(x.desc) x.desc += tag; }); return r; }
+    if(isPdf(data)){ const r = await ingestPdf(data, name); r.desc += tag; return [r]; }
+    if(ext==='doc') return [{ name, kind:'bad', desc:'舊版 .doc 無法解析，請另存為 .docx' }];
+    const r = ingestTable(data, 'array', name); r.desc += tag; return [r];
+  }
+  if(['csv','tsv','txt','htm','html'].includes(ext) || !ext){
+    let text = new TextDecoder('utf-8', { fatal:false }).decode(u8);
+    if(/�/.test(text)) { try{ text = new TextDecoder('big5').decode(u8); }catch(e){} }
+    return [ingestTable(text, 'string', name)];
+  }
+  return [ingestTable(u8, 'array', name)];
+}
+async function zipHas(u8, path){ try{ const z = await JSZip.loadAsync(u8); return !!z.file(path); }catch(e){ return false; } }
+async function ingestZip(u8, name){
+  let z; try{ z = await JSZip.loadAsync(u8); }catch(e){ return [{ name, kind:'bad', desc:'無法解壓縮（若是有密碼的 zip，請先解壓縮再放進來）' }]; }
+  const out = [];
+  for(const [path, entry] of Object.entries(z.files)){
+    if(entry.dir || /(^|\/)(__MACOSX|\.)/.test(path)) continue;
+    if(!/\.(xlsx|xlsm|xlsb|xls|ods|csv|tsv|txt|pdf|docx|zip)$/i.test(path)) continue;
+    try{ const inner = await entry.async('uint8array'); out.push(...(await ingestBytes(inner, `${name}／${path.split('/').pop()}`))); }
+    catch(e){ out.push({ name:`${name}／${path}`, kind:'bad', desc:e.message }); }
+  }
+  if(!out.length) out.push({ name, kind:'bad', desc:'壓縮包內沒有可讀的 Excel／PDF／Word' });
+  return out;
+}
+
+/* ---- 表格類（SheetJS） ---- */
+function ingestTable(data, type, name){
   let wb;
-  state.unlocked = false;
-  try{
-    showFileInfo(`讀取「${name}」中…`);
-    data = await unlockIfNeeded(data, type, name);
-    wb = XLSX.read(data, { type, cellDates:true, codepage:950, raw:true });
-  }
-  catch(e){
-    const msg = /password-protected/i.test(e.message) ? '檔案有密碼保護但無法解鎖，請確認密碼。' : e.message;
-    showFileInfo(`無法讀取檔案：${msg}`, 'bad'); return;
-  }
-  state.sheets = {};
-  for(const sn of wb.SheetNames){
-    const ws = wb.Sheets[sn];
-    const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null, blankrows:false });
-    if(rows.length) state.sheets[sn] = rows;
-  }
-  const names = Object.keys(state.sheets);
-  if(!names.length){ showFileInfo('檔案裡沒有資料。', 'bad'); return; }
-  state.fileName = name;
-  resetFilters();
-  // 挑選最像訂單清單的工作表：欄名命中最多者
+  try{ wb = XLSX.read(data, { type, cellDates:true, codepage:950, raw:true }); }
+  catch(e){ if(/password/i.test(e.message)) return { name, kind:'bad', desc:'檔案有密碼保護但無法解鎖，請確認密碼' }; return { name, kind:'bad', desc:'無法讀取：'+e.message }; }
+  const sheets = {};
+  for(const sn of wb.SheetNames){ const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header:1, raw:true, defval:null, blankrows:false }); if(rows.length) sheets[sn]=rows; }
+  const names = Object.keys(sheets);
+  if(!names.length) return { name, kind:'bad', desc:'檔案裡沒有資料' };
   let best = names[0], bestScore = -1;
-  for(const sn of names){ const { score } = detectHeader(state.sheets[sn]); if(score>bestScore){ bestScore=score; best=sn; } }
-  renderSheetPicker(names, best);
-  useSheet(best);
+  for(const sn of names){ const { score } = detectHeader(sheets[sn]); if(score>bestScore){ bestScore=score; best=sn; } }
+  const src = { name, kind:'table', sheets, sheetName: best, rows: sheets[best] };
+  src.headerIdx = detectHeader(src.rows).idx;
+  src.mapping = autoMap(src);
+  src.desc = `表格 ${src.rows.length - src.headerIdx - 1} 列${names.length>1?`，${names.length} 個工作表`:''}`;
+  return src;
 }
-function renderSheetPicker(names, active){
-  const box = $('#sheetPick'); box.innerHTML='';
-  if(names.length<=1){ box.classList.add('hidden'); return; }
-  box.classList.remove('hidden');
-  box.append(el('span',{class:'muted small'},'工作表：'));
-  for(const n of names){
-    box.append(el('button',{type:'button', class:'btn sm'+(n===active?' primary':''), onclick:()=>{ renderSheetPicker(names, n); useSheet(n); }}, n));
+function rowsFromHtmlTables(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const tables = [...doc.querySelectorAll('table')].map(t => [...t.querySelectorAll('tr')].map(tr => [...tr.children].map(td => td.textContent.replace(/\s+/g,' ').trim())));
+  return tables.filter(t => t.length>=2 && Math.max(...t.map(r=>r.length))>=3);
+}
+async function ingestDocx(u8, name){
+  if(typeof mammoth==='undefined') return { name, kind:'bad', desc:'缺少 Word 解析元件' };
+  const { value: html } = await mammoth.convertToHtml({ arrayBuffer: u8.buffer.slice(u8.byteOffset, u8.byteOffset+u8.byteLength) });
+  const tables = rowsFromHtmlTables(html);
+  if(tables.length){
+    let rows = tables[0].slice();
+    for(const t of tables.slice(1)){ if(t[0].length===tables[0][0].length){ const same = t[0].join('|')===tables[0][0].join('|'); rows.push(...(same? t.slice(1) : t)); } }
+    const src = { name, kind:'table', sheets:{ 'Word 表格': rows }, sheetName:'Word 表格', rows };
+    src.headerIdx = detectHeader(rows).idx; src.mapping = autoMap(src);
+    src.desc = `Word 表格 ${rows.length - src.headerIdx - 1} 列`;
+    return src;
   }
+  const text = new DOMParser().parseFromString(html.replace(/<\/p>|<br\s*\/?>/gi, '\n'), 'text/html').body.textContent;
+  const lines = text.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  const momo = parseMomoLines(lines);
+  if(momo.packing.length) return { name, kind:'momo', momo, desc: momoDesc(momo) };
+  return { name, kind:'bad', desc:'Word 檔裡沒有表格，也不是 momo 出貨文件' };
 }
+
+/* ---- PDF ---- */
+async function ingestPdf(u8, name){
+  const { doc, unlocked } = await openPdf(u8, name);
+  const pages = [];
+  for(let p=1; p<=doc.numPages; p++){
+    const page = await doc.getPage(p); const vp = page.getViewport({ scale:1 });
+    const tc = await page.getTextContent();
+    const items = tc.items.filter(i=>i.str && i.str.trim()).map(i=>({ s:i.str.trim(), x:i.transform[4], y:vp.height - i.transform[5], w:i.width }));
+    pages.push({ w:vp.width, h:vp.height, items });
+  }
+  try{ doc.destroy(); }catch(e){}
+  const suffix = unlocked ? '，已用密碼解鎖' : '';
+  const momo = parseMomoPdf(pages);
+  if(momo.packing.length || momo.labels.length || momo.totals.length) return { name, kind:'momo', momo, desc: momoDesc(momo) + suffix };
+  const rows = pdfPagesToRows(pages);
+  if(rows.length >= 2){
+    const src = { name, kind:'table', sheets:{ 'PDF 表格': rows }, sheetName:'PDF 表格', rows };
+    src.headerIdx = detectHeader(rows).idx; src.mapping = autoMap(src);
+    src.desc = `PDF 文字表格 ${rows.length - src.headerIdx - 1} 列（自動還原，請確認欄位對應）${suffix}`;
+    return src;
+  }
+  return { name, kind:'bad', desc:'PDF 裡讀不到文字（可能是掃描影像）' };
+}
+function groupLines(items, tol=3){
+  const sorted = [...items].sort((a,b)=>a.y-b.y || a.x-b.x);
+  const lines = [];
+  for(const it of sorted){ const L = lines[lines.length-1]; if(L && Math.abs(L.y - it.y) <= tol) L.items.push(it); else lines.push({ y:it.y, items:[it] }); }
+  lines.forEach(L=>L.items.sort((a,b)=>a.x-b.x));
+  return lines;
+}
+function pdfPagesToRows(pages){
+  const rows = [];
+  for(const pg of pages){
+    for(const L of groupLines(pg.items)){
+      const cells = []; let cur = null;
+      for(const it of L.items){
+        if(cur && it.x - (cur.x + cur.w) < 8){ cur.s += (it.x - (cur.x+cur.w) > 2 ? ' ' : '') + it.s; cur.w = it.x + it.w - cur.x; }
+        else { cur = { s:it.s, x:it.x, w:it.w }; cells.push(cur); }
+      }
+      rows.push(cells.map(c=>c.s));
+    }
+  }
+  return rows;
+}
+const momoDesc = m => [m.packing.length && `裝箱明細 ${m.packing.length} 張`, m.labels.length && `宅配單 ${m.labels.length} 張`, m.totals.length && `取貨總表 ${m.totals.length} 筆`].filter(Boolean).join('、');
+
+/* ---- momo 文件解析（座標版） ---- */
+function parseMomoPdf(pages){
+  const out = { packing:[], labels:[], totals:[] };
+  for(const pg of pages){
+    const text = pg.items.map(i=>i.s).join('\n');
+    if(/裝箱明細/.test(text) && /訂單編號/.test(text) && /序號/.test(text)) out.packing.push(...parsePackingPage(pg));
+    else if(/到廠取貨總表/.test(text) || (/宅配單號/.test(text) && /件數/.test(text) && /代收款/.test(text) && /\bNO\b/.test(text))) out.totals.push(...parseTotalsPage(pg));
+    else if(/貨件聯|收執聯|宅配單號|客戶單號/.test(text)) out.labels.push(...parseLabelPage(pg));
+  }
+  return out;
+}
+const after = (s, re) => { const m = s.match(re); return m ? m[1].trim() : ''; };
+function parsePackingPage(pg){
+  const items = pg.items;
+  const find = re => { for(const it of items){ const m = it.s.match(re); if(m) return m[1].trim(); } return ''; };
+  const head = {
+    orderNo: find(/訂單編號[:：]\s*(\d+)/), shipNo: find(/出貨單號[:：]\s*(\d+)/), trackNo: find(/配送編號[:：]\s*(\S+)/),
+    receiver: find(/收\s*件\s*人[:：]\s*(.+)/), deadline: normDate(find(/最晚出貨日[:：]\s*(\S*)/)), printDate: normDate(find(/印單日期[:：]\s*(\S+)/)),
+  };
+  const orderIt = items.find(i=>/訂單編號[:：]/.test(i.s));
+  if(orderIt){ const c = items.find(i=>Math.abs(i.y-orderIt.y)<3 && i.x>orderIt.x+150 && !/最晚出貨日/.test(i.s)); head.carrier = c ? c.s : ''; }
+  const hdr = items.find(i=>i.s==='序號'); if(!hdr) return [];
+  const cols = {}; for(const it of items){ if(Math.abs(it.y-hdr.y)<3) cols[it.s]=it.x; }
+  const cx = { sku: cols['商品編碼']??74, name: cols['商品名稱']??142, barcode: cols['國際條碼']??332, qty: cols['數量']??406, vendor: cols['商品原廠編號']??439, check: cols['檢查']??533 };
+  const colOf = x => x < cx.sku-6 ? 'seq' : x < cx.name-6 ? 'sku' : x < cx.barcode-6 ? 'name' : x < cx.qty-6 ? 'barcode' : x < cx.vendor-6 ? 'qty' : x < cx.check-6 ? 'vendor' : 'check';
+  const endY = (items.find(i=>i.s==='注意事項' && i.y>hdr.y)||{}).y ?? pg.h;
+  const body = items.filter(i=>i.y>hdr.y+4 && i.y<endY);
+  const seqs = body.filter(i=>colOf(i.x)==='seq' && /^\d{3}$/.test(i.s)).sort((a,b)=>a.y-b.y);
+  const lines = [];
+  seqs.forEach((sq, k)=>{
+    const y0 = sq.y-4, y1 = k+1<seqs.length ? seqs[k+1].y-4 : endY;
+    const cells = body.filter(i=>i.y>=y0 && i.y<y1 && i!==sq).sort((a,b)=>a.y-b.y || a.x-b.x);
+    const row = { seq:sq.s, sku:'', name:[], barcode:'', qty:'', vendorCode:'' };
+    for(const c of cells){
+      const col = colOf(c.x);
+      if(col==='name') row.name.push(c.s);
+      else if(col==='sku' && !row.sku) row.sku = c.s;
+      else if(col==='barcode' && !row.barcode) row.barcode = c.s;
+      else if(col==='qty' && row.qty==='') row.qty = c.s;
+      else if(col==='vendor' && !row.vendorCode) row.vendorCode = c.s;
+    }
+    const m = row.sku.match(/^(\**\d+)-(\d+)$/);
+    lines.push({ seq:row.seq, sku: m ? m[1] : row.sku, spec: m ? m[2] : '', name: row.name.join(''), barcode:row.barcode, qty: num(row.qty)||1, vendorCode:row.vendorCode });
+  });
+  return lines.length ? [{ ...head, lines }] : [];
+}
+function parseLabelPage(pg){
+  const items = pg.items;
+  const markers = items.filter(i=>/^\*\d{10,14}\*$/.test(i.s)).sort((a,b)=>a.y-b.y);
+  const regions = [];
+  for(const m of markers){ const last = regions[regions.length-1]; if(last && m.y - last.markerY < 100) continue; regions.push({ top: m.y-20, markerY:m.y, track: m.s.replace(/\*/g,'') }); }
+  if(!regions.length && /客戶單號/.test(items.map(i=>i.s).join())) regions.push({ top:0, markerY:0, track:'' });
+  const labels = [];
+  regions.forEach((rg, k)=>{
+    const bottom = k+1<regions.length ? regions[k+1].top : pg.h;
+    const its = items.filter(i=>i.y>=rg.top && i.y<bottom);
+    const text = its.map(i=>i.s).join('\n');
+    const lab = { trackNo: rg.track || after(text, /宅配單號\s*(\d{10,14})/), shipNo: after(text, /客戶單號\s*(\d{8,16})/), orderNo: after(text, /訂單編號[:：]\s*(\d+)/), invoice: after(text, /發票號碼\s*[:：]\s*([A-Z]{2}\d{8})/), invoiceDate: normDate(after(text, /發票日期\s*[:：]\s*(\S+)/)), shipDate: normDate(after(text, /寄件日\/(\S+)/)), pieces: after(text, /件數\s*(\d+\/\d+)/), contentSku: after(text, /內容物\s*(\**\d+)/) };
+    const dims = its.find(i=>/cm\s*\*/.test(i.s)); lab.dims = dims ? dims.s.replace(/【.*?】/g,'').replace(/\s*cm\s*\*\s*/g,'×').replace(/\s*cm\s*$/,'').trim() : '';
+    lab.merged = !!(dims && /併/.test(dims.s));
+    const side = its.filter(i=>i.x > pg.w*0.85 && /^[常溫冷藏凍]$/.test(i.s)).map(i=>i.s).join(''); lab.temp = /冷凍/.test(side)?'冷凍':/冷藏/.test(side)?'冷藏':/常溫/.test(side)?'常溫':'';
+    const right = its.filter(i=>i.x > pg.w*0.5);
+    const shou = right.find(i=>i.s==='收'); const ren = shou ? right.find(i=>i.s==='人' && i.y>shou.y && i.y<shou.y+40) : null;
+    if(shou && ren){
+      const block = right.filter(i=>i.x>shou.x+10 && i.x<shou.x+200 && i.y>shou.y-14 && i.y<ren.y+8 && !/^\d{6}$/.test(i.s)).sort((a,b)=>a.y-b.y);
+      for(const b of block){
+        if(/^0\d{1,3}-?\d{6,8}(#\d+)?$/.test(b.s) || /^\d{10}(#\d+)?$/.test(b.s)) { if(!lab.phone) lab.phone = b.s; }
+        else if(/[市縣區鄉鎮路街巷弄號樓]/.test(b.s) && b.s.length>=6) lab.address = (lab.address||'') + b.s;
+        else if(!lab.receiver && !/\*/.test(b.s)) lab.receiver = b.s;
+      }
+    }
+    if(!lab.receiver){ const m = text.match(/\n([^\n*\d]{2,6})\n\d{6}\n/); if(m) lab.receiver = m[1]; }
+    if(lab.trackNo || lab.shipNo || lab.orderNo) labels.push(lab);
+  });
+  return labels;
+}
+function parseTotalsPage(pg){
+  const items = pg.items;
+  const hdr = items.find(i=>i.s==='NO'); if(!hdr) return [];
+  const cols = {}; for(const it of items){ if(Math.abs(it.y-hdr.y)<3) cols[it.s]=it.x; }
+  const cx = { track: cols['宅配單號']??105, order: cols['訂單編號']??225, L: cols['長cm']??321, W: cols['寬cm']??350, H: cols['高cm']??378, recv: cols['收件人']??426, pcs: cols['件數']??484, cod: cols['代收款']??527 };
+  const colOf = x => x < cx.track-12 ? 'no' : x < cx.order-12 ? 'track' : x < cx.L-8 ? 'order' : x < cx.W-8 ? 'L' : x < cx.H-8 ? 'W' : x < cx.recv-10 ? 'H' : x < cx.pcs-10 ? 'recv' : x < cx.cod-10 ? 'pcs' : 'cod';
+  const endY = (items.find(i=>i.s==='合計' && i.y>hdr.y)||{}).y ?? pg.h;
+  const body = items.filter(i=>i.y>hdr.y+4 && i.y<endY);
+  const nos = body.filter(i=>colOf(i.x)==='no' && /^\d+$/.test(i.s)).sort((a,b)=>a.y-b.y);
+  const supIt = items.find(i=>i.s==='供應商名稱');
+  const supplier = supIt ? items.filter(i=>i.y>supIt.y-6 && i.y<supIt.y+24 && i.x>supIt.x+40 && i.x<supIt.x+150).sort((a,b)=>a.y-b.y).map(i=>i.s).join('') : '';
+  const rows = [];
+  nos.forEach((no, k)=>{
+    const y0 = no.y-4, y1 = k+1<nos.length ? nos[k+1].y-4 : endY;
+    const cells = body.filter(i=>i.y>=y0 && i.y<y1 && i!==no).sort((a,b)=>a.y-b.y || a.x-b.x);
+    const r = { no:no.s, trackNo:'', orderNos:[], dims:[], receiver:'', pieces:'', cod:'', supplier };
+    const dimRows = {};
+    for(const c of cells){
+      const col = colOf(c.x); const ky = Math.round(c.y);
+      if(col==='track' && !r.trackNo) r.trackNo = c.s;
+      else if(col==='order') r.orderNos.push(c.s);
+      else if(col==='L'||col==='W'||col==='H') (dimRows[ky] = dimRows[ky]||{})[col] = c.s;
+      else if(col==='recv') r.receiver += c.s;
+      else if(col==='pcs' && !r.pieces) r.pieces = c.s;
+      else if(col==='cod' && !r.cod) r.cod = c.s;
+    }
+    r.dims = Object.keys(dimRows).sort((a,b)=>a-b).map(k=>`${dimRows[k].L||''}×${dimRows[k].W||''}×${dimRows[k].H||''}`);
+    r.orderNo = [...new Set(r.orderNos.map(o=>o.split('-')[0]))].join('、');
+    if(r.trackNo || r.orderNos.length) rows.push(r);
+  });
+  return rows;
+}
+/* 純文字版（Word 內文）：只抓得到基本欄位 */
+function parseMomoLines(lines){
+  const out = { packing:[], labels:[], totals:[] };
+  const text = lines.join('\n');
+  if(!/訂單編號/.test(text)) return out;
+  for(const b of text.split(/(?=印單日期)/)){
+    if(!/裝箱明細/.test(b)) continue;
+    const head = { orderNo: after(b, /訂單編號[:：]\s*(\d+)/), shipNo: after(b, /出貨單號[:：]\s*(\d+)/), trackNo: after(b, /配送編號[:：]\s*(\S+)/), receiver: after(b, /收\s*件\s*人[:：]\s*(\S+)/), deadline: normDate(after(b, /最晚出貨日[:：]\s*(\S*)/)), carrier: after(b, /(第三方[^\n]*|超商[^\n]*|宅配[^\n]*)/) };
+    const lines = []; const re = /^(\d{3})\s+(\**\d+)-(\d+)\s+(.+?)\s+(\d{13})?\s*(\d+)\s*(\S*)$/gm; let m;
+    while((m = re.exec(b))) lines.push({ seq:m[1], sku:m[2], spec:m[3], name:m[4], barcode:m[5]||'', qty:num(m[6])||1, vendorCode:m[7]||'' });
+    if(lines.length) out.packing.push({ ...head, lines });
+  }
+  return out;
+}
+
+/* ==================== 表格來源：標題列與欄位對應 ==================== */
 function detectHeader(rows){
   let bestIdx=0, best=-1;
-  const limit = Math.min(rows.length, 20);
-  for(let i=0;i<limit;i++){
+  for(let i=0;i<Math.min(rows.length, 20);i++){
     const r = rows[i]||[]; let score=0, filled=0;
     for(const c of r){ if(c==null||c==='') continue; filled++; const h=normHeader(c); if(h && FIELDS.some(f=>f.aliases.some(a=>h===normHeader(a)||h.includes(normHeader(a))))) score+=2; }
     score += Math.min(filled, 10)*0.1;
@@ -483,145 +791,171 @@ function detectHeader(rows){
   }
   return { idx:bestIdx, score:best };
 }
-function useSheet(sn){
-  state.sheetName = sn;
-  state.rows = state.sheets[sn];
-  const { idx } = detectHeader(state.rows);
-  state.headerIdx = idx;
-  const hr = $('#headerRow'); hr.innerHTML='';
-  for(let i=0;i<Math.min(state.rows.length,20);i++){
-    const preview = (state.rows[i]||[]).filter(x=>x!=null&&x!=='').slice(0,4).join('、').slice(0,40);
-    hr.append(el('option',{value:i}, `第 ${i+1} 列：${preview}`));
-  }
-  hr.value = idx;
-  autoMap();
-  showFileInfo(`已載入「${state.fileName}」${state.unlocked?'（已用密碼解鎖）':''}${Object.keys(state.sheets).length>1?`／工作表「${sn}」`:''}，共 ${state.rows.length - idx - 1} 列資料。`, 'ok');
-  setStep(2);
-  $('#secMap').classList.remove('hidden');
-  renderMapping();
-  rebuild();
-}
-function showFileInfo(msg, kind){ const b=$('#fileInfo'); b.innerHTML=''; b.append(el('div',{class:'alert '+(kind||'')}, msg)); }
-
-/* ==================== 欄位對應 ==================== */
-function headers(){ return (state.rows[state.headerIdx]||[]).map(h=>h==null?'':String(h).trim()); }
-function autoMap(){
-  const hs = headers().map(normHeader);
-  const sig = hs.filter(Boolean).join('|');
-  const saved = LS.get('mapping.'+sig, null);
-  if(saved){ state.mapping = saved; return; }
+const headersOf = src => (src.rows[src.headerIdx]||[]).map(h=>h==null?'':String(h).trim());
+function matchColumns(headers, fields){
+  const hs = headers.map(normHeader);
   const cands = [];
-  FIELDS.forEach(f=>{
-    f.aliases.forEach((a, ai)=>{
-      const na = normHeader(a);
-      hs.forEach((h, ci)=>{
-        if(!h) return;
-        let s = 0;
-        if(h===na) s = 100;
-        else if(h.startsWith(na)) s = 60;
-        else if(h.includes(na)) s = 40;
-        if(!s) return;
-        s += (f.aliases.length - ai) * 0.5 + na.length * 0.2;  // 先列的別名、較長的別名優先
-        // 避免把「訂購人」欄位當成收件人
-        if(['receiver','phone','address'].includes(f.key) && /訂購|購買人|買家|會員/.test(h) && !/收件|收貨/.test(h)) s -= 80;
-        cands.push({ key:f.key, ci, s });
-      });
-    });
-  });
+  fields.forEach(f=>f.aliases.forEach((a, ai)=>{ const na = normHeader(a); hs.forEach((h, ci)=>{ if(!h) return; let s = h===na ? 100 : h.startsWith(na) ? 60 : h.includes(na) ? 40 : 0; if(!s) return; s += (f.aliases.length - ai)*0.5 + na.length*0.2; if(['receiver','phone','address'].includes(f.key) && /訂購|購買人|買家|會員/.test(h) && !/收件|收貨/.test(h)) s -= 80; cands.push({ key:f.key, ci, s }); }); }));
   cands.sort((a,b)=>b.s-a.s);
-  const usedCol = new Set(), mapping = {};
-  for(const c of cands){ if(c.s<=0 || mapping[c.key]!=null || usedCol.has(c.ci)) continue; mapping[c.key]=c.ci; usedCol.add(c.ci); }
-  state.mapping = mapping;
+  const used = new Set(), mapping = {};
+  for(const c of cands){ if(c.s<=0 || mapping[c.key]!=null || used.has(c.ci)) continue; mapping[c.key]=c.ci; used.add(c.ci); }
+  return mapping;
 }
-function saveMapping(){ const sig = headers().map(normHeader).filter(Boolean).join('|'); LS.set('mapping.'+sig, state.mapping); }
+function autoMap(src){
+  const hs = headersOf(src).map(normHeader); const sig = hs.filter(Boolean).join('|');
+  return LS.get('mapping.'+sig, null) || matchColumns(headersOf(src), FIELDS);
+}
+function saveMapping(src){ const sig = headersOf(src).map(normHeader).filter(Boolean).join('|'); LS.set('mapping.'+sig, src.mapping); }
+const tableSource = () => [...state.sources].reverse().find(s=>s.kind==='table');
 function renderMapping(){
+  const src = tableSource();
+  $('#secMap').classList.toggle('hidden', !src);
+  const sp = $('#sheetPick'); sp.innerHTML=''; sp.classList.add('hidden');
+  if(!src) return;
+  const names = Object.keys(src.sheets);
+  if(names.length>1){ sp.classList.remove('hidden'); sp.append(el('span',{class:'muted small'},`「${src.name}」工作表：`)); names.forEach(n=>sp.append(el('button',{type:'button', class:'btn sm'+(n===src.sheetName?' primary':''), onclick:()=>{ src.sheetName=n; src.rows=src.sheets[n]; src.headerIdx=detectHeader(src.rows).idx; src.mapping=autoMap(src); rebuildAll(); }}, n))); }
+  const hr = $('#headerRow'); hr.innerHTML='';
+  for(let i=0;i<Math.min(src.rows.length,20);i++){ const preview = (src.rows[i]||[]).filter(x=>x!=null&&x!=='').slice(0,4).join('、').slice(0,40); hr.append(el('option',{value:i}, `第 ${i+1} 列：${preview}`)); }
+  hr.value = src.headerIdx;
   const grid = $('#mapGrid'); grid.innerHTML='';
-  const hs = headers();
+  const hs = headersOf(src);
   FIELDS.forEach(f=>{
-    const sel = el('select', { id:'map_'+f.key, onchange:(e)=>{ const v=e.target.value; if(v==='') delete state.mapping[f.key]; else state.mapping[f.key]=+v; saveMapping(); renderMapping(); rebuild(); } });
+    const sel = el('select', { id:'map_'+f.key, onchange:(e)=>{ const v=e.target.value; if(v==='') delete src.mapping[f.key]; else src.mapping[f.key]=+v; saveMapping(src); rebuildAll(); } });
     sel.append(el('option',{value:''},'（不使用）'));
-    hs.forEach((h,i)=>{ if(h) sel.append(el('option',{value:i}, `${h}`)); });
-    sel.value = state.mapping[f.key]!=null ? state.mapping[f.key] : '';
-    const wrap = el('div',{class:'field '+(state.mapping[f.key]!=null?'mapped':(f.required?'missing':''))},
-      el('label',{for:'map_'+f.key}, f.label, f.required? el('span',{class:'req'},' ＊'):null), sel);
-    grid.append(wrap);
+    hs.forEach((h,i)=>{ if(h) sel.append(el('option',{value:i}, h)); });
+    sel.value = src.mapping[f.key]!=null ? src.mapping[f.key] : '';
+    grid.append(el('div',{class:'field '+(src.mapping[f.key]!=null?'mapped':(f.required?'missing':''))}, el('label',{for:'map_'+f.key}, f.label, f.required? el('span',{class:'req'},' ＊'):null), sel));
   });
-  const missing = FIELDS.filter(f=>f.required && state.mapping[f.key]==null);
+  const missing = FIELDS.filter(f=>f.required && src.mapping[f.key]==null);
   const ma = $('#mapAlert'); ma.innerHTML='';
-  $('#mapBadge').textContent = `${Object.keys(state.mapping).length} / ${FIELDS.length} 欄已對應`;
-  if(missing.length){ ma.append(el('div',{class:'alert bad'}, `缺少必要欄位：${missing.map(m=>m.label).join('、')}。請在上方選單指定，或確認「標題列」是否選對。`)); }
-  else if(state.mapping.shipNo==null){ ma.append(el('div',{class:'alert warn'}, '未對應「出貨單號」，將改以「訂單編號」把品項併成同一張出貨單。')); }
+  $('#mapBadge').textContent = `${src.name}：${Object.keys(src.mapping).length} / ${FIELDS.length} 欄已對應`;
+  if(missing.length) ma.append(el('div',{class:'alert bad'}, `缺少必要欄位：${missing.map(m=>m.label).join('、')}。請在上方選單指定，或確認「標題列」是否選對。`));
+  else if(src.mapping.shipNo==null) ma.append(el('div',{class:'alert warn'}, '未對應「出貨單號」，將改以「訂單編號」把品項併成同一張出貨單。'));
 }
-
-/* ==================== 正規化與分組 ==================== */
-function rebuild(){
-  const missing = FIELDS.filter(f=>f.required && state.mapping[f.key]==null);
-  if(missing.length){ $('#secFilter').classList.add('hidden'); $('#secExport').classList.add('hidden'); updateExportBar(); return; }
-  const m = state.mapping;
-  const recs = [];
-  for(let i=state.headerIdx+1;i<state.rows.length;i++){
-    const r = state.rows[i]; if(!r) continue;
-    const rec = { _row:i+1 };
+function tableRecords(src){
+  const m = src.mapping; const recs = [];
+  if(FIELDS.some(f=>f.required && m[f.key]==null)) return recs;
+  for(let i=src.headerIdx+1;i<src.rows.length;i++){
+    const r = src.rows[i]; if(!r) continue;
+    const rec = { _row:i+1, source:src.name };
     for(const f of FIELDS){ rec[f.key] = m[f.key]!=null ? cellToText(r[m[f.key]], f.key) : ''; }
-    if(!rec.orderNo && !rec.name) continue;         // 空列
-    const q = parseFloat(String(rec.qty).replace(/[^\d.\-]/g,''));
-    rec.qty = isNaN(q) ? 0 : q;
-    const cod = parseFloat(String(rec.cod).replace(/[^\d.\-]/g,'')); rec.cod = isNaN(cod)?0:cod;
+    if(!rec.orderNo && !rec.name) continue;
+    rec.qty = num(rec.qty); rec.cod = num(rec.cod);
     if(rec.spec && !rec.name.includes(rec.spec)) rec.name = `${rec.name}-${rec.spec}`;
     recs.push(rec);
   }
+  return recs;
+}
+
+/* ==================== momo 文件 → 品項紀錄（合併三種文件） ==================== */
+function momoRecords(){
+  const packing=[], labels=[], totals=[];
+  state.sources.filter(s=>s.kind==='momo').forEach(s=>{ packing.push(...s.momo.packing); labels.push(...s.momo.labels); totals.push(...s.momo.totals); });
+  const byShip = new Map(), byTrack = new Map();
+  labels.forEach(l=>{ if(l.shipNo) byShip.set(l.shipNo, l); if(l.trackNo) byTrack.set(l.trackNo, l); });
+  const totByTrack = new Map(); totals.forEach(t=>{ if(t.trackNo) totByTrack.set(t.trackNo, t); });
+  const recs = []; const used = new Set(); const seen = new Set();
+  packing.forEach(p=>{
+    const key = p.shipNo || p.trackNo || p.orderNo; if(seen.has(key)) return; seen.add(key);
+    const lab = byShip.get(p.shipNo) || byTrack.get(p.trackNo) || {}; const tot = totByTrack.get(p.trackNo || lab.trackNo) || {};
+    if(lab.trackNo) used.add(lab.trackNo); if(tot.trackNo) used.add(tot.trackNo);
+    p.lines.forEach(l=>recs.push({ source:'momo 明細', orderNo:p.orderNo, shipNo:p.shipNo, trackNo:p.trackNo||lab.trackNo||'', carrier:p.carrier||'', deadline:p.deadline||'', orderDate:'', status:'', receiver: lab.receiver || p.receiver, phone: lab.phone||'', address: lab.address||'', sku:l.sku, name:l.name, spec:'', barcode:l.barcode, vendorCode:l.vendorCode, qty:l.qty, cod: num(tot.cod), invoice: lab.invoice||'', invoiceDate: lab.invoiceDate||'', note:'', dims: (tot.dims||[]).join('；') || lab.dims || '', temp: lab.temp||'', pieces: tot.pieces || lab.pieces || '', printDate:p.printDate||'', shipDate: lab.shipDate||'' }));
+  });
+  labels.forEach(l=>{ if(used.has(l.trackNo) || (l.shipNo && seen.has(l.shipNo))) return; seen.add(l.shipNo||l.trackNo); used.add(l.trackNo); const tot = totByTrack.get(l.trackNo)||{}; recs.push({ source:'momo 宅配單', orderNo:l.orderNo, shipNo:l.shipNo, trackNo:l.trackNo, carrier:'第三方-宅急便', deadline:'', receiver:l.receiver||tot.receiver||'', phone:l.phone||'', address:l.address||'', sku:l.contentSku||'', name: l.contentSku ? `商品 ${l.contentSku}（缺列印明細，請補上）` : '（缺列印明細，請補上）', barcode:'', vendorCode:'', qty: 1, cod:num(tot.cod), invoice:l.invoice||'', invoiceDate:l.invoiceDate||'', note:'', dims:(tot.dims||[]).join('；')||l.dims||'', temp:l.temp||'', pieces:tot.pieces||l.pieces||'', shipDate:l.shipDate||'', missingLines:true }); });
+  totals.forEach(t=>{ if(used.has(t.trackNo)) return; used.add(t.trackNo); recs.push({ source:'momo 總表', orderNo:t.orderNo, shipNo:'', trackNo:t.trackNo, carrier:'第三方-宅急便', receiver:t.receiver, phone:'', address:'', sku:'', name:'（缺列印明細，請補上）', qty:1, cod:num(t.cod), dims:t.dims.join('；'), pieces:t.pieces, missingLines:true }); });
+  return recs;
+}
+
+/* ==================== 商品主檔 ==================== */
+function loadMaster(u8, name){
+  let wb; try{ wb = XLSX.read(u8, { type:'array', raw:true }); }catch(e){ return showMasterInfo('無法讀取：'+e.message, 'bad'); }
+  let best=null;
+  for(const sn of wb.SheetNames){
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header:1, raw:true, defval:null, blankrows:false }); if(rows.length<2) continue;
+    for(let i=0;i<Math.min(rows.length,10);i++){ const hs=(rows[i]||[]).map(h=>h==null?'':String(h).trim()); const m = matchColumns(hs, MASTER_FIELDS); const score = Object.keys(m).length + (m.sku!=null?2:0); if(!best || score>best.score) best={ score, rows, i, m, sn }; }
+  }
+  if(!best || best.m.sku==null || (best.m.name==null && best.m.brand==null)) return showMasterInfo('找不到「品號／商品編碼」欄，請確認檔案有標題列。', 'bad');
+  const list = [];
+  for(let i=best.i+1;i<best.rows.length;i++){ const r=best.rows[i]; if(!r) continue; const o={}; for(const f of MASTER_FIELDS){ const ci=best.m[f.key]; o[f.key] = ci!=null && r[ci]!=null ? String(r[ci]).trim() : ''; } if(!o.sku && !o.name) continue; o.skuTail = o.sku.replace(/\D/g,''); list.push(o); }
+  state.master = list; LS.set('master', list); LS.set('masterName', name);
+  showMasterInfo(`已載入「${name}」／${best.sn}：${list.length} 個品項，對到欄位：${Object.keys(best.m).map(k=>MASTER_FIELDS.find(f=>f.key===k).label).join('、')}。`, 'ok');
+  renderMasterBadge(); rebuildAll();
+}
+function showMasterInfo(msg, kind){ const b=$('#masterInfo'); b.innerHTML=''; if(msg) b.append(el('div',{class:'alert '+(kind||'')}, msg)); }
+function renderMasterBadge(){ $('#masterBadge').textContent = state.master.length ? `${state.master.length} 個品項（${LS.get('masterName','')}）` : '未載入'; }
+function lookupMaster(rec){
+  if(!state.master.length) return null;
+  const tail = String(rec.sku||'').replace(/\D/g,'');
+  if(tail.length>=4){ const hit = state.master.find(m=>m.skuTail && (m.skuTail===tail || m.skuTail.endsWith(tail) || tail.endsWith(m.skuTail))); if(hit) return hit; }
+  const n = String(rec.name||'').replace(/【.*?】/g,'').replace(/^贈/,'').replace(/-無$/,'').trim();
+  if(n){ const hit = state.master.find(m=>m.name && (n.includes(m.name) || m.name.includes(n))); if(hit) return hit; }
+  return null;
+}
+function guessBrand(name){ for(const [k,v] of BRAND_RULES) if(String(name||'').includes(k)) return v; return ''; }
+
+/* ==================== 重建：紀錄 → 出貨單 ==================== */
+function rebuildAll(){
+  renderMapping();
+  const recs = [];
+  const tsrc = tableSource(); if(tsrc) recs.push(...tableRecords(tsrc));
+  recs.push(...momoRecords());
+  recs.forEach(r=>{
+    const m = lookupMaster(r);
+    r.isGift = /^贈/.test(r.name||'') || !!(m && /^(y|是|v|1|true)$/i.test(m.gift||''));
+    r.brand = (m && m.brand) || guessBrand(r.name);
+    r.warehouse = (m && m.warehouse) || '';
+    r.nsCode = (m && m.nsCode) || '';
+    r.masterName = (m && m.name) || '';
+    r.price = m && m.price!=='' ? num(m.price) : ''; r.cost = m && m.cost!=='' ? num(m.cost) : ''; r.unitCost = m && m.unitCost!=='' ? num(m.unitCost) : '';
+    r.matched = !!m;
+  });
   state.records = recs;
-  // 分組
   const groups = new Map();
   recs.forEach((rec, order)=>{
-    const key = rec.shipNo || rec.orderNo || `row${rec._row}`;
-    if(!groups.has(key)) groups.set(key, { key, order, lines:[], orderNos:new Set(), status:new Set(), warnings:[] , ...pick(rec, ['shipNo','orderNo','trackNo','carrier','deadline','orderDate','receiver','phone','address','invoice','note','cod']) });
+    const key = rec.shipNo || rec.trackNo || rec.orderNo || `row${rec._row}`;
+    if(!groups.has(key)) groups.set(key, { key, order, lines:[], orderNos:new Set(), status:new Set(), warnings:[], info:[], sources:new Set() });
     const g = groups.get(key);
-    g.lines.push(rec); g.orderNos.add(rec.orderNo); if(rec.status) g.status.add(rec.status);
-    for(const k of ['trackNo','carrier','deadline','receiver','phone','address','invoice','note']) if(!g[k] && rec[k]) g[k]=rec[k];
+    g.lines.push(rec); if(rec.orderNo) g.orderNos.add(rec.orderNo); if(rec.status) g.status.add(rec.status); g.sources.add(rec.source);
+    for(const k of ['shipNo','trackNo','carrier','deadline','orderDate','receiver','phone','address','invoice','invoiceDate','note','dims','temp','pieces','printDate','shipDate']) if(!g[k] && rec[k]) g[k]=rec[k];
     if(rec.cod && !g.cod) g.cod = rec.cod;
   });
   const exported = new Set(LS.get('exported', []));
-  state.shipments = [...groups.values()].map(g=>{
+  const list = [...groups.values()].map(g=>{
     g.qty = g.lines.reduce((s,l)=>s+(l.qty||0),0);
     g.statusText = [...g.status].join('、');
-    g.orderNo = [...g.orderNos].filter(Boolean).join('、') || g.orderNo;
+    g.orderNo = [...g.orderNos].join('、');
+    g.sourceText = [...g.sources].join('＋');
     g.wasExported = exported.has(g.key);
+    g.isCvs = /超商|超取|7-11|全家|萊爾富|OK/i.test(g.carrier||'');
+    const whs = new Set(g.lines.map(l=>l.warehouse).filter(Boolean)); g.warehouse = [...whs].join('、');
+    if(whs.size>1) g.warnings.push('品項分屬不同倉');
     if(!g.receiver) g.warnings.push('無收件人');
     if(g.lines.some(l=>!l.qty)) g.warnings.push('數量為 0');
-    if(m.address!=null && !g.address) g.warnings.push('無地址');
+    if(g.lines.some(l=>l.missingLines)) g.warnings.push('缺列印明細');
     if(g.orderNos.size>1) g.warnings.push('一張出貨單含多筆訂單');
+    if(state.master.length && g.lines.some(l=>!l.matched)) g.warnings.push('商品主檔比對不到');
     return g;
   });
-  renderFilters();
-  applyFilters();
-  setStep(3);
-  $('#secFilter').classList.remove('hidden'); $('#secExport').classList.remove('hidden');
+  const byKey = new Map();
+  list.forEach(s=>{ const k1 = s.invoice ? 'inv:'+s.invoice : null; const k2 = s.receiver && s.address ? 'ra:'+s.receiver+'|'+s.address : null; [k1,k2].filter(Boolean).forEach(k=>{ if(!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(s); }); });
+  byKey.forEach(arr=>{ if(arr.length>1) arr.forEach(s=>{ if(!s.info.includes('可併箱')) s.info.push('可併箱'); }); });
+  state.shipments = list;
+  const any = list.length>0;
+  $('#secFilter').classList.toggle('hidden', !any); $('#secExport').classList.toggle('hidden', !any);
+  if(any){ renderFilters(); applyFilters(); setStep(3); } else { setStep(state.sources.length ? 2 : 1); updateExportBar([]); renderMessage([]); }
 }
-function pick(o, ks){ const r={}; ks.forEach(k=>r[k]=o[k]); return r; }
+
+/* ==================== 檔案清單 ==================== */
+function renderFileList(){
+  const box = $('#fileList'); box.innerHTML='';
+  state.sources.forEach(s=>{
+    box.append(el('div',{class:'file'}, el('span',{class:'kind '+(s.kind==='momo'?'pdf':s.kind==='table'?'table':s.kind==='bad'?'bad':'')}, s.kind==='momo'?'momo 文件':s.kind==='table'?'表格':s.kind==='bad'?'失敗':'略過'), el('span',{class:'name'}, s.name), el('span',{class:'desc'}, s.desc||''), el('button',{type:'button', class:'btn xs', onclick:()=>{ state.sources = state.sources.filter(x=>x!==s); renderFileList(); rebuildAll(); }}, '移除')));
+  });
+  if(state.sources.length>1) box.append(el('div',{class:'btn-row'}, el('button',{type:'button', class:'btn xs', onclick:()=>{ state.sources=[]; state.excluded.clear(); renderFileList(); showFileInfo(''); rebuildAll(); }}, '清除全部')));
+}
 
 /* ==================== 篩選 ==================== */
-const filterSel = { status:null, carrier:null }; // Set 或 null（未初始化）
-function renderFilters(){
-  const statusVals = countBy(state.shipments, s=>s.statusText||'（空白）');
-  const carrierVals = countBy(state.shipments, s=>s.carrier||'（空白）');
-  const hasStatus = state.mapping.status!=null && statusVals.size>0;
-  $('#statusFilterBox').classList.toggle('hidden', !hasStatus);
-  if(hasStatus){
-    // 新出現的狀態值：預設勾選，但「已出貨／取消／退貨…」等不需出貨的狀態預設不勾
-    filterSel.status = filterSel.status || new Set(); filterSel.statusKnown = filterSel.statusKnown || new Set();
-    for(const v of statusVals.keys()){ if(filterSel.statusKnown.has(v)) continue; filterSel.statusKnown.add(v); if(!STATUS_EXCLUDE.some(x=>v.includes(x))) filterSel.status.add(v); }
-    renderChips($('#statusChips'), statusVals, filterSel.status);
-  } else filterSel.status = null;
-  const hasCarrier = state.mapping.carrier!=null && carrierVals.size>1;
-  $('#carrierFilterBox').classList.toggle('hidden', !hasCarrier);
-  if(hasCarrier){
-    filterSel.carrier = filterSel.carrier || new Set(); filterSel.carrierKnown = filterSel.carrierKnown || new Set();
-    for(const v of carrierVals.keys()){ if(filterSel.carrierKnown.has(v)) continue; filterSel.carrierKnown.add(v); filterSel.carrier.add(v); }
-    renderChips($('#carrierChips'), carrierVals, filterSel.carrier);
-  } else filterSel.carrier = null;
-}
-function resetFilters(){ filterSel.status=null; filterSel.statusKnown=null; filterSel.carrier=null; filterSel.carrierKnown=null; state.excluded.clear(); $('#search').value=''; }
+const filterSel = { status:null, statusKnown:null, carrier:null, carrierKnown:null, wh:null, whKnown:null };
 function countBy(arr, fn){ const m=new Map(); arr.forEach(x=>{ const k=fn(x); m.set(k,(m.get(k)||0)+1); }); return m; }
 function renderChips(box, counts, sel){
   box.innerHTML='';
@@ -632,16 +966,29 @@ function renderChips(box, counts, sel){
     box.append(chip);
   });
 }
+function syncSel(name, counts, defaultOn){
+  filterSel[name] = filterSel[name] || new Set(); filterSel[name+'Known'] = filterSel[name+'Known'] || new Set();
+  for(const v of counts.keys()){ if(filterSel[name+'Known'].has(v)) continue; filterSel[name+'Known'].add(v); if(defaultOn(v)) filterSel[name].add(v); }
+}
+function renderFilters(){
+  const statusVals = countBy(state.shipments.filter(s=>s.statusText), s=>s.statusText);
+  const hasStatus = statusVals.size>0; $('#statusFilterBox').classList.toggle('hidden', !hasStatus);
+  if(hasStatus){ syncSel('status', statusVals, v=>!STATUS_EXCLUDE.some(x=>v.includes(x))); renderChips($('#statusChips'), statusVals, filterSel.status); } else filterSel.status=null;
+  const carrierVals = countBy(state.shipments, s=>s.carrier||'（空白）');
+  const hasCarrier = carrierVals.size>1; $('#carrierFilterBox').classList.toggle('hidden', !hasCarrier);
+  if(hasCarrier){ syncSel('carrier', carrierVals, ()=>true); renderChips($('#carrierChips'), carrierVals, filterSel.carrier); } else filterSel.carrier=null;
+  const whVals = countBy(state.shipments, s=>s.warehouse||'（未知）');
+  const hasWh = whVals.size>1; $('#whFilterBox').classList.toggle('hidden', !hasWh);
+  if(hasWh){ syncSel('wh', whVals, ()=>true); renderChips($('#whChips'), whVals, filterSel.wh); } else filterSel.wh=null;
+}
 function passesFilter(s){
-  if(filterSel.status && !filterSel.status.has(s.statusText||'（空白）')) return false;
+  if(filterSel.status && s.statusText && !filterSel.status.has(s.statusText)) return false;
   if(filterSel.carrier && !filterSel.carrier.has(s.carrier||'（空白）')) return false;
+  if(filterSel.wh && !filterSel.wh.has(s.warehouse||'（未知）')) return false;
   if($('#skipExported').checked && s.wasExported) return false;
   if($('#onlyProblem').checked && !s.warnings.length) return false;
   const q = $('#search').value.trim().toLowerCase();
-  if(q){
-    const hay = [s.key, s.orderNo, s.trackNo, s.receiver, s.phone, s.address, ...s.lines.map(l=>l.name+' '+l.sku+' '+l.vendorCode)].join(' ').toLowerCase();
-    if(!hay.includes(q)) return false;
-  }
+  if(q){ const hay = [s.key, s.orderNo, s.trackNo, s.receiver, s.phone, s.address, s.invoice, ...s.lines.map(l=>l.name+' '+l.sku+' '+l.vendorCode)].join(' ').toLowerCase(); if(!hay.includes(q)) return false; }
   return true;
 }
 function selectedShipments(){
@@ -661,33 +1008,25 @@ function applyFilters(){
     const tags = [];
     if(s.wasExported) tags.push(el('span',{class:'tag dup'},'已匯出過'));
     s.warnings.forEach(w=>tags.push(el('span',{class:'tag warn'}, w)));
+    s.info.forEach(w=>tags.push(el('span',{class:'tag info'}, w)));
     const tr = el('tr',{class:'ship'+(on?'':' off')},
-      el('td',{}, cb),
-      el('td',{class:'num'}, i+1),
-      el('td',{class:'num'}, s.shipNo||'—'),
-      el('td',{class:'num'}, s.orderNo),
-      el('td',{class:'num'}, s.trackNo||'—'),
-      el('td',{}, s.receiver||'—', ...tags),
-      el('td',{}, s.carrier||'—'),
-      el('td',{class:'num'}, s.deadline||'—'),
-      el('td',{class:'num'}, s.lines.length),
-      el('td',{class:'num'}, s.qty),
-      el('td',{}, s.statusText||'—'),
+      el('td',{}, cb), el('td',{class:'num'}, i+1), el('td',{class:'num'}, s.shipNo||'—'), el('td',{class:'num'}, s.orderNo||'—'), el('td',{class:'num'}, s.trackNo||'—'),
+      el('td',{}, s.receiver||'—', ...tags), el('td',{}, (s.carrier||'—') + (s.temp?`／${s.temp}`:'')), el('td',{}, s.warehouse||'—'), el('td',{class:'num'}, s.deadline||'—'), el('td',{class:'num'}, s.lines.length), el('td',{class:'num'}, s.qty), el('td',{class:'small muted'}, s.sourceText),
     );
-    const detail = el('tr',{class:'lines hidden'}, el('td',{colspan:11}, linesTable(s)));
+    const detail = el('tr',{class:'lines hidden'}, el('td',{colspan:12}, linesTable(s)));
     tr.addEventListener('click', ()=>detail.classList.toggle('hidden'));
     body.append(tr, detail);
   });
-  if(!visible.length) body.append(el('tr',{}, el('td',{colspan:11, class:'muted'}, '沒有符合篩選條件的出貨單。')));
+  if(!visible.length) body.append(el('tr',{}, el('td',{colspan:12, class:'muted'}, '沒有符合篩選條件的出貨單。')));
   $('#chkAll').checked = visible.length>0 && visible.every(s=>!state.excluded.has(s.key));
   updateTiles();
 }
 function linesTable(s){
-  const t = el('table',{}, el('thead',{}, el('tr',{}, ...['序號','商品編碼','商品名稱','國際條碼','數量','商品原廠編號'].map(h=>el('th',{},h)))));
+  const t = el('table',{}, el('thead',{}, el('tr',{}, ...['序號','商品編碼','商品名稱','國際條碼','數量','原廠編號','Brand','倉別','NS代碼'].map(h=>el('th',{},h)))));
   const tb = el('tbody');
-  s.lines.forEach((l,i)=> tb.append(el('tr',{}, el('td',{class:'num'}, String(i+1).padStart(3,'0')), el('td',{class:'num'}, l.sku||''), el('td',{class:'wrap'}, l.name||''), el('td',{class:'num'}, l.barcode||''), el('td',{class:'num'}, l.qty), el('td',{class:'num'}, l.vendorCode||''))));
+  s.lines.forEach((l,i)=> tb.append(el('tr',{}, el('td',{class:'num'}, String(i+1).padStart(3,'0')), el('td',{class:'num'}, l.sku||''), el('td',{class:'wrap'}, l.name||''), el('td',{class:'num'}, l.barcode||''), el('td',{class:'num'}, l.qty), el('td',{class:'num'}, l.vendorCode||''), el('td',{}, l.brand||''), el('td',{}, l.warehouse||''), el('td',{class:'num'}, l.nsCode||''))));
   t.append(tb);
-  const extra = [s.phone && `電話：${s.phone}`, s.address && `地址：${s.address}`, s.note && `備註：${s.note}`, s.invoice && `發票：${s.invoice}`].filter(Boolean).join('　');
+  const extra = [s.phone && `電話：${s.phone}`, s.address && `地址：${s.address}`, s.invoice && `發票：${s.invoice}${s.invoiceDate?`（${s.invoiceDate}）`:''}`, s.dims && `材積：${s.dims}`, s.pieces && `件數：${s.pieces}`, s.note && `備註：${s.note}`].filter(Boolean).join('　');
   return el('div',{}, extra? el('p',{class:'small muted', style:'margin:8px 0'}, extra):null, t);
 }
 function updateTiles(){
@@ -699,57 +1038,68 @@ function updateTiles(){
   const fa = $('#filterAlert'); fa.innerHTML='';
   const dup = state.shipments.filter(s=>s.wasExported).length;
   if(dup) fa.append(el('div',{class:'alert warn'}, `有 ${dup} 張出貨單先前已匯出過（依出貨單號比對）。${$('#skipExported').checked?'目前已自動排除，取消勾選「排除先前已匯出過的出貨單」可重新匯出。':'目前仍包含在內。'}`));
+  const missing = state.shipments.filter(s=>s.warnings.includes('缺列印明細')).length;
+  if(missing) fa.append(el('div',{class:'alert warn'}, `有 ${missing} 張出貨單只有宅配單或總表、沒有列印明細，商品品項未知。請把同批「第三方列印明細」PDF 也拖進來。`));
+  if(!state.master.length && state.shipments.length) fa.append(el('div',{class:'alert'}, '尚未載入商品主檔：新零售銷售報表的 Brand 以品名推測，倉別、NS 代碼與價格會留空。'));
   updateExportBar(sel);
+  renderMessage(sel);
   if(sel.length) setStep(4);
 }
 function updateExportBar(sel){
-  sel = sel || (state.shipments.length ? selectedShipments() : []);
   $('#exportSummary').textContent = sel.length ? `準備匯出 ${sel.length} 張出貨單，共 ${sel.reduce((a,s)=>a+s.qty,0)} 件商品` : '尚未有可匯出的出貨單';
   $('#btnExport').disabled = !sel.length; $('#btnPrint').disabled = !sel.length;
 }
+
+/* ==================== 回報訊息 ==================== */
+function buildMessage(sel){
+  if(!sel.length) return '';
+  const name = $('#setNotifyName').value.trim();
+  const groups = new Map();
+  sel.forEach(s=>{ const k = s.warehouse || ''; if(!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
+  const blocks = [];
+  groups.forEach((ships, wh)=>{
+    const agg = new Map();
+    ships.forEach(s=>s.lines.forEach(l=>{ const n = l.masterName || String(l.name||'').replace(/【.*?】/g,'').replace(/-無$/,'').trim(); agg.set(n, (agg.get(n)||0) + (l.qty||0)); }));
+    const lines = [`${name?name+' ':''}您好，以下是momo要出貨的訂單，再麻煩您協助${wh?`（${wh}）`:''}`, 'SO________（NS 銷售訂單號）'];
+    agg.forEach((q,n)=>lines.push(`${n}*${q}`));
+    const tracks = ships.map(s=>s.trackNo).filter(Boolean);
+    lines.push(`共 ${ships.length} 張出貨單${tracks.length?`，宅配單號：${tracks.join('、')}`:''}`);
+    blocks.push(lines.join('\n'));
+  });
+  return blocks.join('\n\n');
+}
+function renderMessage(sel){ $('#msgBox').textContent = buildMessage(sel || selectedShipments()); }
 
 /* ==================== 匯出 Excel ==================== */
 const FONT = '微軟正黑體';
 const thin = { style:'thin', color:{argb:'FF000000'} };
 const border = { top:thin, left:thin, bottom:thin, right:thin };
 const f = (extra={}) => ({ name:FONT, size:10, ...extra });
+const HEAD_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
 function settings(){
   return {
-    supplier: $('#setSupplier').value.trim(),
-    title: $('#setTitle').value.trim() || '裝箱明細',
-    date: ($('#setDate').value || todayISO()).replace(/-/g,'/'),
-    layout: $('#setLayout').value,
-    notice: $('#setNotice').checked,
-    noticeText: $('#setNoticeText').value,
-    pick: $('#setPick').checked,
-    raw: $('#setRaw').checked,
-    sort: $('#setSort').value,
+    supplier: $('#setSupplier').value.trim(), title: $('#setTitle').value.trim() || '裝箱明細', date: ($('#setDate').value || todayISO()).replace(/-/g,'/'),
+    layout: $('#setLayout').value, notice: $('#setNotice').checked, noticeText: $('#setNoticeText').value, pick: $('#setPick').checked, raw: $('#setRaw').checked,
+    retail: $('#setRetail').checked, ns: $('#setNS').checked, ifresh: $('#setIfresh').checked, notify: $('#setNotify').checked, sort: $('#setSort').value,
   };
 }
-function todayISO(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
-
 async function exportExcel(){
   const sel = selectedShipments(); if(!sel.length) return;
   const cfg = settings();
   const btn = $('#btnExport'); btn.disabled=true; const old=btn.textContent; btn.textContent='產生中…';
   try{
-    const wb = new ExcelJS.Workbook();
-    wb.creator = 'MOMO 出貨單產生器'; wb.created = new Date();
+    const wb = new ExcelJS.Workbook(); wb.creator = 'MOMO 出貨單產生器'; wb.created = new Date();
     buildSummarySheet(wb, sel, cfg);
     if(cfg.pick) buildPickSheet(wb, sel, cfg);
-    if(cfg.layout==='multi'){
-      sel.forEach((s,i)=>{ const ws = wb.addWorksheet(sheetName(`${String(i+1).padStart(3,'0')}_${s.receiver||s.key}`), { pageSetup:pageSetup() }); setupShipCols(ws); writeShipment(ws, s, cfg, 1, i+1, sel.length); });
-    } else {
-      const ws = wb.addWorksheet('出貨單', { pageSetup:pageSetup() });
-      setupShipCols(ws);
-      let row = 1;
-      sel.forEach((s,i)=>{ row = writeShipment(ws, s, cfg, row, i+1, sel.length); if(i<sel.length-1){ ws.getRow(row-1).addPageBreak(); } });
-    }
+    if(cfg.layout==='multi'){ sel.forEach((s,i)=>{ const ws = wb.addWorksheet(sheetName(`${String(i+1).padStart(3,'0')}_${s.receiver||s.key}`), { pageSetup:pageSetup() }); setupShipCols(ws); writeShipment(ws, s, cfg, 1, i+1, sel.length); }); }
+    else { const ws = wb.addWorksheet('出貨單', { pageSetup:pageSetup() }); setupShipCols(ws); let row = 1; sel.forEach((s,i)=>{ row = writeShipment(ws, s, cfg, row, i+1, sel.length); if(i<sel.length-1) ws.getRow(row-1).addPageBreak(); }); }
+    if(cfg.retail) buildRetailSheet(wb, sel, cfg);
+    if(cfg.ns) buildNsSheet(wb, sel, cfg);
+    if(cfg.ifresh) buildIfreshSheet(wb, sel, cfg);
+    if(cfg.notify) buildMessageSheet(wb, sel, cfg);
     if(cfg.raw) buildRawSheet(wb, sel, cfg);
     const buf = await wb.xlsx.writeBuffer();
-    const stamp = cfg.date.replace(/\//g,'');
-    downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), `momo出貨單_${stamp}_${sel.length}張.xlsx`);
-    // 記錄已匯出（本次載入的資料不受影響，下次匯入同一批訂單時才會標示並排除）
+    downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), `momo出貨單_${cfg.date.replace(/\//g,'')}_${sel.length}張.xlsx`);
     const exported = new Set(LS.get('exported', [])); sel.forEach(s=>exported.add(s.key)); LS.set('exported', [...exported].slice(-5000));
     $('#filterAlert').prepend(el('div',{class:'alert ok'}, `已匯出 ${sel.length} 張出貨單。這些出貨單號已記錄為「已匯出過」，下次匯入同一批訂單時會自動排除，避免重複出貨。`));
   }catch(e){ console.error(e); alert('匯出失敗：'+e.message); }
@@ -758,98 +1108,143 @@ async function exportExcel(){
 function pageSetup(){ return { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0, horizontalCentered:true, margins:{ left:0.5, right:0.5, top:0.6, bottom:0.6, header:0.3, footer:0.3 } }; }
 function sheetName(s){ return s.replace(/[\\\/\?\*\[\]:]/g,'_').slice(0,31) || '出貨單'; }
 function downloadBlob(blob, name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000); }
+function headerRow(ws, r, values, widths){
+  if(widths) ws.columns = widths.map(w=>({ width:w }));
+  ws.getRow(r).values = values;
+  ws.getRow(r).eachCell(c=>{ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:'center', vertical:'middle', wrapText:true}; c.fill=HEAD_FILL; });
+}
+function bodyRow(ws, r, values, opts={}){
+  const row = ws.getRow(r); row.values = values;
+  row.eachCell({includeEmpty:true}, (c,col)=>{ c.font=f(); c.border=border; c.alignment={ vertical:'middle', wrapText: (opts.wrap||[]).includes(col), horizontal: (opts.center||[]).includes(col)?'center':(opts.right||[]).includes(col)?'right':'left' }; if(opts.numFmt && opts.numFmt[col]) c.numFmt = opts.numFmt[col]; });
+  return row;
+}
 
-// 出貨單欄寬：A序號 B商品編碼 C-D商品名稱 E國際條碼 F數量 G原廠編號 H檢查
 function setupShipCols(ws){ ws.columns = [{width:6},{width:16},{width:24},{width:24},{width:16},{width:7},{width:16},{width:6}]; }
 function writeShipment(ws, s, cfg, r, idx, total){
-  const start = r;
-  const put = (ref, val, opt={}) => { const c = ws.getCell(ref); c.value = val; c.font = f(opt.font||{}); c.alignment = { vertical:'middle', wrapText:!!opt.wrap, horizontal:opt.h||'left' }; if(opt.border) c.border = border; if(opt.fill) c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:opt.fill} }; return c; };
+  const put = (ref, val, opt={}) => { const c = ws.getCell(ref); c.value = val; c.font = f(opt.font||{}); c.alignment = { vertical:'middle', wrapText:!!opt.wrap, horizontal:opt.h||'left' }; if(opt.border) c.border = border; if(opt.fill) c.fill = HEAD_FILL; return c; };
   ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `印單日期：${cfg.date}`, { h:'right', font:{size:9} }); r++;
-  ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, cfg.title, { h:'center', font:{size:18, bold:false} }); ws.getRow(r).height = 30; r++;
+  ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, cfg.title, { h:'center', font:{size:18} }); ws.getRow(r).height = 30; r++;
   r++;
   const kv = (left, right) => { ws.mergeCells(`A${r}:D${r}`); put(`A${r}`, left); ws.mergeCells(`E${r}:H${r}`); put(`E${r}`, right); r++; };
-  kv(`訂單編號：${s.orderNo||''}`, s.carrier ? `配送方式：${s.carrier}` : '');
+  kv(`訂單編號：${s.orderNo||''}`, s.carrier ? `配送方式：${s.carrier}${s.temp?`（${s.temp}）`:''}` : (s.temp?`溫層：${s.temp}`:''));
   kv(`出貨單號：${s.shipNo||''}`, `最晚出貨日：${s.deadline||''}`);
-  kv(`配送編號：${s.trackNo||''}`, s.phone ? `電　　話：${s.phone}` : (s.orderDate?`訂單日期：${s.orderDate}`:''));
+  kv(`配送編號：${s.trackNo||''}`, s.phone ? `電　　話：${s.phone}` : (s.invoice?`發票號碼：${s.invoice}`:''));
   kv(`收 件 人：${s.receiver||''}`, s.address ? `地　　址：${s.address}` : '');
   if(s.address && s.address.length>22){ ws.getRow(r-1).height = 30; ws.getCell(`E${r-1}`).alignment = { vertical:'middle', wrapText:true }; }
+  if(s.dims || (s.invoice && s.phone)) kv(s.dims ? `材　　積：${s.dims}${s.pieces?`　件數：${s.pieces}`:''}` : '', s.invoice ? `發票號碼：${s.invoice}${s.invoiceDate?`（${s.invoiceDate}）`:''}` : '');
   r++;
-  // 表頭
   const hdr = ['序號','商品編碼','商品名稱',null,'國際條碼','數量','商品原廠編號','檢查'];
   ws.mergeCells(`C${r}:D${r}`);
-  hdr.forEach((h,i)=>{ if(h==null) return; const col = String.fromCharCode(65+i); put(`${col}${r}`, h, { h: (i===0||i===5||i===7)?'center':'left', border:true, fill:'FFF2F2F2', font:{bold:true} }); });
-  ws.getCell(`D${r}`).border = border; ws.getCell(`D${r}`).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
-  r++;
+  hdr.forEach((h,i)=>{ if(h==null) return; put(`${String.fromCharCode(65+i)}${r}`, h, { h:(i===0||i===5||i===7)?'center':'left', border:true, fill:true, font:{bold:true} }); });
+  ws.getCell(`D${r}`).border = border; ws.getCell(`D${r}`).fill = HEAD_FILL; r++;
   s.lines.forEach((l,i)=>{
     ws.mergeCells(`C${r}:D${r}`);
-    put(`A${r}`, String(i+1).padStart(3,'0'), { h:'center', border:true });
-    put(`B${r}`, l.sku||'', { border:true });
+    put(`A${r}`, String(i+1).padStart(3,'0'), { h:'center', border:true }); put(`B${r}`, l.sku||'', { border:true });
     put(`C${r}`, l.name||'', { border:true, wrap:true }); ws.getCell(`D${r}`).border = border;
-    put(`E${r}`, l.barcode||'', { border:true });
-    put(`F${r}`, l.qty, { h:'center', border:true, font:{bold:true} });
-    put(`G${r}`, l.vendorCode||'', { border:true });
-    put(`H${r}`, '□', { h:'center', border:true });
-    const lines = Math.ceil((l.name||'').length / 22);
-    ws.getRow(r).height = Math.max(18, 15*lines + 4);
-    r++;
+    put(`E${r}`, l.barcode||'', { border:true }); put(`F${r}`, l.qty, { h:'center', border:true, font:{bold:true} });
+    put(`G${r}`, l.vendorCode||'', { border:true }); put(`H${r}`, '□', { h:'center', border:true });
+    ws.getRow(r).height = Math.max(18, 15*Math.ceil((l.name||'').length / 22) + 4); r++;
   });
-  // 合計
   put(`E${r}`, '合計', { h:'right', font:{bold:true} }); put(`F${r}`, s.qty, { h:'center', font:{bold:true, size:12} }); r++;
   if(s.cod){ ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `代收款：${s.cod}`, { font:{bold:true} }); r++; }
   if(s.note){ ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `備註：${s.note}`, { wrap:true }); ws.getRow(r).height = Math.max(18, 15*Math.ceil(s.note.length/60)+4); r++; }
   if(cfg.notice && cfg.noticeText.trim()){
-    r++;
-    ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, '注意事項', { font:{size:9, bold:true} }); r++;
-    ws.mergeCells(`A${r}:H${r}`);
-    put(`A${r}`, cfg.noticeText, { wrap:true, font:{size:7.5} });
-    ws.getCell(`A${r}`).alignment = { vertical:'top', wrapText:true };
-    const n = cfg.noticeText.split('\n').reduce((a,line)=>a+Math.max(1, Math.ceil(line.length/78)), 0);
-    ws.getRow(r).height = n*11 + 6; r++;
+    r++; ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, '注意事項', { font:{size:9, bold:true} }); r++;
+    ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, cfg.noticeText, { wrap:true, font:{size:7.5} }); ws.getCell(`A${r}`).alignment = { vertical:'top', wrapText:true };
+    const n = cfg.noticeText.split('\n').reduce((a,line)=>a+Math.max(1, Math.ceil(line.length/78)), 0); ws.getRow(r).height = n*11 + 6; r++;
   }
   ws.mergeCells(`A${r}:H${r}`); put(`A${r}`, `第 ${idx} / ${total} 張`, { h:'right', font:{size:8, color:{argb:'FF888888'}} }); r++;
-  return r; // 下一張起始列
+  return r;
 }
 function buildSummarySheet(wb, sel, cfg){
   const ws = wb.addWorksheet('出貨總表', { pageSetup:{ ...pageSetup(), orientation:'landscape' }, views:[{ state:'frozen', ySplit:3 }] });
-  ws.columns = [{width:5},{width:15},{width:17},{width:16},{width:10},{width:14},{width:36},{width:6},{width:8},{width:9},{width:12},{width:26}];
-  ws.mergeCells('A1:L1'); const t=ws.getCell('A1'); t.value = `${cfg.supplier ? cfg.supplier+'　' : ''}momo 出貨總表`; t.font = f({size:16}); t.alignment={horizontal:'center', vertical:'middle'}; ws.getRow(1).height=28;
-  ws.mergeCells('A2:F2'); ws.getCell('A2').value = `列印日期：${cfg.date}`; ws.getCell('A2').font=f();
-  ws.mergeCells('G2:L2'); ws.getCell('G2').value = `出貨單 ${sel.length} 張／商品 ${sel.reduce((a,s)=>a+s.qty,0)} 件`; ws.getCell('G2').font=f(); ws.getCell('G2').alignment={horizontal:'right'};
-  const hdr = ['NO','宅配單號','訂單編號','出貨單號','收件人','電話','地址','品項','數量','代收款','最晚出貨日','商品摘要'];
-  ws.getRow(3).values = hdr;
-  ws.getRow(3).eachCell(c=>{ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:'center', vertical:'middle', wrapText:true}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}}; });
-  sel.forEach((s,i)=>{
-    const row = ws.getRow(4+i);
-    row.values = [i+1, s.trackNo||'', s.orderNo, s.shipNo||'', s.receiver||'', s.phone||'', s.address||'', s.lines.length, s.qty, s.cod||0, s.deadline||'', s.lines.map(l=>`${l.name}×${l.qty}`).join('；')];
-    row.eachCell({includeEmpty:true}, (c,col)=>{ c.font=f(); c.border=border; c.alignment={vertical:'middle', wrapText: col===7||col===12, horizontal: [1,8,9,10].includes(col)?'center':'left'}; });
-  });
-  const tr = ws.getRow(4+sel.length);
-  tr.values = ['','','','','','','合計', sel.reduce((a,s)=>a+s.lines.length,0), sel.reduce((a,s)=>a+s.qty,0), sel.reduce((a,s)=>a+(s.cod||0),0)];
-  tr.eachCell({includeEmpty:true}, (c,col)=>{ if(col>=7) { c.font=f({bold:true}); c.border=border; c.alignment={horizontal: col===7?'right':'center'}; } });
-  ws.autoFilter = { from:'A3', to:`L${3+sel.length}` };
+  ws.columns = [5,15,17,16,10,14,34,7,6,8,9,14,10,12,26].map(w=>({width:w}));
+  ws.mergeCells('A1:O1'); const t=ws.getCell('A1'); t.value = `${cfg.supplier ? cfg.supplier+'　' : ''}momo 出貨總表`; t.font = f({size:16}); t.alignment={horizontal:'center', vertical:'middle'}; ws.getRow(1).height=28;
+  ws.mergeCells('A2:G2'); ws.getCell('A2').value = `列印日期：${cfg.date}`; ws.getCell('A2').font=f();
+  ws.mergeCells('H2:O2'); ws.getCell('H2').value = `出貨單 ${sel.length} 張／商品 ${sel.reduce((a,s)=>a+s.qty,0)} 件`; ws.getCell('H2').font=f(); ws.getCell('H2').alignment={horizontal:'right'};
+  headerRow(ws, 3, ['NO','宅配單號','訂單編號','出貨單號','收件人','電話','地址','溫層','品項','數量','代收款','材積(cm)','倉別','發票號碼','商品摘要']);
+  sel.forEach((s,i)=> bodyRow(ws, 4+i, [i+1, s.trackNo||'', s.orderNo, s.shipNo||'', s.receiver||'', s.phone||'', s.address||'', s.temp||'', s.lines.length, s.qty, s.cod||0, s.dims||'', s.warehouse||'', s.invoice||'', s.lines.map(l=>`${l.name}×${l.qty}`).join('；')], { wrap:[7,12,15], center:[1,8,9,10,11,13] }));
+  const tr = ws.getRow(4+sel.length); tr.values = ['','','','','','','','合計', sel.reduce((a,s)=>a+s.lines.length,0), sel.reduce((a,s)=>a+s.qty,0), sel.reduce((a,s)=>a+(s.cod||0),0)];
+  tr.eachCell({includeEmpty:true}, (c,col)=>{ if(col>=8) { c.font=f({bold:true}); c.border=border; c.alignment={horizontal: col===8?'right':'center'}; } });
+  ws.autoFilter = { from:'A3', to:`O${3+sel.length}` };
 }
 function buildPickSheet(wb, sel, cfg){
   const ws = wb.addWorksheet('揀貨彙總', { pageSetup:pageSetup() });
-  ws.columns = [{width:5},{width:16},{width:50},{width:16},{width:16},{width:8},{width:10}];
-  ws.mergeCells('A1:G1'); ws.getCell('A1').value = `揀貨彙總　${cfg.date}`; ws.getCell('A1').font=f({size:14}); ws.getCell('A1').alignment={horizontal:'center'};
-  const hdr = ['NO','商品編碼','商品名稱','商品原廠編號','國際條碼','總數量','出貨單數'];
-  ws.getRow(2).values = hdr; ws.getRow(2).eachCell(c=>{ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:'center'}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}}; });
+  ws.mergeCells('A1:I1'); ws.getCell('A1').value = `揀貨彙總　${cfg.date}`; ws.getCell('A1').font=f({size:14}); ws.getCell('A1').alignment={horizontal:'center'};
+  headerRow(ws, 2, ['NO','商品編碼','商品名稱','Brand','倉別','商品原廠編號','國際條碼','總數量','出貨單數'], [5,14,46,10,10,14,15,8,9]);
   const agg = new Map();
   sel.forEach(s=>s.lines.forEach(l=>{ const k = `${l.sku}|${l.name}|${l.vendorCode}`; if(!agg.has(k)) agg.set(k,{...l, qty:0, ships:new Set()}); const a=agg.get(k); a.qty+=l.qty||0; a.ships.add(s.key); }));
-  [...agg.values()].sort((a,b)=>b.qty-a.qty).forEach((a,i)=>{
-    const row = ws.getRow(3+i); row.values=[i+1, a.sku||'', a.name||'', a.vendorCode||'', a.barcode||'', a.qty, a.ships.size];
-    row.eachCell({includeEmpty:true},(c,col)=>{ c.font=f(); c.border=border; c.alignment={vertical:'middle', wrapText:col===3, horizontal:[1,6,7].includes(col)?'center':'left'}; });
+  [...agg.values()].sort((a,b)=>b.qty-a.qty).forEach((a,i)=> bodyRow(ws, 3+i, [i+1, a.sku||'', a.name||'', a.brand||'', a.warehouse||'', a.vendorCode||'', a.barcode||'', a.qty, a.ships.size], { wrap:[3], center:[1,8,9] }));
+  const tr = ws.getRow(3+agg.size); tr.values=['','','','','','','合計', [...agg.values()].reduce((s,a)=>s+a.qty,0), sel.length];
+  tr.eachCell({includeEmpty:true},(c,col)=>{ if(col>=7){ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:col===7?'right':'center'}; } });
+}
+/* 新零售銷售報表：欄位依 SOP 截圖，金額欄以公式帶入（未稅 = 含稅 ÷ 1.05） */
+function buildRetailSheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('新零售銷售報表', { views:[{ state:'frozen', ySplit:1 }] });
+  const cols = ['出貨倉別','是否出貨','倉庫訂單編號/託運單號','NS打單與交貨','月份','Brand','Channel','order_create_date','平台訂單號','銷售訂單','品項','數量','售價/單價(含稅)','售價/單價(未稅)','總金額(含稅)','總金額(未稅)','進價(含稅)','進價(未稅)','進貨金額(未稅)','商品成本(未稅)','商品成本總額','毛利(未稅)','宅配單號','收件人','備註'];
+  headerRow(ws, 1, cols, [10,8,20,10,8,10,8,12,16,12,40,6,12,12,12,12,10,10,12,12,12,12,14,10,20]);
+  let r = 2;
+  sel.forEach(s=>{
+    const d = s.invoiceDate || s.orderDate || s.printDate || cfg.date;
+    const month = (d.match(/^(\d{4})\/(\d{2})/)||[]).slice(1).join('');
+    s.lines.forEach(l=>{
+      const price = l.isGift ? 0 : (l.price===''? null : l.price);
+      const vals = [l.warehouse||'', 'Y', s.trackNo||'', '', month, l.brand||'', 'MOMO', d, s.orderNo, '', l.masterName || l.name, l.qty, price, { formula:`M${r}/1.05` }, { formula:`M${r}*L${r}` }, { formula:`N${r}*L${r}` }, l.cost===''?null:l.cost, { formula:`Q${r}/1.05` }, { formula:`R${r}*L${r}` }, l.unitCost===''?null:l.unitCost, { formula:`T${r}*L${r}` }, { formula:`P${r}-U${r}` }, s.trackNo||'', s.receiver||'', [l.isGift?'贈品':'', s.warnings.join('；')].filter(Boolean).join('；')];
+      const row = bodyRow(ws, r, vals, { wrap:[11], center:[2,4,5,7,12], numFmt:{14:'0.00',15:'0.00',16:'0.00',18:'0.00',19:'0.00',21:'0.00',22:'0.00'} });
+      if(!l.matched && state.master.length) row.getCell(11).font = f({ color:{argb:'FFC4362F'} });
+      r++;
+    });
   });
-  const tr = ws.getRow(3+agg.size); tr.values=['','','','','合計', [...agg.values()].reduce((s,a)=>s+a.qty,0), sel.length];
-  tr.eachCell({includeEmpty:true},(c,col)=>{ if(col>=5){ c.font=f({bold:true}); c.border=border; c.alignment={horizontal:col===5?'right':'center'}; } });
+  ws.autoFilter = { from:'A1', to:`Y${r-1}` };
+  ws.getCell(`A${r+1}`).value = '公式假設：未稅 = 含稅 ÷ 1.05；總金額 = 單價 × 數量；毛利 = 總金額(未稅) − 商品成本總額。售價／進價／成本來自商品主檔，未載入時留空。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
+}
+/* NS 銷售訂單打單清單 */
+function buildNsSheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('NS銷售訂單', { views:[{ state:'frozen', ySplit:1 }] });
+  headerRow(ws, 1, ['出貨單序','客戶','日期(發票日期)','訂單編號','部門','地點','品項代碼','說明','數量','單價(未稅)','金額(未稅)','電子發票','出貨日','付款條件','倉別','平台訂單號','備註'], [8,12,14,30,12,12,14,40,6,10,10,8,12,10,10,16,24]);
+  let r = 2;
+  sel.forEach((s,i)=>{
+    const d = s.invoiceDate || s.orderDate || cfg.date;
+    const orderRef = `MOMO${s.isCvs?'超取':'宅配'}訂單-${(s.orderNo||'').split('、')[0]}`;
+    s.lines.forEach(l=>{
+      const unit = l.isGift ? 0 : (l.price==='' ? null : +(l.price/1.05).toFixed(2));
+      bodyRow(ws, r, [i+1, '富邦(MOMO)', d, orderRef, '創新事業部', '零售客戶倉', l.nsCode||'', l.masterName||l.name, l.qty, unit, { formula:`I${r}*J${r}` }, 'Y', cfg.date, '月結30天', l.warehouse||'', s.orderNo, l.isGift?'贈品 0 元':(l.nsCode?'':'缺 NS 品項代碼')], { wrap:[8], center:[1,3,9,12,13], numFmt:{10:'0.00',11:'0.00'} });
+      r++;
+    });
+  });
+  ws.autoFilter = { from:'A1', to:`Q${r-1}` };
+  ws.getCell(`A${r+1}`).value = '依 SOP：客戶富邦(MOMO)、日期＝發票日期、訂單編號＝(通路)(送貨方式)訂單-平台訂單號、部門創新事業部、地點零售客戶倉、所有品項都要打（贈品 0 元）、同一出貨單需同一外倉、電子發票、月結 30 天。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
+}
+/* 愛上出貨建單資料 */
+function buildIfreshSheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('愛上出貨', { views:[{ state:'frozen', ySplit:1 }] });
+  headerRow(ws, 1, ['出貨單序','平台','產品','數量','會員編號(平台訂單號)','訂購人','收件人','收件人電話','地址','託運單號','付款','內部備註','倉別','溫層'], [8,20,40,6,18,14,10,14,34,14,10,40,8,6]);
+  let r = 2;
+  sel.forEach((s,i)=>{
+    const platform = s.isCvs ? 'MOMO7-11&全家超取' : 'MOMO-CAT';
+    const note = s.isCvs ? '(週二、四) 若無超過40件，如需當天出貨，則需請倉庫用一般黑貓宅配送到集運中心' : '(客戶宅配單) 送達前請先致電';
+    s.lines.forEach(l=>{
+      bodyRow(ws, r, [i+1, platform, l.masterName||l.name, l.qty, (s.orderNo||'').split('、')[0], `MOMO-${s.receiver||''}`, s.isCvs ? '大智通電子商務組' : (s.receiver||''), s.phone||'', s.address||'', s.trackNo||'', '無(已付款)', note, l.warehouse||'', s.temp||''], { wrap:[3,9,12], center:[1,4,14] });
+      r++;
+    });
+  });
+  ws.autoFilter = { from:'A1', to:`N${r-1}` };
+  ws.getCell(`A${r+1}`).value = '依 SOP：宅配＝MOMO-CAT、超商＝MOMO7-11&全家超取；會員編號＝平台訂單號（多筆取前面）；訂購人＝MOMO-訂購人；付款「無(已付款)」。超商件收件人為大智通電子商務組、地址為集運地點。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
+}
+function buildMessageSheet(wb, sel, cfg){
+  const ws = wb.addWorksheet('回報訊息');
+  ws.columns = [{width:110}];
+  const msg = buildMessage(sel);
+  ws.getCell('A1').value = '複製下方文字貼到 Lark／LINE 群組（SO 號碼請在 NS 建單後補上）'; ws.getCell('A1').font = f({bold:true});
+  ws.getCell('A2').value = msg; ws.getCell('A2').font = f({size:11}); ws.getCell('A2').alignment = { wrapText:true, vertical:'top' }; ws.getRow(2).height = Math.min(400, 15*(msg.split('\n').length+1));
 }
 function buildRawSheet(wb, sel, cfg){
   const ws = wb.addWorksheet('原始明細', { views:[{ state:'frozen', ySplit:1 }] });
-  const cols = ['出貨單序','出貨單號','訂單編號','配送編號','配送方式','最晚出貨日','訂單日期','狀態','收件人','電話','地址','商品編碼','商品名稱','國際條碼','商品原廠編號','數量','代收款','發票號碼','備註','來源列'];
-  ws.columns = cols.map(c=>({ header:c, width: c==='商品名稱'?44 : c==='地址'?32 : 14 }));
-  ws.getRow(1).eachCell(c=>{ c.font=f({bold:true}); c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}}; });
-  sel.forEach((s,i)=>s.lines.forEach(l=>{ ws.addRow([i+1, s.shipNo||'', l.orderNo, s.trackNo||'', s.carrier||'', s.deadline||'', l.orderDate||'', l.status||'', s.receiver||'', s.phone||'', s.address||'', l.sku||'', l.name||'', l.barcode||'', l.vendorCode||'', l.qty, l.cod||0, l.invoice||'', l.note||'', l._row]).eachCell({includeEmpty:true}, c=>c.font=f()); }));
-  ws.autoFilter = { from:'A1', to:`T${1+sel.reduce((a,s)=>a+s.lines.length,0)}` };
+  const cols = ['出貨單序','出貨單號','訂單編號','配送編號','配送方式','溫層','最晚出貨日','訂單日期','發票號碼','發票日期','狀態','收件人','電話','地址','商品編碼','商品名稱','國際條碼','商品原廠編號','數量','代收款','材積','Brand','倉別','NS代碼','售價','進價','商品成本','備註','來源'];
+  ws.columns = cols.map(c=>({ header:c, width: c==='商品名稱'?44 : c==='地址'?32 : 13 }));
+  ws.getRow(1).eachCell(c=>{ c.font=f({bold:true}); c.fill=HEAD_FILL; });
+  sel.forEach((s,i)=>s.lines.forEach(l=>{ ws.addRow([i+1, s.shipNo||'', l.orderNo, s.trackNo||'', s.carrier||'', s.temp||'', s.deadline||'', l.orderDate||'', s.invoice||'', s.invoiceDate||'', l.status||'', s.receiver||'', s.phone||'', s.address||'', l.sku||'', l.name||'', l.barcode||'', l.vendorCode||'', l.qty, l.cod||0, s.dims||'', l.brand||'', l.warehouse||'', l.nsCode||'', l.price===''?null:l.price, l.cost===''?null:l.cost, l.unitCost===''?null:l.unitCost, l.note||'', l.source||'']).eachCell({includeEmpty:true}, c=>c.font=f()); }));
+  ws.autoFilter = { from:'A1', to:`AC${1+sel.reduce((a,s)=>a+s.lines.length,0)}` };
 }
 
 /* ==================== 瀏覽器列印 ==================== */
@@ -863,10 +1258,11 @@ function printShipments(){
       <div class="pdate">印單日期：${esc(cfg.date)}</div>
       <h1>${esc(cfg.title)}</h1>
       <div class="meta">
-        <div>訂單編號：${esc(s.orderNo)}</div><div>${s.carrier?`配送方式：${esc(s.carrier)}`:''}</div>
+        <div>訂單編號：${esc(s.orderNo)}</div><div>${s.carrier?`配送方式：${esc(s.carrier)}${s.temp?`（${esc(s.temp)}）`:''}`:''}</div>
         <div>出貨單號：${esc(s.shipNo)}</div><div>最晚出貨日：${esc(s.deadline)}</div>
         <div>配送編號：${esc(s.trackNo)}</div><div>${s.phone?`電　　話：${esc(s.phone)}`:''}</div>
         <div>收 件 人：${esc(s.receiver)}</div><div>${s.address?`地　　址：${esc(s.address)}`:''}</div>
+        ${s.dims?`<div>材　　積：${esc(s.dims)}</div>`:'<div></div>'}${s.invoice?`<div>發票號碼：${esc(s.invoice)}${s.invoiceDate?`（${esc(s.invoiceDate)}）`:''}</div>`:'<div></div>'}
       </div>
       <table><thead><tr><th class="c">序號</th><th>商品編碼</th><th>商品名稱</th><th>國際條碼</th><th class="c">數量</th><th>商品原廠編號</th><th class="c">檢查</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="total">${esc(s.qty)}</div>
@@ -880,36 +1276,37 @@ function printShipments(){
 }
 
 /* ==================== UI 綁定 ==================== */
-function setStep(n){ [1,2,3,4].forEach(i=>{ const s=$('#step'+i); s.classList.toggle('active', i===n); s.classList.toggle('done', i<n); }); }
-function readFile(file){
-  if(!file) return;
-  const reader = new FileReader();
-  const isText = /\.(csv|txt|tsv|htm|html)$/i.test(file.name);
-  reader.onload = e => loadWorkbook(e.target.result, isText?'string':'array', file.name);
-  if(isText){
-    // 先試 UTF-8，若含亂碼再以 Big5 重讀
-    reader.onload = e => { const s = e.target.result; if(/�/.test(s)){ const r2=new FileReader(); r2.onload=ev=>loadWorkbook(ev.target.result,'array',file.name); r2.readAsArrayBuffer(file); } else loadWorkbook(s,'string',file.name); };
-    reader.readAsText(file, 'utf-8');
-  } else reader.readAsArrayBuffer(file);
-}
 const drop = $('#drop');
 drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('over'); });
 drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
-drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); readFile(e.dataTransfer.files[0]); });
-$('#file').addEventListener('change', e=>{ readFile(e.target.files[0]); e.target.value=''; });
-$('#btnPaste').addEventListener('click', ()=>{ const t=$('#pasteBox').value; if(!t.trim()) return; loadWorkbook(t, 'string', '貼上的表格'); });
-$('#btnLoadSample').addEventListener('click', async ()=>{
-  try{ const res = await fetch('sample/momo訂單匯出範例.xlsx'); if(!res.ok) throw new Error(res.status); loadWorkbook(await res.arrayBuffer(), 'array', 'momo訂單匯出範例.xlsx'); }
-  catch(e){ showFileInfo('無法自動載入範例（以 file:// 開啟時瀏覽器會阻擋）。請改點「下載範例檔」後再拖進來。', 'warn'); }
-});
-$('#headerRow').addEventListener('change', e=>{ state.headerIdx=+e.target.value; autoMap(); renderMapping(); rebuild(); });
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+$('#file').addEventListener('change', e=>{ handleFiles(e.target.files); e.target.value=''; });
+$('#btnPaste').addEventListener('click', ()=>{ const t=$('#pasteBox').value; if(!t.trim()) return; const src = ingestTable(t, 'string', '貼上的表格'); src.id=++seq; state.sources.push(src); afterLoad([src]); });
+// 範例檔：單一檔案版會把內容以 base64 內嵌在 window.SAMPLE_B64，否則從 sample/ 目錄抓
+const SAMPLE_FILES = { xlsx: ['momo訂單匯出範例.xlsx'], pdf: ['0907MOMO宅配-常溫-第三方列印明細.pdf','0907MOMO宅配-常溫-第三方列印宅配單.pdf','0907MOMO宅配-常溫-第三方列印出貨總表.pdf'] };
+async function fetchSample(name){
+  if(window.SAMPLE_B64 && window.SAMPLE_B64[name]){ const bin = atob(window.SAMPLE_B64[name]); const u8 = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); return u8; }
+  const res = await fetch('sample/'+name); if(!res.ok) throw new Error(res.status); return new Uint8Array(await res.arrayBuffer());
+}
+async function loadSamples(kind){
+  try{ const results=[]; for(const n of SAMPLE_FILES[kind]){ const u8 = await fetchSample(n); results.push(...await ingestBytes(u8, n)); } results.forEach(r=>{ r.id=++seq; state.sources.push(r); }); afterLoad(results); }
+  catch(e){ console.error(e); showFileInfo('無法自動載入範例（以 file:// 開啟時瀏覽器會阻擋）。請改用單一檔案版，或以 http 方式開啟。', 'warn'); }
+}
+$('#btnSampleXlsx').addEventListener('click', ()=>loadSamples('xlsx'));
+$('#btnSamplePdf').addEventListener('click', ()=>loadSamples('pdf'));
+$('#lnkSample').addEventListener('click', async e=>{ if(!window.SAMPLE_B64) return; e.preventDefault(); downloadBlob(new Blob([await fetchSample('momo訂單匯出範例.xlsx')],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), 'momo訂單匯出範例.xlsx'); });
+$('#headerRow').addEventListener('change', e=>{ const src=tableSource(); if(!src) return; src.headerIdx=+e.target.value; src.mapping=autoMap(src); rebuildAll(); });
 ['#search','#skipExported','#onlyProblem'].forEach(s=>$(s).addEventListener('input', applyFilters));
 $('#setSort').addEventListener('change', applyFilters);
+$('#setNotifyName').addEventListener('input', ()=>{ LS.set('notifyName', $('#setNotifyName').value); renderMessage(); });
+$('#btnCopyMsg').addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText($('#msgBox').textContent); $('#msgHint').textContent='已複製'; setTimeout(()=>$('#msgHint').textContent='', 2000); }catch(e){ $('#msgHint').textContent='無法自動複製，請手動選取文字'; } });
 $('#btnAllOn').addEventListener('click', ()=>{ state.excluded.clear(); applyFilters(); });
 $('#btnAllOff').addEventListener('click', ()=>{ state.shipments.filter(passesFilter).forEach(s=>state.excluded.add(s.key)); applyFilters(); });
-$('#chkAll').addEventListener('change', e=>{ const vis=state.shipments.filter(passesFilter); vis.forEach(s=>{ if(e.target.checked) state.excluded.delete(s.key); else state.excluded.add(s.key); }); applyFilters(); });
+$('#chkAll').addEventListener('change', e=>{ state.shipments.filter(passesFilter).forEach(s=>{ if(e.target.checked) state.excluded.delete(s.key); else state.excluded.add(s.key); }); applyFilters(); });
 $('#btnExport').addEventListener('click', exportExcel);
 $('#btnPrint').addEventListener('click', printShipments);
+$('#masterFile').addEventListener('change', async e=>{ const fl=e.target.files[0]; if(!fl) return; try{ const u8=new Uint8Array(await fl.arrayBuffer()); const { data } = await unlockOffice(u8, fl.name); loadMaster(data, fl.name); }catch(err){ showMasterInfo(err.message,'bad'); } e.target.value=''; });
+$('#btnMasterClear').addEventListener('click', ()=>{ state.master=[]; LS.set('master', []); LS.set('masterName',''); renderMasterBadge(); showMasterInfo('已清除商品主檔。'); rebuildAll(); });
 // 設定持久化
 $('#filePassword').value = LS.get('password', '90754866MOMO');
 $('#filePassword').addEventListener('input', e=>LS.set('password', e.target.value));
@@ -918,16 +1315,14 @@ $('#setNoticeText').value = LS.get('noticeText', DEFAULT_NOTICE);
 $('#setSupplier').value = LS.get('supplier', '');
 $('#setTitle').value = LS.get('title', '裝箱明細');
 $('#setLayout').value = LS.get('layout', 'single');
-$('#setNotice').checked = LS.get('notice', true);
-$('#setPick').checked = LS.get('pick', true);
-$('#setRaw').checked = LS.get('raw', true);
+$('#setNotifyName').value = LS.get('notifyName', '');
+[['setNotice','notice'],['setPick','pick'],['setRaw','raw'],['setRetail','retail'],['setNS','ns'],['setIfresh','ifresh'],['setNotify','notify']].forEach(([id,k])=>{ $('#'+id).checked = LS.get(k, true); $('#'+id).addEventListener('change', e=>LS.set(k, e.target.checked)); });
 $('#setSupplier').addEventListener('input', e=>LS.set('supplier', e.target.value));
 $('#setTitle').addEventListener('input', e=>LS.set('title', e.target.value));
 $('#setLayout').addEventListener('change', e=>LS.set('layout', e.target.value));
-$('#setNotice').addEventListener('change', e=>LS.set('notice', e.target.checked));
-$('#setPick').addEventListener('change', e=>LS.set('pick', e.target.checked));
-$('#setRaw').addEventListener('change', e=>LS.set('raw', e.target.checked));
 $('#setNoticeText').addEventListener('input', e=>LS.set('noticeText', e.target.value));
+state.master = LS.get('master', []); renderMasterBadge();
+if(state.master.length) showMasterInfo(`已從上次記錄載入商品主檔「${LS.get('masterName','')}」：${state.master.length} 個品項。`, 'ok');
 </script>
 </body>
 </html>

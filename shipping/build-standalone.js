@@ -7,18 +7,13 @@ const inline = (file) => {
   if (js.includes('</script')) throw new Error(file + ' contains </script');
   return `<script>/* ${file} (inlined) */\n${js}\n</script>`;
 };
-html = html.replace('<script src="vendor/xlsx.full.min.js"></script>', () => inline('xlsx.full.min.js'));
-html = html.replace('<script src="vendor/exceljs.min.js"></script>', () => inline('exceljs.min.js'));
-html = html.replace('<script src="vendor/officecrypto.browser.js"></script>', () => inline('officecrypto.browser.js'));
-const sampleB64 = fs.readFileSync(path.join(here, 'sample', 'momo訂單匯出範例.xlsx')).toString('base64');
-html = html.replace('<a class="btn sm" href="sample/momo訂單匯出範例.xlsx" download>下載範例檔</a>', '<button class="btn sm" id="btnDownloadSample" type="button">下載範例檔</button>');
-const oldLoader = html.slice(html.indexOf("$('#btnLoadSample').addEventListener"), html.indexOf("$('#headerRow').addEventListener"));
-const newLoader = `const SAMPLE_B64 = '${sampleB64}';
-function sampleBytes(){ const bin = atob(SAMPLE_B64); const u8 = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); return u8; }
-$('#btnLoadSample').addEventListener('click', ()=> loadWorkbook(sampleBytes(), 'array', 'momo訂單匯出範例.xlsx'));
-$('#btnDownloadSample').addEventListener('click', ()=> downloadBlob(new Blob([sampleBytes()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), 'momo訂單匯出範例.xlsx'));
-`;
-html = html.replace(oldLoader, () => newLoader);
+html = html.replace(/<script src="vendor\/([^"]+)"><\/script>/g, (m, file) => inline(file));
+// 範例檔內嵌
+const samples = {};
+for (const f of fs.readdirSync(path.join(here, 'sample'))) samples[f] = fs.readFileSync(path.join(here, 'sample', f)).toString('base64');
+html = html.replace('<script>\n/* ==================== 欄位定義', () => `<script>window.SAMPLE_B64 = ${JSON.stringify(samples)};</script>\n<script>\n/* ==================== 欄位定義`);
+if (!html.includes('window.SAMPLE_B64 =')) throw new Error('sample injection failed');
+if (/vendor\//.test(html)) throw new Error('vendor reference left');
 const out = path.join(here, 'MOMO出貨單產生器.html');
 fs.writeFileSync(out, html);
 console.log('written', out, (fs.statSync(out).size/1024/1024).toFixed(2) + ' MB');
