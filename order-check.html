@@ -197,6 +197,99 @@
   #reviewTable td:first-child, #reviewTable th:first-child{ min-width:190px; }
   #reviewTable td:first-child{ word-break:break-word; overflow-wrap:anywhere; }
 
+
+  /* ---------- 出貨檢查（引導模式）：字大、一次只做一件事、按鈕大 ---------- */
+  .mode-switch{ display:flex; border:1px solid var(--border); border-radius:999px; padding:3px; background:var(--surface); flex:0 0 auto; }
+  .mode-switch button{ border:0; background:transparent; color:var(--ink-muted); font-weight:700; font-size:13px; padding:6px 14px; border-radius:999px; cursor:pointer; }
+  .mode-switch button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
+  body.guided .page > :not(#guided){ display:none !important; }
+  body.guided .tabs{ display:none; }
+  body:not(.guided) #guided{ display:none !important; }
+  #guided{ font-size:18px; line-height:1.6; max-width:820px; margin:0 auto; width:100%; display:flex; flex-direction:column; gap:22px; }
+  .g-hello{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 16px; }
+  .g-hello h2{ font-size:30px; }
+  .g-hello .g-date{ color:var(--ink-muted); font-size:17px; font-weight:600; }
+  .g-steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .g-step{ border-radius:12px; padding:12px 14px; background:var(--surface-2); border:1px solid var(--border); color:var(--ink-faint); font-weight:700; font-size:15px; display:flex; align-items:center; gap:10px; }
+  .g-step .n{ width:30px; height:30px; border-radius:50%; display:grid; place-items:center; background:var(--surface-3); color:var(--ink-muted); font-family:var(--font-mono); flex:0 0 auto; }
+  .g-step.now{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+  .g-step.now .n{ background:var(--accent); color:#fff; }
+  .g-step.done{ color:var(--good-ink); }
+  .g-step.done .n{ background:var(--good); color:#fff; }
+  .g-panel{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px; box-shadow:var(--shadow); }
+  .g-panel h3{ font-size:22px; margin-bottom:6px; }
+  .g-panel .lead{ color:var(--ink-muted); margin:0 0 18px; }
+  .g-seg{ display:flex; flex-wrap:wrap; gap:10px; }
+  .g-seg button{ flex:1 1 140px; min-height:60px; border-radius:14px; border:2px solid var(--border); background:var(--surface-2); color:var(--ink); font-size:19px; font-weight:800; cursor:pointer; }
+  .g-seg button[aria-pressed="true"]{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink); }
+  .g-big{ min-height:64px; border-radius:14px; font-size:20px; font-weight:800; padding:0 26px; border:2px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:10px; text-align:center; }
+  .g-big:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+  .g-big:disabled{ opacity:.4; cursor:not-allowed; }
+  .g-big.alt{ background:var(--surface-2); color:var(--ink); border-color:var(--border); }
+  .g-big.alt:hover{ border-color:var(--ink-faint); background:var(--surface-2); }
+  .g-big.warn{ background:var(--warn-soft); color:var(--warn-ink); border-color:var(--warn); }
+  .g-big.warn:hover{ background:var(--warn-soft); border-color:var(--warn-ink); }
+  .g-big.quiet{ background:transparent; color:var(--ink-muted); border-color:transparent; font-size:17px; min-height:48px; }
+  .g-big.quiet:hover{ background:var(--surface-2); border-color:transparent; }
+  .g-actions{ display:flex; flex-wrap:wrap; gap:12px; margin-top:22px; }
+  .g-actions .g-big{ flex:1 1 240px; }
+  .g-actions .g-big.quiet{ flex:0 1 auto; }
+  .g-drop{ border:2px dashed var(--border); border-radius:16px; padding:34px 20px; text-align:center; background:var(--surface-2); cursor:pointer; }
+  .g-drop:hover, .g-drop.over, .g-drop:focus-visible{ border-color:var(--accent); background:var(--accent-soft); }
+  .g-drop .g-big{ pointer-events:none; }
+  .g-drop p{ margin:12px 0 0; color:var(--ink-muted); font-size:16px; }
+  .g-count{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-top:22px; }
+  .g-count .num-big{ font-size:64px; font-weight:900; line-height:1; font-family:var(--font-mono); color:var(--accent-ink); }
+  .g-count .lbl{ font-size:22px; font-weight:800; }
+  .g-count .sub{ color:var(--ink-muted); font-size:16px; flex-basis:100%; }
+  .g-note{ border-radius:14px; padding:14px 18px; margin-top:16px; font-size:17px; }
+  .g-note.warn{ background:var(--warn-soft); color:var(--warn-ink); }
+  .g-note.ok{ background:var(--good-soft); color:var(--good-ink); }
+  .g-note.info{ background:var(--accent-soft); color:var(--accent-ink); }
+  .g-note.err{ background:var(--bad-soft); color:var(--bad-ink); }
+  .g-note ul{ margin:8px 0 0; padding-left:22px; }
+  .g-progress{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .g-progress .txt{ font-size:20px; font-weight:800; white-space:nowrap; }
+  .g-progress .bar{ flex:1; height:14px; border-radius:7px; background:var(--surface-3); overflow:hidden; }
+  .g-progress .bar > span{ display:block; height:100%; background:var(--accent); border-radius:7px; transition:width .25s; }
+  .g-order-no{ font-family:var(--font-mono); font-size:30px; font-weight:800; letter-spacing:.02em; word-break:break-all; }
+  .g-order-no small{ display:block; font-family:var(--font-ui); font-size:13px; color:var(--ink-faint); letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
+  .g-status{ display:inline-block; margin-top:6px; font-size:15px; font-weight:800; padding:3px 12px; border-radius:999px; }
+  .g-status.ok{ background:var(--good-soft); color:var(--good-ink); }
+  .g-status.issue{ background:var(--warn-soft); color:var(--warn-ink); }
+  .g-rows{ display:flex; flex-direction:column; gap:10px; margin-top:20px; }
+  .g-row{ display:grid; grid-template-columns:110px 1fr auto; gap:6px 16px; align-items:center; width:100%; text-align:left; border:2px solid var(--border); border-radius:14px; padding:14px 18px; background:var(--surface-2); color:var(--ink); cursor:pointer; font:inherit; }
+  .g-row:hover{ border-color:var(--ink-faint); }
+  .g-row .k{ color:var(--ink-muted); font-weight:700; font-size:15px; }
+  .g-row .v{ font-size:19px; font-weight:600; word-break:break-all; min-width:0; }
+  .g-row .v.mono{ font-family:var(--font-mono); }
+  .g-row .v .none{ color:var(--ink-faint); font-weight:500; }
+  .g-row .tick{ width:40px; height:40px; border-radius:50%; border:2px solid var(--border); display:grid; place-items:center; color:transparent; font-size:22px; font-weight:900; background:var(--surface); flex:0 0 auto; }
+  .g-row[aria-pressed="true"]{ border-color:var(--good); background:var(--good-soft); }
+  .g-row[aria-pressed="true"] .tick{ background:var(--good); border-color:var(--good); color:#fff; }
+  .g-row .warn{ grid-column:2 / span 2; color:var(--warn-ink); font-size:15px; font-weight:700; }
+  .g-row ul{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px; }
+  .g-row li{ display:flex; justify-content:space-between; gap:12px; }
+  .g-row li b{ font-family:var(--font-mono); white-space:nowrap; }
+  .g-reasons{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .g-reasons button{ min-height:52px; padding:0 18px; border-radius:12px; border:2px solid var(--border); background:var(--surface-2); font-size:17px; font-weight:700; cursor:pointer; color:var(--ink); }
+  .g-reasons button[aria-pressed="true"]{ border-color:var(--warn); background:var(--warn-soft); color:var(--warn-ink); }
+  .g-toast{ position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--good); color:#fff; font-weight:800; font-size:18px; padding:12px 22px; border-radius:999px; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s; z-index:30; }
+  .g-toast.show{ opacity:1; }
+  .g-done{ text-align:center; padding:10px 0 6px; }
+  .g-done .mark{ width:96px; height:96px; border-radius:50%; background:var(--good); color:#fff; display:grid; place-items:center; font-size:56px; font-weight:900; margin:0 auto 18px; }
+  .g-done .mark.warn{ background:var(--warn); }
+  .g-done h3{ font-size:28px; }
+  .g-list{ margin:14px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .g-list li{ display:flex; justify-content:space-between; gap:12px; padding:10px 14px; border-radius:10px; background:var(--surface-2); font-size:16px; flex-wrap:wrap; }
+  .g-list li .mono{ font-family:var(--font-mono); font-weight:700; }
+  .g-upload-steps{ margin:14px 0 0; padding-left:26px; font-size:18px; display:flex; flex-direction:column; gap:8px; }
+  .g-foot{ text-align:center; color:var(--ink-faint); font-size:15px; }
+  @media (max-width:640px){
+    .g-row{ grid-template-columns:1fr auto; } .g-row .k{ grid-column:1 / span 2; } .g-row .warn{ grid-column:1 / span 2; }
+    .g-steps{ grid-template-columns:1fr; } .g-count .num-big{ font-size:52px; } .g-panel{ padding:20px; }
+  }
+
   @media print{
     .topbar,.btn-row,.chips,.drop,.toolbar{ display:none !important; }
     .card{ box-shadow:none; break-inside:avoid; }
@@ -212,6 +305,10 @@
       <span class="eyebrow">Alpha · 出貨管理</span>
       <h1>訂單出貨核對</h1>
     </div>
+    <div class="mode-switch" id="modeSwitch" role="group" aria-label="模式">
+      <button type="button" data-mode="guided" aria-pressed="true">出貨檢查</button>
+      <button type="button" data-mode="pro" aria-pressed="false">主管對帳</button>
+    </div>
     <nav class="tabs">
       <a href="#drive">Google Drive</a>
       <a href="#upload">上傳資料夾</a>
@@ -226,6 +323,40 @@
 </div>
 
 <main class="page">
+
+  <section id="guided">
+    <div class="g-hello">
+      <h2 id="gHello">嗨，Lance</h2>
+      <span class="g-date" id="gDate"></span>
+    </div>
+    <div class="g-steps" id="gSteps">
+      <div class="g-step now" data-step="1"><span class="n">1</span>放入今天的訂單</div>
+      <div class="g-step" data-step="2"><span class="n">2</span>一張一張檢查</div>
+      <div class="g-step" data-step="3"><span class="n">3</span>上傳出貨</div>
+    </div>
+
+    <div class="g-panel" id="gStage1">
+      <h3>今天從哪個倉庫出貨？</h3>
+      <div class="g-seg" id="gWarehouse"></div>
+      <h3 style="margin-top:28px;">把今天的 momo 訂單放進來</h3>
+      <p class="lead">從 momo 後台下載的檔案，直接放進來就好。有密碼的檔會自動打開。</p>
+      <div class="g-drop" id="gDrop" tabindex="0" role="button" aria-label="選擇訂單檔">
+        <button class="g-big" type="button" tabindex="-1">選擇訂單檔</button>
+        <p>也可以把檔案或整個資料夾拖到這裡</p>
+      </div>
+      <div class="g-actions" style="margin-top:12px;">
+        <button class="g-big alt hide" id="gDriveBtn" type="button">從 Google Drive 拿今天的訂單</button>
+        <button class="g-big quiet" id="gPickFolder" type="button">選整個資料夾</button>
+      </div>
+      <div id="gIngest"></div>
+    </div>
+
+    <div class="g-panel hide" id="gStage2"></div>
+    <div class="g-panel hide" id="gStage3"></div>
+    <p class="g-foot">看不懂或不確定的時候，找主管一起看就好。</p>
+  </section>
+  <div class="g-toast" id="gToast" aria-live="polite"></div>
+
 
   <section class="hero">
     <h2 style="font-size:24px;">每天兩個資料夾，逐張核對出貨是否正確</h2>
@@ -292,13 +423,33 @@
     </div>
   </section>
 
-  <div class="field-grid" id="xlsPassRow" style="margin-top:-6px;">
-    <div class="field">
-      <label for="xlsPassword">Excel 97-2003（.xls）檔密碼</label>
-      <input type="password" id="xlsPassword" placeholder="有加密才需要；留空會先試 Excel 預設密碼" autocomplete="off">
-      <span class="hint">momo 等平台匯出的 .xls 多半用 Excel 預設密碼加密，不用填。填了之後重新拖入即可。密碼只留在記憶體，不會存起來</span>
+  <section class="card" id="lanceCard">
+    <h2>出貨檢查模式的設定</h2>
+    <p class="sub">給倉庫同事用的「出貨檢查」模式（頂端可切換）。這裡改名字、倉庫、上傳步驟的說明，以及開啟 momo 檔案用的密碼。全部存在這台電腦的瀏覽器裡。</p>
+    <div class="card-body field-grid">
+      <div class="field">
+        <label for="gName">使用者名字</label>
+        <input type="text" id="gName" placeholder="Lance">
+      </div>
+      <div class="field">
+        <label for="gWarehouses">倉庫（用逗號分開）</label>
+        <input type="text" id="gWarehouses" placeholder="希塔倉, 愛上倉, Momo 倉">
+      </div>
+      <div class="field">
+        <label for="xlsPassword">文件密碼（momo 等平台鎖檔用的）</label>
+        <input type="password" id="xlsPassword" placeholder="有鎖的 PDF／Excel 會用這組密碼打開" autocomplete="off">
+        <span class="hint">PDF、xlsx、docx、xls 都會試。Excel 的預設密碼與空密碼會自動試，不用填。記在這台電腦，換電腦要再填一次</span>
+      </div>
+      <div class="field" style="grid-column:1 / -1;">
+        <label for="gUploadSteps">檢查完之後的上傳步驟（一行一步）</label>
+        <textarea id="gUploadSteps" rows="4"></textarea>
+      </div>
+      <div class="field">
+        <label for="gDefaultMode">打開時預設進入</label>
+        <select id="gDefaultMode"><option value="guided">出貨檢查（倉庫同事）</option><option value="pro">主管對帳</option></select>
+      </div>
     </div>
-  </div>
+  </section>
 
   <div class="upload-grid" id="upload">
     <section class="card" data-side="order">
@@ -310,7 +461,7 @@
           <div class="small">Excel、CSV、Word、PDF 混在一起沒關係，資料不會離開這台電腦</div>
         </div>
         <input type="file" class="hide" data-file="order" webkitdirectory directory multiple>
-        <input type="file" class="hide" data-files="order" multiple accept=".xlsx,.csv,.tsv,.txt,.docx,.pdf">
+        <input type="file" class="hide" data-files="order" multiple accept=".xlsx,.xls,.csv,.tsv,.txt,.docx,.pdf">
         <div class="btn-row">
           <button class="btn sm" data-pick-folder="order">選擇資料夾</button>
           <button class="btn ghost sm" data-pick-files="order">改選個別檔案</button>
@@ -328,7 +479,7 @@
           <div class="small">Excel、CSV、Word、PDF 混在一起沒關係，資料不會離開這台電腦</div>
         </div>
         <input type="file" class="hide" data-file="ship" webkitdirectory directory multiple>
-        <input type="file" class="hide" data-files="ship" multiple accept=".xlsx,.csv,.tsv,.txt,.docx,.pdf">
+        <input type="file" class="hide" data-files="ship" multiple accept=".xlsx,.xls,.csv,.tsv,.txt,.docx,.pdf">
         <div class="btn-row">
           <button class="btn sm" data-pick-folder="ship">選擇資料夾</button>
           <button class="btn ghost sm" data-pick-files="ship">改選個別檔案</button>
@@ -1021,7 +1172,7 @@ function parseXls(buf, passwords){
   if (fpRec) {
     var fp = parseFilePass(wb.subarray(fpRec.start, fpRec.start + fpRec.len)), okPw = null;
     (passwords || [XLS_DEFAULT_PASSWORD]).some(function(pw){ if (xlsVerifyPassword(fp, pw)) { okPw = pw; return true; } return false; });
-    if (okPw == null) { var pe = new Error('這個 Excel 檔有密碼保護，Excel 預設密碼解不開。請在上方「.xls 檔密碼」填入密碼後重新拖入。'); pe.code = 'password'; throw pe; }
+    if (okPw == null) { var pe = new Error('這個 Excel 檔有密碼保護，我試過的密碼都不對。請確認文件密碼後填在「文件密碼」欄位再重新放入。'); pe.code = 'password'; throw pe; }
     wb = xlsDecrypt(wb, fp, okPw);
     recs = xlsRecords(wb);
   }
@@ -1230,6 +1381,409 @@ function parseDocx(buf){
   });
 }
 
+/* ---------- 文件密碼 ----------
+   momo 等平台匝出的檔案常整份鎖密碼（PDF、xlsx、xls）。這裡集中管理要試的密碼：
+   使用者在設定填的、發佈時內建的、Excel 的預設密碼、空密碼（只鎖擁有者權限的 PDF）。 */
+var BUILTIN_DOC_PASSWORDS = [];
+function docPasswords(extra){
+  var list = [];
+  function add(p){ p = trim(p); if (p !== '' && list.indexOf(p) < 0) list.push(p); }
+  if (extra) add(extra);
+  try { ((db.settings && db.settings.docPasswords) || []).forEach(add); } catch (e) {}
+  var el = (typeof document !== 'undefined') ? $('#xlsPassword') : null;
+  if (el && el.value) add(el.value);
+  BUILTIN_DOC_PASSWORDS.forEach(add);
+  return list;
+}
+
+/* ---------- MD5（PDF 標準加密的金鑰推導要用） ---------- */
+function md5(bytes){
+  var K = [], S = [7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+  for (var i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0;
+  var ml = bytes.length, words = new Array(((ml + 8) >> 6) * 16 + 16).fill(0);
+  for (i = 0; i < ml; i++) words[i >> 2] |= bytes[i] << ((i % 4) * 8);
+  words[ml >> 2] |= 0x80 << ((ml % 4) * 8);
+  words[words.length - 2] = (ml * 8) >>> 0; words[words.length - 1] = Math.floor(ml / 536870912) >>> 0;
+  var a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  for (var off = 0; off < words.length; off += 16) {
+    var A = a0, B = b0, C = c0, D = d0;
+    for (i = 0; i < 64; i++) {
+      var F, g;
+      if (i < 16) { F = (B & C) | (~B & D); g = i; }
+      else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+      else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+      else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+      F = (F + A + K[i] + words[off + g]) >>> 0;
+      A = D; D = C; C = B;
+      B = (B + ((F << S[i]) | (F >>> (32 - S[i])))) >>> 0;
+    }
+    a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
+  }
+  var out = new Uint8Array(16);
+  [a0, b0, c0, d0].forEach(function(h, idx){ out[idx * 4] = h & 255; out[idx * 4 + 1] = (h >>> 8) & 255; out[idx * 4 + 2] = (h >>> 16) & 255; out[idx * 4 + 3] = (h >>> 24) & 255; });
+  return out;
+}
+function shaDigest(alg, bytes){
+  if (alg === 'SHA-1') return Promise.resolve(sha1(bytes));
+  if (!(window.crypto && crypto.subtle)) return Promise.reject(new Error('這個環境沒有 WebCrypto，無法解 ' + alg + ' 加密的檔案。請改用 https 網址或本機開啟。'));
+  return crypto.subtle.digest(alg, bytes).then(function(b){ return new Uint8Array(b); });
+}
+function u32le(n){ return new Uint8Array([n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]); }
+function bytesEq(a, b, n){ n = n || Math.min(a.length, b.length); if (a.length < n || b.length < n) return false; for (var i = 0; i < n; i++) if (a[i] !== b[i]) return false; return true; }
+function b64Bytes(s){ return base64ToBytes(s); }
+
+/* ---------- AES（128/256）：區塊加解密 + CBC/ECB。自己寫是為了 ECB 與不補位的 CBC，WebCrypto 做不到。 ---------- */
+var AES = (function(){
+  var SBOX = new Uint8Array(256), INV = new Uint8Array(256), p = 1, q = 1;
+  do {
+    p = p ^ (p << 1) ^ (p & 0x80 ? 0x1B : 0); p &= 255;
+    q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 255; if (q & 0x80) q ^= 0x09;
+    var x = q ^ (q << 1) ^ (q << 2) ^ (q << 3) ^ (q << 4);
+    x = (x ^ (x >> 8) ^ 0x63) & 255;
+    SBOX[p] = x; INV[x] = p;
+  } while (p !== 1);
+  SBOX[0] = 0x63; INV[0x63] = 0;
+  function xt(a){ return ((a << 1) ^ ((a & 0x80) ? 0x1B : 0)) & 255; }
+  function mul(a, b){ var r = 0; while (b) { if (b & 1) r ^= a; a = xt(a); b >>= 1; } return r; }
+  function expand(key){
+    var nk = key.length / 4, rounds = nk + 6, w = new Uint8Array(16 * (rounds + 1));
+    w.set(key);
+    var rcon = 1;
+    for (var i = nk * 4; i < w.length; i += 4) {
+      var t = [w[i - 4], w[i - 3], w[i - 2], w[i - 1]];
+      if ((i / 4) % nk === 0) { t = [SBOX[t[1]] ^ rcon, SBOX[t[2]], SBOX[t[3]], SBOX[t[0]]]; rcon = xt(rcon); }
+      else if (nk > 6 && (i / 4) % nk === 4) t = [SBOX[t[0]], SBOX[t[1]], SBOX[t[2]], SBOX[t[3]]];
+      for (var j = 0; j < 4; j++) w[i + j] = w[i + j - nk * 4] ^ t[j];
+    }
+    return { w: w, rounds: rounds };
+  }
+  function addRk(s, w, r){ for (var i = 0; i < 16; i++) s[i] ^= w[r * 16 + i]; }
+  function encBlock(ks, inp, out){
+    var s = new Uint8Array(inp), t = new Uint8Array(16), r, i;
+    addRk(s, ks.w, 0);
+    for (r = 1; r <= ks.rounds; r++) {
+      for (i = 0; i < 16; i++) s[i] = SBOX[s[i]];
+      for (i = 0; i < 16; i++) t[i] = s[(i + 4 * (i % 4)) % 16];      /* ShiftRows */
+      if (r < ks.rounds) {
+        for (i = 0; i < 16; i += 4) {
+          var a = t[i], b = t[i + 1], c = t[i + 2], d = t[i + 3];
+          s[i] = mul(a, 2) ^ mul(b, 3) ^ c ^ d; s[i + 1] = a ^ mul(b, 2) ^ mul(c, 3) ^ d;
+          s[i + 2] = a ^ b ^ mul(c, 2) ^ mul(d, 3); s[i + 3] = mul(a, 3) ^ b ^ c ^ mul(d, 2);
+        }
+      } else s.set(t);
+      addRk(s, ks.w, r);
+    }
+    out.set(s);
+  }
+  function decBlock(ks, inp, out){
+    var s = new Uint8Array(inp), t = new Uint8Array(16), r, i;
+    addRk(s, ks.w, ks.rounds);
+    for (r = ks.rounds - 1; r >= 0; r--) {
+      for (i = 0; i < 16; i++) t[(i + 4 * (i % 4)) % 16] = s[i];      /* InvShiftRows */
+      for (i = 0; i < 16; i++) t[i] = INV[t[i]];
+      addRk(t, ks.w, r);
+      if (r > 0) {
+        for (i = 0; i < 16; i += 4) {
+          var a = t[i], b = t[i + 1], c = t[i + 2], d = t[i + 3];
+          s[i] = mul(a, 14) ^ mul(b, 11) ^ mul(c, 13) ^ mul(d, 9); s[i + 1] = mul(a, 9) ^ mul(b, 14) ^ mul(c, 11) ^ mul(d, 13);
+          s[i + 2] = mul(a, 13) ^ mul(b, 9) ^ mul(c, 14) ^ mul(d, 11); s[i + 3] = mul(a, 11) ^ mul(b, 13) ^ mul(c, 9) ^ mul(d, 14);
+        }
+      } else s.set(t);
+    }
+    out.set(s);
+  }
+  function cbcDecrypt(key, iv, data, keepPad){
+    var ks = expand(key), n = data.length - (data.length % 16), out = new Uint8Array(n), prev = new Uint8Array(iv), blk = new Uint8Array(16);
+    for (var o = 0; o < n; o += 16) {
+      decBlock(ks, data.subarray(o, o + 16), blk);
+      for (var i = 0; i < 16; i++) out[o + i] = blk[i] ^ prev[i];
+      prev = data.subarray(o, o + 16);
+    }
+    if (keepPad || !n) return out;
+    var pad = out[n - 1];
+    return (pad >= 1 && pad <= 16) ? out.subarray(0, n - pad) : out;
+  }
+  function cbcEncryptNoPad(key, iv, data){
+    var ks = expand(key), n = data.length - (data.length % 16), out = new Uint8Array(n), prev = new Uint8Array(iv), blk = new Uint8Array(16), x = new Uint8Array(16);
+    for (var o = 0; o < n; o += 16) {
+      for (var i = 0; i < 16; i++) x[i] = data[o + i] ^ prev[i];
+      encBlock(ks, x, blk); out.set(blk, o); prev = out.subarray(o, o + 16);
+    }
+    return out;
+  }
+  function ecbDecrypt(key, data){
+    var ks = expand(key), n = data.length - (data.length % 16), out = new Uint8Array(n), blk = new Uint8Array(16);
+    for (var o = 0; o < n; o += 16) { decBlock(ks, data.subarray(o, o + 16), blk); out.set(blk, o); }
+    return out;
+  }
+  return { cbcDecrypt: cbcDecrypt, cbcEncryptNoPad: cbcEncryptNoPad, ecbDecrypt: ecbDecrypt };
+})();
+
+/* ---------- PDF 標準加密（/Filter /Standard；RC4 40/128、AESV2、AESV3） ---------- */
+var PDF_PAD = new Uint8Array([0x28,0xBF,0x4E,0x5E,0x4E,0x75,0x8A,0x41,0x64,0x00,0x4E,0x56,0xFF,0xFA,0x01,0x08,0x2E,0x2E,0x00,0xB6,0xD0,0x68,0x3E,0x80,0x2F,0x0C,0xA9,0xFE,0x64,0x53,0x69,0x7A]);
+function pdfParseString(src, at){
+  /* 從 at 開始讀一個 PDF 字串（<hex> 或 (literal)），回傳 { bytes, end } */
+  var i = at;
+  while (i < src.length && /\s/.test(src.charAt(i))) i++;
+  if (src.charAt(i) === '<') {
+    var j = src.indexOf('>', i), hex = src.slice(i + 1, j).replace(/[^0-9A-Fa-f]/g, '');
+    if (hex.length % 2) hex += '0';
+    var out = new Uint8Array(hex.length / 2);
+    for (var h = 0; h < out.length; h++) out[h] = parseInt(hex.substr(h * 2, 2), 16);
+    return { bytes: out, end: j + 1 };
+  }
+  if (src.charAt(i) !== '(') return null;
+  var depth = 1, arr = []; i++;
+  while (i < src.length && depth > 0) {
+    var ch = src.charAt(i);
+    if (ch === '\\') {
+      var nx = src.charAt(i + 1);
+      if (nx >= '0' && nx <= '7') { var oct = '', p = i + 1; while (p < src.length && oct.length < 3 && src.charAt(p) >= '0' && src.charAt(p) <= '7') { oct += src.charAt(p); p++; } arr.push(parseInt(oct, 8) & 255); i = p; continue; }
+      var m = { n: 10, r: 13, t: 9, b: 8, f: 12 }[nx];
+      if (nx === '\r') { i += 2; if (src.charAt(i) === '\n') i++; continue; }
+      if (nx === '\n') { i += 2; continue; }
+      arr.push(m != null ? m : nx.charCodeAt(0)); i += 2; continue;
+    }
+    if (ch === '(') depth++;
+    if (ch === ')') { depth--; if (!depth) { i++; break; } }
+    arr.push(ch.charCodeAt(0) & 255); i++;
+  }
+  return { bytes: new Uint8Array(arr), end: i };
+}
+function pdfDictString(dict, key){
+  var m = new RegExp('/' + key + '\\s*').exec(dict);
+  if (!m) return null;
+  var s = pdfParseString(dict, m.index + m[0].length);
+  return s ? s.bytes : null;
+}
+function pdfDictNum(dict, key, dflt){
+  var m = new RegExp('/' + key + '\\s+(-?\\d+)').exec(dict);
+  return m ? parseInt(m[1], 10) : dflt;
+}
+function pdfDictName(dict, key){
+  var m = new RegExp('/' + key + '\\s*/([^\\s/<>\\[\\]()]+)').exec(dict);
+  return m ? m[1] : null;
+}
+function pdfFindEncrypt(raw, objs){
+  /* 加密字典與 /ID 都在 trailer（或 xref 串流字典）裡；用最後出現的那一組 */
+  var re = /\/Encrypt\s+(\d+)\s+\d+\s+R/g, m, encNum = null;
+  while ((m = re.exec(raw))) encNum = m[1];
+  if (encNum == null) {
+    var inline = /\/Encrypt\s*<</.exec(raw);
+    if (!inline) return null;
+  }
+  var idRe = /\/ID\s*\[\s*/g, idBytes = null, im;
+  while ((im = idRe.exec(raw))) { var s = pdfParseString(raw, im.index + im[0].length); if (s) idBytes = s.bytes; }
+  var dict = encNum != null ? (objs[encNum] || '') : (function(){ var i = raw.search(/\/Encrypt\s*<</); var j = raw.indexOf('>>', i); return raw.slice(i + 8, j + 2); })();
+  return { dict: dict, id: idBytes || new Uint8Array(0) };
+}
+function pdfPadPassword(pw){
+  var b = latinToBytes(unescape(encodeURIComponent(pw))), out = new Uint8Array(32);
+  out.set(b.subarray(0, 32)); if (b.length < 32) out.set(PDF_PAD.subarray(0, 32 - b.length), b.length);
+  return out;
+}
+function pdfLegacyKey(padded, info){
+  var pBytes = u32le(info.P >>> 0);
+  var parts = [padded, info.O.subarray(0, 32), pBytes, info.id];
+  if (info.R >= 4 && !info.encryptMetadata) parts.push(new Uint8Array([255, 255, 255, 255]));
+  var key = md5(concatBytes(parts)), n = info.R === 2 ? 5 : info.length / 8;
+  if (info.R >= 3) for (var i = 0; i < 50; i++) key = md5(key.subarray(0, n));
+  return key.subarray(0, n);
+}
+function rc4Apply(key, data){
+  var ks = rc4Keystream(key, data.length), out = new Uint8Array(data.length);
+  for (var i = 0; i < data.length; i++) out[i] = data[i] ^ ks[i];
+  return out;
+}
+function pdfCheckUser(padded, info){
+  var key = pdfLegacyKey(padded, info);
+  if (info.R === 2) return bytesEq(rc4Apply(key, PDF_PAD), info.U, 32) ? key : null;
+  var x = rc4Apply(key, md5(concatBytes([PDF_PAD, info.id])));
+  for (var i = 1; i <= 19; i++) { var k2 = new Uint8Array(key.length); for (var j = 0; j < key.length; j++) k2[j] = key[j] ^ i; x = rc4Apply(k2, x); }
+  return bytesEq(x, info.U, 16) ? key : null;
+}
+function pdfLegacyTry(pw, info){
+  var padded = pdfPadPassword(pw), key = pdfCheckUser(padded, info);
+  if (key) return key;
+  /* 也許給的是擁有者密碼：先還原使用者密碑再驗 */
+  var ok = md5(padded), n = info.R === 2 ? 5 : info.length / 8;
+  if (info.R >= 3) for (var i = 0; i < 50; i++) ok = md5(ok.subarray(0, n));
+  ok = ok.subarray(0, n);
+  var up = info.O.subarray(0, 32);
+  if (info.R === 2) up = rc4Apply(ok, up);
+  else for (var t = 19; t >= 0; t--) { var k2 = new Uint8Array(ok.length); for (var j = 0; j < ok.length; j++) k2[j] = ok[j] ^ t; up = rc4Apply(k2, up); }
+  return pdfCheckUser(up, info);
+}
+/* R6 的雜湊（ISO 32000-2 演算法 2.B）：SHA-256/384/512 輪流，中間夾 AES-128 CBC 加密 */
+function pdfHash2B(pw, salt, udata, R){
+  var pwb = latinToBytes(unescape(encodeURIComponent(pw))).subarray(0, 127);
+  return shaDigest('SHA-256', concatBytes([pwb, salt, udata])).then(function(k){
+    if (R === 5) return k;
+    var i = 0;
+    function round(){
+      var k1 = concatBytes([pwb, k, udata]), rep = new Uint8Array(k1.length * 64);
+      for (var r = 0; r < 64; r++) rep.set(k1, r * k1.length);
+      var e = AES.cbcEncryptNoPad(k.subarray(0, 16), k.subarray(16, 32), rep);
+      var sum = 0; for (var q = 0; q < 16; q++) sum += e[q];
+      var alg = ['SHA-256', 'SHA-384', 'SHA-512'][sum % 3];
+      return shaDigest(alg, e).then(function(h){
+        k = h; i++;
+        if (i < 64 || e[e.length - 1] > i - 32) return round();
+        return k.subarray(0, 32);
+      });
+    }
+    return round();
+  });
+}
+function pdfAes256Try(pw, info){
+  var U = info.U, O = info.O;
+  return pdfHash2B(pw, U.subarray(32, 40), new Uint8Array(0), info.R).then(function(h){
+    if (bytesEq(h, U, 32)) {
+      return pdfHash2B(pw, U.subarray(40, 48), new Uint8Array(0), info.R).then(function(ik){ return AES.cbcDecrypt(ik, new Uint8Array(16), info.UE.subarray(0, 32), true); });
+    }
+    return pdfHash2B(pw, O.subarray(32, 40), U.subarray(0, 48), info.R).then(function(ho){
+      if (!bytesEq(ho, O, 32)) return null;
+      return pdfHash2B(pw, O.subarray(40, 48), U.subarray(0, 48), info.R).then(function(ik){ return AES.cbcDecrypt(ik, new Uint8Array(16), info.OE.subarray(0, 32), true); });
+    });
+  });
+}
+function pdfEncryption(raw, objs, passwords){
+  var found = pdfFindEncrypt(raw, objs);
+  if (!found) return Promise.resolve(null);
+  var d = found.dict;
+  if (pdfDictName(d, 'Filter') && pdfDictName(d, 'Filter') !== 'Standard') return Promise.reject(new Error('這份 PDF 用的是憑證加密（' + pdfDictName(d, 'Filter') + '），不是密碼，無法讀取。'));
+  var info = { V: pdfDictNum(d, 'V', 0), R: pdfDictNum(d, 'R', 2), length: pdfDictNum(d, 'Length', 40), P: pdfDictNum(d, 'P', -1),
+               O: pdfDictString(d, 'O') || new Uint8Array(32), U: pdfDictString(d, 'U') || new Uint8Array(32),
+               OE: pdfDictString(d, 'OE') || new Uint8Array(32), UE: pdfDictString(d, 'UE') || new Uint8Array(32),
+               id: found.id, encryptMetadata: !/\/EncryptMetadata\s+false/.test(d), cfm: 'V2' };
+  if (info.V >= 4) {
+    var stmf = pdfDictName(d, 'StmF') || 'Identity';
+    if (stmf === 'Identity') info.cfm = 'None';
+    else {
+      var cfBlock = new RegExp('/' + stmf + '\\s*<<([\\s\\S]*?)>>').exec(d);
+      info.cfm = cfBlock ? (pdfDictName(cfBlock[1], 'CFM') || 'None') : 'None';
+      var cfLen = cfBlock ? pdfDictNum(cfBlock[1], 'Length', 0) : 0;
+      if (cfLen) info.length = cfLen <= 40 ? cfLen * 8 : cfLen;
+    }
+  }
+  if (info.V === 1) info.length = 40;
+  var cands = [''].concat(passwords || []);
+  function fail(){ var e = new Error('這份 PDF 有密碼保護，我試過的密碼都不對。請確認文件密碼後填在「文件密碼」欄位再重新放入。'); e.code = 'password'; return e; }
+  var keyP;
+  if (info.R >= 5) {
+    keyP = cands.reduce(function(chain, pw){ return chain.then(function(k){ return k || pdfAes256Try(pw, info); }); }, Promise.resolve(null));
+  } else {
+    var key = null;
+    for (var i = 0; i < cands.length && !key; i++) key = pdfLegacyTry(cands[i], info);
+    keyP = Promise.resolve(key);
+  }
+  return keyP.then(function(key){
+    if (!key) throw fail();
+    var isAes = info.cfm === 'AESV2' || info.cfm === 'AESV3', none = info.cfm === 'None';
+    return {
+      decryptStream: function(bytes, num, gen){
+        if (none) return bytes;
+        if (info.R >= 5) return AES.cbcDecrypt(key, bytes.subarray(0, 16), bytes.subarray(16));
+        var extra = [key, new Uint8Array([num & 255, (num >> 8) & 255, (num >> 16) & 255, gen & 255, (gen >> 8) & 255])];
+        if (isAes) extra.push(new Uint8Array([0x73, 0x41, 0x6C, 0x54]));
+        var ok = md5(concatBytes(extra)).subarray(0, Math.min(key.length + 5, 16));
+        return isAes ? AES.cbcDecrypt(ok, bytes.subarray(0, 16), bytes.subarray(16)) : rc4Apply(ok, bytes);
+      }
+    };
+  });
+}
+
+/* ---------- Office 加密容器（xlsx/docx 設了密碼）：OLE 裡的 EncryptionInfo + EncryptedPackage ---------- */
+function isOleFile(buf){ var dv = new DataView(buf); return buf.byteLength > 512 && u32(dv, 0) === 0xE011CFD0 && u32(dv, 4) === 0xE11AB1A1; }
+function ooxmlDecrypt(buf, passwords){
+  var cfb = cfbOpen(buf), info = cfb.read('EncryptionInfo'), pkg = cfb.read('EncryptedPackage');
+  if (!info || !pkg) { var e0 = new Error('這個檔案是 Office 容器但不是加密的 Excel／Word 檔。'); throw e0; }
+  var dv = new DataView(info.buffer, info.byteOffset, info.byteLength);
+  var vMajor = dv.getUint16(0, true), vMinor = dv.getUint16(2, true);
+  var size = Number(new DataView(pkg.buffer, pkg.byteOffset, 8).getBigUint64 ? new DataView(pkg.buffer, pkg.byteOffset, 8).getBigUint64(0, true) : dv.getUint32(0, true));
+  var body = pkg.subarray(8);
+  var cands = passwords || [];
+  function fail(){ var e = new Error('這個 Excel／Word 檔有密碼保護，我試過的密碼都不對。請確認文件密碼後填在「文件密碼」欄位再重新放入。'); e.code = 'password'; return e; }
+  if (vMajor === 4 && vMinor === 4) {
+    /* Agile：XML 描述參數，SHA-512 反覆 spinCount 次 */
+    var xml = new TextDecoder('utf-8').decode(info.subarray(8)), doc = xmlDoc(xml);
+    var kd = doc.getElementsByTagName('keyData')[0], ek = doc.getElementsByTagNameNS('*', 'encryptedKey')[0];
+    if (!kd || !ek) throw new Error('加密參數讀不到，無法解密。');
+    var alg = function(el){ var h = (el.getAttribute('hashAlgorithm') || 'SHA512').toUpperCase().replace('SHA', 'SHA-').replace('SHA-1', 'SHA-1'); return h === 'SHA-512' ? 'SHA-512' : h === 'SHA-384' ? 'SHA-384' : h === 'SHA-256' ? 'SHA-256' : 'SHA-1'; };
+    var keyAlg = alg(ek), pkgAlg = alg(kd);
+    var spin = parseInt(ek.getAttribute('spinCount'), 10) || 100000, keyBits = parseInt(ek.getAttribute('keyBits'), 10) || 256;
+    var blockSize = parseInt(ek.getAttribute('blockSize'), 10) || 16, hashSize = parseInt(ek.getAttribute('hashSize'), 10) || 64;
+    var salt = b64Bytes(ek.getAttribute('saltValue')), pkgSalt = b64Bytes(kd.getAttribute('saltValue'));
+    var pkgKeyBits = parseInt(kd.getAttribute('keyBits'), 10) || 256, pkgBlock = parseInt(kd.getAttribute('blockSize'), 10) || 16;
+    var vIn = b64Bytes(ek.getAttribute('encryptedVerifierHashInput')), vVal = b64Bytes(ek.getAttribute('encryptedVerifierHashValue')), kVal = b64Bytes(ek.getAttribute('encryptedKeyValue'));
+    var BK_IN = new Uint8Array([0xfe,0xa7,0xd2,0x76,0x3b,0x4b,0x9e,0x79]), BK_VAL = new Uint8Array([0xd7,0xaa,0x0f,0x6d,0x30,0x61,0x34,0x4e]), BK_KEY = new Uint8Array([0x14,0x6e,0x0b,0xe7,0xab,0xac,0xd0,0xd6]);
+    function fit(b, n){ var o = new Uint8Array(n); o.set(b.subarray(0, n)); if (b.length < n) for (var i = b.length; i < n; i++) o[i] = 0x36; return o; }
+    function iterHash(pw){
+      return shaDigest(keyAlg, concatBytes([salt, utf16le(pw)])).then(function(h){
+        var i = 0;
+        function step(){
+          /* 一批 2000 次，避免十萬次 await 讓頁面完全卡住 */
+          var chain = Promise.resolve(h), end = Math.min(spin, i + 2000);
+          for (; i < end; i++) (function(n){ chain = chain.then(function(prev){ return shaDigest(keyAlg, concatBytes([u32le(n), prev])); }); })(i);
+          return chain.then(function(x){ h = x; return i < spin ? step() : h; });
+        }
+        return step();
+      });
+    }
+    function tryPw(pw){
+      return iterHash(pw).then(function(h){
+        return Promise.all([BK_IN, BK_VAL, BK_KEY].map(function(bk){ return shaDigest(keyAlg, concatBytes([h, bk])).then(function(x){ return x.subarray(0, keyBits / 8); }); }));
+      }).then(function(keys){
+        var iv = fit(salt, blockSize);
+        var vin = AES.cbcDecrypt(keys[0], iv, vIn, true).subarray(0, 16);
+        var vval = AES.cbcDecrypt(keys[1], iv, vVal, true);
+        return shaDigest(keyAlg, vin).then(function(hv){
+          if (!bytesEq(hv, vval, Math.min(hashSize, hv.length))) return null;
+          return AES.cbcDecrypt(keys[2], iv, kVal, true).subarray(0, pkgKeyBits / 8);
+        });
+      });
+    }
+    return cands.reduce(function(chain, pw){ return chain.then(function(k){ return k || tryPw(pw); }); }, Promise.resolve(null)).then(function(secret){
+      if (!secret) throw fail();
+      var segs = Math.ceil(body.length / 4096), jobs = [];
+      for (var s = 0; s < segs; s++) {
+        (function(s){
+          jobs.push(shaDigest(pkgAlg, concatBytes([pkgSalt, u32le(s)])).then(function(ivh){
+            var seg = body.subarray(s * 4096, Math.min(body.length, (s + 1) * 4096));
+            return AES.cbcDecrypt(secret, fit(ivh, pkgBlock), seg, true);
+          }));
+        })(s);
+      }
+      return Promise.all(jobs).then(function(parts){ var all = concatBytes(parts); return all.slice(0, size).buffer; });
+    });
+  }
+  if ((vMajor === 3 || vMajor === 4 || vMajor === 2) && vMinor === 2) {
+    /* Standard：AES-128 ECB，SHA-1 反覆 50000 次 */
+    var p = 8, hdrSize = dv.getUint32(p, true); p += 4;
+    var keySize = dv.getUint32(p + 16, true) || 128; p += hdrSize;
+    var saltSize = dv.getUint32(p, true); p += 4;
+    var salt2 = info.subarray(p, p + saltSize); p += saltSize;
+    var encVer = info.subarray(p, p + 16); p += 16;
+    var vhSize = dv.getUint32(p, true); p += 4;
+    var encVh = info.subarray(p, p + 32);
+    function stdKey(pw){
+      var h = sha1(concatBytes([salt2, utf16le(pw)]));
+      for (var i = 0; i < 50000; i++) h = sha1(concatBytes([u32le(i), h]));
+      h = sha1(concatBytes([h, u32le(0)]));
+      var x1 = new Uint8Array(64), x2 = new Uint8Array(64);
+      for (var j = 0; j < 64; j++) { var b = j < h.length ? h[j] : 0; x1[j] = 0x36 ^ b; x2[j] = 0x5C ^ b; }
+      return concatBytes([sha1(x1), sha1(x2)]).subarray(0, keySize / 8);
+    }
+    for (var c = 0; c < cands.length; c++) {
+      var k = stdKey(cands[c]);
+      var ver = AES.ecbDecrypt(k, encVer), vh = AES.ecbDecrypt(k, encVh);
+      if (bytesEq(sha1(ver), vh, Math.min(vhSize, 20))) return Promise.resolve(AES.ecbDecrypt(k, body).slice(0, size).buffer);
+    }
+    return Promise.reject(fail());
+  }
+  return Promise.reject(new Error('這個 Office 檔用的加密版本（' + vMajor + '.' + vMinor + '）不支援。請在 Excel 另存一份不加密的檔。'));
+}
+
 /* ---------- PDF 取字 ---------- */
 function hexToStr(h){
   var s = '';
@@ -1274,12 +1828,14 @@ function parseToUnicode(text){
   return { map: map, width: width };
 }
 function pdfSplitObjects(raw){
-  var objs = {}, re = /(\d+)\s+\d+\s+obj\b/g, m;
+  var objs = {}, gens = {}, re = /(\d+)\s+(\d+)\s+obj\b/g, m;
+  Object.defineProperty(objs, '__gen', { value: gens });
   while ((m = re.exec(raw))) {
     var start = m.index + m[0].length;
     var end = raw.indexOf('endobj', start);
     if (end < 0) end = raw.length;
     objs[m[1]] = raw.slice(start, end);
+    gens[m[1]] = parseInt(m[2], 10) || 0;
     re.lastIndex = end;
   }
   return objs;
@@ -1339,10 +1895,15 @@ function pngUnpredict(data, columns, colors, bpc){
   }
   return out;
 }
-function pdfDecodeStream(body, objs){
+function pdfDecodeStream(body, objs, num){
   var bytes = pdfStreamBytes(body, objs);
   if (!bytes) return Promise.resolve(null);
   var dict = pdfDict(body);
+  /* 加密的 PDF：每個頂層物件的串流各自用物件編號推導金鑰解開；xref 串流本身不加密 */
+  if (objs && objs.__enc && num != null && !/\/Type\s*\/XRef/.test(dict)) {
+    try { bytes = objs.__enc.decryptStream(bytes, parseInt(num, 10), (objs.__gen && objs.__gen[num]) || 0); }
+    catch (e) { return Promise.resolve(null); }
+  }
   if (dict.indexOf('FlateDecode') < 0) return Promise.resolve(bytes);
   return inflateAuto(bytes).then(function(out){
     var pm = /\/Predictor\s+(\d+)/.exec(dict);
@@ -1363,7 +1924,7 @@ function pdfExpandObjStms(objs){
   Object.keys(objs).forEach(function(k){
     var body = objs[k], dict = pdfDict(body);
     if (!/\/Type\s*\/ObjStm/.test(dict)) return;
-    jobs.push(pdfDecodeStream(body, objs).then(function(bytes){
+    jobs.push(pdfDecodeStream(body, objs, k).then(function(bytes){
       if (!bytes) return;
       var text = bytesToLatin(bytes);
       var n = parseInt((/\/N\s+(\d+)/.exec(dict) || [0, 0])[1], 10);
@@ -1530,9 +2091,6 @@ function pdfScanContent(content, fontMaps, pageFonts){
 function parsePdf(buf){
   var raw = bytesToLatin(new Uint8Array(buf));
   if (raw.indexOf('%PDF') < 0) return Promise.reject(new Error('這不像是 PDF 檔。'));
-  if (/\/Encrypt\s+\d+\s+\d+\s+R|\/Encrypt\s*<</.test(raw)) {
-    return Promise.reject(new Error('這份 PDF 有加密保護，無法讀取文字。請用產生它的系統重新輸出未加密版本。'));
-  }
   var objs = pdfSplitObjects(raw);
   var fontRefs = {}, fontMaps = {}, pages = [];
 
@@ -1572,7 +2130,10 @@ function parsePdf(buf){
       if (contents.length) pages.push({ contents: contents, fonts: fontsFrom(dict, 0) });
     });
   }
-  return pdfExpandObjStms(objs).then(function(){
+  return pdfEncryption(raw, objs, docPasswords()).then(function(enc){
+    if (enc) Object.defineProperty(objs, '__enc', { value: enc });
+    return pdfExpandObjStms(objs);
+  }).then(function(){
     collectPages();
     if (!pages.length) {
       throw new Error('讀不到這份 PDF 的頁面結構——可能是我還沒支援的產生器格式，不一定是掃描件。請把這份檔案給開發者看。');
@@ -1583,7 +2144,7 @@ function parsePdf(buf){
     if (!fbody) return;
     var tm = /\/ToUnicode\s+(\d+)\s+\d+\s+R/.exec(fbody);
     if (!tm || !objs[tm[1]]) return;
-    toUniJobs.push(pdfDecodeStream(objs[tm[1]], objs).then(function(bytes){
+    toUniJobs.push(pdfDecodeStream(objs[tm[1]], objs, tm[1]).then(function(bytes){
       if (bytes) fontMaps[fref] = parseToUnicode(bytesToLatin(bytes));
     }).catch(function(){}));
   });
@@ -1592,7 +2153,7 @@ function parsePdf(buf){
     return pages.reduce(function(chain, pg){
       return chain.then(function(){
         return Promise.all(pg.contents.map(function(cref){
-          return objs[cref] ? pdfDecodeStream(objs[cref], objs) : Promise.resolve(null);
+          return objs[cref] ? pdfDecodeStream(objs[cref], objs, cref) : Promise.resolve(null);
         })).then(function(parts){
           var content = parts.filter(Boolean).map(bytesToLatin).join('\n');
           pageNo++;
@@ -2015,8 +2576,10 @@ function extractFile(file){
   return readBuffer(file).then(function(buf){
     if (isXlsx || isXls) {
       out.kind = isXls ? 'Excel 97-2003' : 'Excel';
-      var pw = trim(($('#xlsPassword') || {}).value || '');
-      var parsed = isXls ? Promise.resolve().then(function(){ return parseXls(buf, pw ? [pw, XLS_DEFAULT_PASSWORD] : [XLS_DEFAULT_PASSWORD]); }) : parseXlsx(buf);
+      var parsed;
+      if (isXls) parsed = Promise.resolve().then(function(){ return parseXls(buf, docPasswords().concat([XLS_DEFAULT_PASSWORD])); });
+      else if (isOleFile(buf)) { out.kind = 'Excel（加密）'; parsed = ooxmlDecrypt(buf, docPasswords()).then(parseXlsx); }
+      else parsed = parseXlsx(buf);
       return parsed.then(function(sheets){
         var names = Object.keys(sheets);
         for (var i = 0; i < names.length; i++) {
@@ -2031,7 +2594,8 @@ function extractFile(file){
     }
     if (isDocx) {
       out.kind = 'Word';
-      return parseDocx(buf).then(function(d){
+      var docP = isOleFile(buf) ? ooxmlDecrypt(buf, docPasswords()).then(parseDocx) : parseDocx(buf);
+      return docP.then(function(d){
         for (var i = 0; i < d.tables.length; i++) {
           var t = gridIsTable(d.tables[i]);
           if (t) { out.records = recordsFromTable(t); out.note = '表格（' + out.records.length + ' 張單）'; return out; }
@@ -2080,6 +2644,7 @@ function extractFile(file){
 
 /* ---------- 兩個資料夾的狀態 ---------- */
 var src = { order: { files: [], busy: false, label: '' }, ship: { files: [], busy: false, label: '' } };
+var ingestHooks = [];
 var SIDE_LABEL = { order: '訂單資料夾', ship: '出貨資料夾' };
 var reviewSide = 'order';
 var reviewFilter = 'issue';
@@ -2153,6 +2718,7 @@ function ingest(side, fileList, label){
   var s = src[side];
   s.files = [];
   s.busy = true;
+  ingestHooks.forEach(function(fn){ fn(side, 'start'); });
   var rel = files[0].webkitRelativePath || '';
   s.label = label || (rel ? rel.split('/')[0] : '');
   renderSideStatus(side, '解析中… 0 / ' + files.length);
@@ -2175,11 +2741,13 @@ function ingest(side, fileList, label){
     renderSideStatus(side);
     renderReview();
     $('#filesCard').classList.remove('hide');
+    ingestHooks.forEach(function(fn){ fn(side, 'done'); });
   });
 }
 
 function clearSide(side){
   src[side] = { files: [], busy: false, label: '' };
+  if (side === 'order') { G.orders = []; }
   renderSideStatus(side);
   showErr(side, '');
   var input = $('[data-file="' + side + '"]');
@@ -3437,6 +4005,376 @@ $('#exportYearBtn').addEventListener('click', exportYear);
   });
 
 $('#batchChannel').addEventListener('change', function(){ db.settings.channel = trim($('#batchChannel').value); saveDB(); });
+
+
+/* ---------- 出貨檢查（引導模式）----------
+   給倉庫同事用：一次只做一件事，字大、按鈕大、話講白。
+   第 1 步放入 momo 訂單（有密碼會自動開），第 2 步一張一張確認，第 3 步才說可以上傳出貨系統。
+   讀檔與彙整完全沿用主管模式那一套；這裡只負責流程與畫面。 */
+var G_KEY = 'alpha-order-check-guided-v1';
+var G_DEFAULTS = {
+  name: 'Lance',
+  warehouses: ['希塔倉', '愛上倉', 'Momo 倉'],
+  uploadSteps: '打開出貨系統，登入。\n選今天出貨的倉庫。\n上傳今天的訂單檔。\n看到「成功」之後，告訴主管已經上傳好了。'
+};
+var G_REASONS = ['資料不對', '貨不夠', '找不到這個商品', '其他'];
+function gSettings(){
+  var s = db.settings.guided || {};
+  return {
+    name: trim(s.name) || G_DEFAULTS.name,
+    warehouses: (s.warehouses && s.warehouses.length) ? s.warehouses : G_DEFAULTS.warehouses,
+    uploadSteps: trim(s.uploadSteps) || G_DEFAULTS.uploadSteps
+  };
+}
+var G = gFresh();
+function gFresh(){ return { date: todayISO(), warehouse: '', stage: 1, orders: [], idx: 0, files: 0, badFiles: [], pickingReason: false, reason: '' }; }
+function gSave(){ try { localStorage.setItem(G_KEY, JSON.stringify(G)); } catch (e) {} }
+function gLoad(){
+  try {
+    var o = JSON.parse(localStorage.getItem(G_KEY) || 'null');
+    /* 只接今天的進度；昨天沒做完的不要帶到今天 */
+    if (o && o.date === todayISO() && Array.isArray(o.orders)) G = o;
+  } catch (e) {}
+}
+function gToast(text){
+  var el = $('#gToast');
+  el.textContent = text; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.classList.remove('show'); }, 1600);
+}
+function gDateText(iso){
+  var d = new Date(iso + 'T00:00:00'), wd = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+  return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日（' + wd + '）';
+}
+function gAutoWarnings(o){
+  var w = [];
+  if (!trim(o.name)) w.push('這張單沒有收件人名字');
+  if (!trim(o.phone)) w.push('沒有電話（超商取貨的單常常這樣，沒關係）');
+  else if (!validPhone(o.phone)) w.push('電話看起來不完整：' + o.phone);
+  if (!trim(o.addr)) w.push('沒有地址（超商取貨的單常常這樣，沒關係）');
+  if (!(o.qty > 0)) w.push('數量是 0，請確認');
+  return w;
+}
+/* 把訂單側讀到的資料彙整成一張一張的單；同一張單如果之前已經勾過，保留勾選 */
+function gBuildOrders(){
+  var prev = {};
+  G.orders.forEach(function(o){ prev[o.key] = o; });
+  var idx = buildIndex(sideRecords('order')).idx, out = [];
+  idx.forEach(function(g){
+    var items = [];
+    g.items.forEach(function(v){ items.push({ label: v.label, qty: v.qty }); });
+    var o = { key: g.key, orderNo: g.orderNo, name: g.name, phone: g.phone, addr: g.addr, qty: g.qty, amount: g.amount,
+              items: items, files: g.files.slice(), checks: {}, status: 'pending', reason: '' };
+    var p = prev[o.key];
+    if (p) { o.checks = p.checks || {}; o.status = p.status || 'pending'; o.reason = p.reason || ''; }
+    o.warnings = gAutoWarnings(o);
+    out.push(o);
+  });
+  return out;
+}
+function gRows(o){
+  var rows = [
+    { k: 'name', label: '收件人', v: o.name },
+    { k: 'phone', label: '電話', v: o.phone, mono: true },
+    { k: 'addr', label: '地址', v: o.addr },
+    { k: 'items', label: '商品', items: o.items, qty: o.qty }
+  ];
+  if (o.amount > 0) rows.push({ k: 'amount', label: '金額', v: 'NT$ ' + fmtMoney(o.amount), mono: true });
+  return rows;
+}
+function gAllChecked(o){ return gRows(o).every(function(r){ return o.checks[r.k]; }); }
+function gCounts(){
+  var c = { ok: 0, issue: 0, pending: 0 };
+  G.orders.forEach(function(o){ c[o.status]++; });
+  return c;
+}
+
+function gRender(){
+  var s = gSettings();
+  $('#gHello').textContent = '嗨，' + s.name;
+  $('#gDate').textContent = '今天是 ' + gDateText(G.date);
+  $$('#gSteps .g-step').forEach(function(el){
+    var n = parseInt(el.getAttribute('data-step'), 10);
+    el.classList.toggle('now', n === G.stage);
+    el.classList.toggle('done', n < G.stage);
+  });
+  $('#gStage1').classList.toggle('hide', G.stage !== 1);
+  $('#gStage2').classList.toggle('hide', G.stage !== 2);
+  $('#gStage3').classList.toggle('hide', G.stage !== 3);
+  if (G.stage === 1) gRenderStage1();
+  if (G.stage === 2) gRenderCard();
+  if (G.stage === 3) gRenderDone();
+  gSave();
+}
+function gRenderStage1(){
+  var s = gSettings();
+  $('#gWarehouse').innerHTML = s.warehouses.map(function(w){
+    return '<button type="button" data-wh="' + esc(w) + '" aria-pressed="' + (G.warehouse === w) + '">' + esc(w) + '</button>';
+  }).join('');
+  var canDrive = !!mcpNs || !!trim(($('#driveClientId') || {}).value || '') || DRIVE_API !== 'https://www.googleapis.com';
+  $('#gDriveBtn').classList.toggle('hide', !canDrive);
+  gRenderIngest();
+}
+function gRenderIngest(){
+  var box = $('#gIngest');
+  if (src.order.busy) { box.innerHTML = '<div class="g-note info">正在讀檔，等我一下…</div>'; return; }
+  if (!src.order.files.length) { box.innerHTML = ''; return; }
+  var st = sideStats('order');
+  var bad = src.order.files.filter(function(f){ return f.status === 'fail' || f.status === 'warn' || f.status === 'skip'; });
+  var n = G.orders.length;
+  var html = '<div class="g-count"><span class="num-big">' + n + '</span><span class="lbl">張單要出</span>' +
+    '<span class="sub">從 ' + st.files + ' 個檔案讀出來' + (G.warehouse ? '，從「' + esc(G.warehouse) + '」出貨' : '') + '</span></div>';
+  if (bad.length) {
+    html += '<div class="g-note warn">有 ' + bad.length + ' 個檔案我打不開，先請主管看一下：<ul>' +
+      bad.slice(0, 6).map(function(f){ return '<li>' + esc(f.file) + '<br><span style="font-weight:500">' + esc(f.note || '讀不到內容') + '</span></li>'; }).join('') +
+      (bad.length > 6 ? '<li>還有 ' + (bad.length - 6) + ' 個</li>' : '') + '</ul></div>';
+  }
+  if (!n) {
+    html += '<div class="g-note err">這些檔案裡沒有找到訂單。確認一下是不是 momo 後台下載的訂單檔？不確定就找主管。</div>';
+  } else {
+    var dup = st.orders - n;
+    if (dup > 0) html += '<div class="g-note info">有些單在不同檔案裡重複出現，已經合併成同一張，不用擔心。</div>';
+    html += '<div class="g-actions"><button class="g-big" id="gStart" type="button">開始一張一張檢查</button>' +
+      '<button class="g-big quiet" id="gReset1" type="button">重新放檔案</button></div>';
+    if (!G.warehouse) html += '<p class="note" style="font-size:15px">還沒選倉庫。先在上面點一下今天出貨的倉庫。</p>';
+  }
+  box.innerHTML = html;
+}
+function gRenderCard(){
+  var o = G.orders[G.idx];
+  if (!o) { G.stage = 3; gRender(); return; }
+  var total = G.orders.length, done = gCounts();
+  var rows = gRows(o);
+  var html = '<div class="g-progress"><span class="txt">第 ' + (G.idx + 1) + ' 張 ／ 共 ' + total + ' 張</span>' +
+    '<div class="bar"><span style="width:' + Math.round((done.ok + done.issue) / total * 100) + '%"></span></div></div>';
+  html += '<div class="g-order-no"><small>訂單編號</small>' + esc(o.orderNo) + '</div>';
+  if (o.status === 'ok') html += '<span class="g-status ok">這張已經檢查過，沒問題</span>';
+  if (o.status === 'issue') html += '<span class="g-status issue">這張先放一邊了：' + esc(o.reason || '有問題') + '</span>';
+  if (o.warnings.length) html += '<div class="g-note warn" style="margin-top:14px">注意：<ul>' + o.warnings.map(function(w){ return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
+  html += '<p class="lead" style="margin-top:16px">把每一行跟 momo 後台上的資料對一下，看過沒問題就點一下，打勾。</p>';
+  html += '<div class="g-rows">' + rows.map(function(r){
+    var val;
+    if (r.k === 'items') {
+      if (r.items && r.items.length) val = '<ul>' + r.items.map(function(it){ return '<li><span>' + esc(it.label) + '</span><b>× ' + fmtInt(it.qty) + '</b></li>'; }).join('') + '</ul>';
+      else val = '<span class="none">（沒讀到商品名稱）</span> 數量 <b class="mono">' + fmtInt(r.qty || 0) + '</b>';
+    } else {
+      val = isBlank(r.v) ? '<span class="none">（沒有）</span>' : esc(r.v);
+    }
+    return '<button type="button" class="g-row" data-k="' + r.k + '" aria-pressed="' + !!o.checks[r.k] + '">' +
+      '<span class="k">' + esc(r.label) + '</span><span class="v' + (r.mono ? ' mono' : '') + '">' + val + '</span><span class="tick">✓</span></button>';
+  }).join('') + '</div>';
+  var all = gAllChecked(o);
+  if (G.pickingReason) {
+    html += '<div class="g-note warn" style="margin-top:18px">哪裡有問題？點一個。' +
+      '<div class="g-reasons">' + G_REASONS.map(function(r){ return '<button type="button" data-reason="' + esc(r) + '" aria-pressed="' + (G.reason === r) + '">' + esc(r) + '</button>'; }).join('') + '</div>' +
+      '<div class="g-actions" style="margin-top:14px"><button class="g-big warn" id="gIssueConfirm" type="button"' + (G.reason ? '' : ' disabled') + '>好，這張先放一邊，換下一張</button>' +
+      '<button class="g-big quiet" id="gIssueCancel" type="button">取消</button></div></div>';
+  } else {
+    html += '<div class="g-actions">' +
+      '<button class="g-big" id="gOk" type="button"' + (all ? '' : ' disabled') + '>' + (all ? '✓ 這張沒問題，下一張' : '每一行都打勾後就可以下一張') + '</button>' +
+      '<button class="g-big alt" id="gIssue" type="button">這張有問題，先放一邊</button></div>';
+    html += '<div class="g-actions" style="margin-top:6px">' +
+      (G.idx > 0 ? '<button class="g-big quiet" id="gPrev" type="button">← 上一張</button>' : '') +
+      '<button class="g-big quiet" id="gBack1" type="button">回到第 1 步</button></div>';
+  }
+  $('#gStage2').innerHTML = html;
+}
+function gAdvance(){
+  G.pickingReason = false; G.reason = '';
+  /* 往後找還沒處理的；後面都處理完就從頭找漏掉的；都沒有就結束 */
+  var n = G.orders.length, i;
+  for (i = G.idx + 1; i < n; i++) if (G.orders[i].status === 'pending') { G.idx = i; gRender(); return; }
+  for (i = 0; i < n; i++) if (G.orders[i].status === 'pending') { G.idx = i; gRender(); return; }
+  G.stage = 3; gRender();
+}
+function gRenderDone(){
+  var s = gSettings(), c = gCounts(), total = G.orders.length;
+  var okList = G.orders.filter(function(o){ return o.status === 'ok'; }), issues = G.orders.filter(function(o){ return o.status === 'issue'; });
+  var html = '<div class="g-done">';
+  if (!issues.length) {
+    html += '<div class="mark">✓</div><h3>' + total + ' 張單全部檢查好了！</h3>' +
+      '<p class="lead">' + esc(s.name) + '，做得很好。現在可以上傳到出貨系統出貨了' + (G.warehouse ? '（' + esc(G.warehouse) + '）' : '') + '。</p>';
+  } else {
+    html += '<div class="mark warn">!</div><h3>' + okList.length + ' 張沒問題，' + issues.length + ' 張要請主管看</h3>' +
+      '<p class="lead">沒問題的 ' + okList.length + ' 張可以先上傳出貨。有問題的先不要出，交給主管。</p>';
+  }
+  html += '</div>';
+  if (issues.length) {
+    html += '<div class="g-note warn">要請主管看的單：<ul class="g-list" style="padding:0">' + issues.map(function(o){
+      return '<li><span class="mono">' + esc(o.orderNo) + '</span><span>' + esc(o.name || '') + '</span><span>' + esc(o.reason) + '</span></li>'; }).join('') + '</ul></div>';
+  }
+  if (okList.length) {
+    html += '<div class="g-note ok"><strong>上傳步驟</strong><ol class="g-upload-steps">' +
+      s.uploadSteps.split(/\n+/).filter(trim).map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>';
+  }
+  html += '<div class="g-actions">' +
+    '<button class="g-big" id="gSaveDay" type="button">存成今天的紀錄</button>' +
+    '<button class="g-big alt" id="gExport" type="button">匯出檢查清單</button></div>';
+  html += '<div class="g-actions" style="margin-top:6px">' +
+    (issues.length ? '<button class="g-big quiet" id="gRevisit" type="button">再看一次有問題的單</button>' : '') +
+    '<button class="g-big quiet" id="gRestart" type="button">今天重新開始</button></div>';
+  html += '<div id="gDoneMsg"></div>';
+  $('#gStage3').innerHTML = html;
+}
+function gSaveDay(){
+  var s = gSettings(), okList = G.orders.filter(function(o){ return o.status === 'ok'; }), issues = G.orders.filter(function(o){ return o.status === 'issue'; });
+  var totals = { orders: G.orders.length, shipped: okList.length, ok: okList.length, diff: issues.length, missing: 0, extra: 0, qtyOrder: 0, qtyShip: 0, amtOrder: 0, amtShip: 0 };
+  G.orders.forEach(function(o){ totals.qtyOrder += o.qty || 0; totals.amtOrder += o.amount || 0; if (o.status === 'ok') { totals.qtyShip += o.qty || 0; totals.amtShip += o.amount || 0; } });
+  var channel = 'MOMO';
+  db.records = db.records.filter(function(r){ return !(r.date === G.date && r.channel === channel && r.mode === 'guided'); });
+  db.records.push({
+    id: 'g' + Date.now(), date: G.date, channel: channel, mode: 'guided',
+    note: (G.warehouse ? G.warehouse + ' · ' : '') + s.name + ' 出貨檢查',
+    savedAt: new Date().toISOString(), totals: totals,
+    issues: issues.map(function(o){ return { status: 'diff', orderNo: o.orderNo, name: o.name || '', fields: o.reason || '有問題',
+      oName: o.name || '', sName: '', oPhone: o.phone || '', sPhone: '', oAddr: o.addr || '', sAddr: '', oQty: o.qty, sQty: null, oAmt: Math.round(o.amount || 0), sAmt: null }; }),
+    orderFile: src.order.label || '', shipFile: ''
+  });
+  db.records.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+  saveDB(); renderDaily(); renderChannels(); renderMonth();
+  $('#gDoneMsg').innerHTML = '<div class="g-note ok">已經存好了（' + esc(gDateText(G.date)) + '，' + G.orders.length + ' 張）。主管在「主管對帳」的每日紀錄看得到。</div>';
+}
+function gExport(){
+  var rows = [['日期', '倉庫', '訂單編號', '收件人', '電話', '地址', '商品', '數量', '金額', '檢查結果', '問題', '來源檔案']];
+  G.orders.forEach(function(o){
+    rows.push([G.date, G.warehouse, o.orderNo, o.name || '', o.phone || '', o.addr || '',
+      o.items.map(function(it){ return it.label + ' ×' + it.qty; }).join('；'), o.qty, Math.round(o.amount || 0),
+      o.status === 'ok' ? '沒問題，可出貨' : o.status === 'issue' ? '有問題，先不出' : '還沒檢查', o.reason || '', o.files.join('；')]);
+  });
+  downloadCSV('出貨檢查清單_' + G.date + (G.warehouse ? '_' + G.warehouse : '') + '.csv', rows);
+}
+function gOnOrderIngested(){
+  if (!document.body.classList.contains('guided')) return;
+  G.orders = gBuildOrders();
+  G.idx = 0;
+  G.orders.forEach(function(o, i){ if (o.status === 'pending' && G.idx === 0 && i > 0 && G.orders[0].status !== 'pending') G.idx = i; });
+  if (G.stage !== 1) G.stage = 1;
+  gRender();
+}
+ingestHooks.push(function(side, phase){
+  if (side !== 'order' || !document.body.classList.contains('guided')) return;
+  if (phase === 'start') { gRenderIngest(); return; }
+  gOnOrderIngested();
+});
+
+/* 事件 */
+$('#gStage1').addEventListener('click', function(e){
+  var wh = e.target.closest('[data-wh]');
+  if (wh) { G.warehouse = wh.getAttribute('data-wh'); gRender(); return; }
+  if (e.target.closest('#gStart')) {
+    if (!G.orders.length) return;
+    G.stage = 2; G.idx = 0;
+    for (var i = 0; i < G.orders.length; i++) if (G.orders[i].status === 'pending') { G.idx = i; break; }
+    gRender(); window.scrollTo({ top: 0, behavior: 'smooth' }); return;
+  }
+  if (e.target.closest('#gReset1')) { clearSide('order'); G.orders = []; gRender(); return; }
+  if (e.target.closest('#gDrop')) { $('[data-files="order"]').click(); return; }
+  if (e.target.closest('#gPickFolder')) { $('[data-file="order"]').click(); return; }
+  if (e.target.closest('#gDriveBtn')) {
+    $('#driveDate').value = G.date;
+    $('#gIngest').innerHTML = '<div class="g-note info">正在從 Google Drive 拿今天的訂單…</div>';
+    driveRun(); return;
+  }
+});
+$('#gDrop').addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('[data-files="order"]').click(); } });
+(function(){
+  var drop = $('#gDrop');
+  drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function(){ drop.classList.remove('over'); });
+  drop.addEventListener('drop', function(e){
+    e.preventDefault(); drop.classList.remove('over');
+    filesFromDrop(e.dataTransfer).then(function(fs){ ingest('order', fs); });
+  });
+})();
+/* Drive 的訊息同步顯示在引導畫面 */
+new MutationObserver(function(){
+  if (!document.body.classList.contains('guided') || G.stage !== 1 || src.order.busy || src.order.files.length) return;
+  var m = $('#driveMsg');
+  if (m.classList.contains('hide')) return;
+  var cls = /\berr\b/.test(m.className) ? 'err' : /\bwarn\b/.test(m.className) ? 'warn' : 'info';
+  $('#gIngest').innerHTML = '<div class="g-note ' + cls + '">' + esc(m.textContent) + '</div>';
+}).observe($('#driveMsg'), { childList: true, characterData: true, subtree: true, attributes: true });
+
+$('#gStage2').addEventListener('click', function(e){
+  var o = G.orders[G.idx];
+  if (!o) return;
+  var row = e.target.closest('.g-row');
+  if (row) { var k = row.getAttribute('data-k'); o.checks[k] = !o.checks[k]; gRender(); return; }
+  var reason = e.target.closest('[data-reason]');
+  if (reason) { G.reason = reason.getAttribute('data-reason'); gRender(); return; }
+  if (e.target.closest('#gOk')) {
+    if (!gAllChecked(o)) return;
+    o.status = 'ok'; o.reason = '';
+    var c = gCounts(), total = G.orders.length, doneN = c.ok + c.issue;
+    gToast(doneN === total ? '全部檢查完了！' : (doneN * 2 === total ? '一半了，加油！' : '很好！第 ' + (G.idx + 1) + ' 張完成'));
+    gAdvance(); return;
+  }
+  if (e.target.closest('#gIssue')) { G.pickingReason = true; G.reason = ''; gRender(); return; }
+  if (e.target.closest('#gIssueCancel')) { G.pickingReason = false; G.reason = ''; gRender(); return; }
+  if (e.target.closest('#gIssueConfirm')) {
+    if (!G.reason) return;
+    o.status = 'issue'; o.reason = G.reason;
+    gAdvance(); return;
+  }
+  if (e.target.closest('#gPrev')) { if (G.idx > 0) { G.idx--; G.pickingReason = false; gRender(); } return; }
+  if (e.target.closest('#gBack1')) { G.stage = 1; G.pickingReason = false; gRender(); return; }
+});
+$('#gStage3').addEventListener('click', function(e){
+  if (e.target.closest('#gSaveDay')) { gSaveDay(); return; }
+  if (e.target.closest('#gExport')) { gExport(); return; }
+  if (e.target.closest('#gRevisit')) {
+    G.orders.forEach(function(o){ if (o.status === 'issue') { o.status = 'pending'; o.checks = {}; o.reason = ''; } });
+    G.stage = 2; G.idx = 0;
+    for (var i = 0; i < G.orders.length; i++) if (G.orders[i].status === 'pending') { G.idx = i; break; }
+    gRender(); return;
+  }
+  if (e.target.closest('#gRestart')) {
+    if (!confirm('今天的檢查進度會清掉，重新開始。確定嗎？')) return;
+    clearSide('order'); G = gFresh(); gRender(); return;
+  }
+});
+document.addEventListener('keydown', function(e){
+  if (!document.body.classList.contains('guided') || G.stage !== 2 || e.key !== 'Enter') return;
+  if (/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target.tagName)) return;
+  var ok = $('#gOk');
+  if (ok && !ok.disabled) ok.click();
+});
+
+/* 模式切換 */
+function setMode(mode, remember){
+  var guided = mode === 'guided';
+  document.body.classList.toggle('guided', guided);
+  $$('#modeSwitch button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-mode') === mode)); });
+  if (remember) { db.settings.mode = mode; saveDB(); }
+  if (guided) gRender();
+}
+$('#modeSwitch').addEventListener('click', function(e){
+  var b = e.target.closest('[data-mode]');
+  if (b) setMode(b.getAttribute('data-mode'), true);
+});
+/* 主管設定 */
+(function lanceSettings(){
+  var s = db.settings.guided || {};
+  $('#gName').value = s.name || '';
+  $('#gWarehouses').value = (s.warehouses || []).join(', ');
+  $('#gUploadSteps').value = s.uploadSteps || G_DEFAULTS.uploadSteps;
+  $('#gDefaultMode').value = db.settings.mode || 'guided';
+  if (db.settings.docPassword) $('#xlsPassword').value = db.settings.docPassword;
+  function save(){
+    db.settings.guided = {
+      name: trim($('#gName').value),
+      warehouses: $('#gWarehouses').value.split(/[,，、\n]+/).map(trim).filter(Boolean),
+      uploadSteps: $('#gUploadSteps').value
+    };
+    db.settings.mode = $('#gDefaultMode').value;
+    saveDB();
+    if (document.body.classList.contains('guided')) gRender();
+  }
+  ['#gName', '#gWarehouses', '#gUploadSteps', '#gDefaultMode'].forEach(function(sel){ $(sel).addEventListener('change', save); });
+  $('#xlsPassword').addEventListener('change', function(){ db.settings.docPassword = $('#xlsPassword').value; saveDB(); });
+})();
+gLoad();
+/* 網址加 #pro 直接進主管對帳、#guided 直接進出貨檢查（做書籤用） */
+setMode(location.hash === '#pro' ? 'pro' : location.hash === '#guided' ? 'guided' : (db.settings.mode || 'guided'), false);
 
 /* ---------- 主題 ---------- */
 (function theme(){
