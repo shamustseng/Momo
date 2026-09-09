@@ -1,0 +1,45 @@
+# 把訂單出貨核對工具部署到 GitHub Pages。
+# 只發布 order-check.html（當成網站根目錄的 index.html），repo 裡其他檔案不會上網站。
+# 第一次執行時 configure-pages 會自動把 Pages 功能打開（來源設為 GitHub Actions）。
+name: Deploy order-check to GitHub Pages
+
+on:
+  push:
+    branches:
+      - claude/order-shipment-verification-app-whlywp
+    paths:
+      - order-check.html
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage only the tool
+        run: |
+          mkdir -p _site
+          cp order-check.html _site/index.html
+          cp order-check.html _site/order-check.html
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
