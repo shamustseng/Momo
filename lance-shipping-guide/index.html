@@ -1,0 +1,1128 @@
+<title>Lance 出貨導航</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#F2F3F0; --surface:#FFFFFF; --surface-2:#E8EAE5; --surface-3:#DCDFD8;
+    --border:#CFD3CB; --ink:#1C2229; --ink-muted:#56616B; --ink-faint:#86909A;
+    --tape:#F2B300; --tape-deep:#D99E00; --tape-soft:#FFF1C2; --on-tape:#1C2229;
+    --link:#1F5B8E; --link-soft:#E1ECF5;
+    --good:#2C8C4E; --good-soft:#DFF3E5; --good-ink:#1B5A32;
+    --warn:#C46A0F; --warn-soft:#FBE9D2; --warn-ink:#7A400A;
+    --bad:#C13B2E; --bad-soft:#FADEDB; --bad-ink:#7E2419;
+    --momo:#D6316B; --momo-soft:#FBE3EC; --momo-ink:#7A1A3D;
+    --shadow:0 1px 2px rgba(28,34,41,.06), 0 8px 24px rgba(28,34,41,.07);
+    --font-ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181C; --surface:#1E2328; --surface-2:#272D34; --surface-3:#313941;
+      --border:#3A434C; --ink:#EDEFF1; --ink-muted:#A6AFB8; --ink-faint:#737D87;
+      --tape:#F5C231; --tape-deep:#E0AE1C; --tape-soft:#4A3A0D; --on-tape:#15181C;
+      --link:#7FB3E6; --link-soft:#1E3247;
+      --good:#57B37A; --good-soft:#1E3A29; --good-ink:#BFE8CC;
+      --warn:#E0913A; --warn-soft:#40301A; --warn-ink:#F5D3A6;
+      --bad:#E36B5E; --bad-soft:#45211E; --bad-ink:#F7C3BC;
+      --momo:#E0578A; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181C; --surface:#1E2328; --surface-2:#272D34; --surface-3:#313941;
+    --border:#3A434C; --ink:#EDEFF1; --ink-muted:#A6AFB8; --ink-faint:#737D87;
+    --tape:#F5C231; --tape-deep:#E0AE1C; --tape-soft:#4A3A0D; --on-tape:#15181C;
+    --link:#7FB3E6; --link-soft:#1E3247;
+    --good:#57B37A; --good-soft:#1E3A29; --good-ink:#BFE8CC;
+    --warn:#E0913A; --warn-soft:#40301A; --warn-ink:#F5D3A6;
+    --bad:#E36B5E; --bad-soft:#45211E; --bad-ink:#F7C3BC;
+    --momo:#E0578A; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.4);
+  }
+
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+    font-size:17px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+  h1,h2,h3,h4{ margin:0; font-weight:900; letter-spacing:-0.01em; text-wrap:balance; }
+  p{ margin:0; }
+  a{ color:var(--link); }
+  button{ font:inherit; color:inherit; cursor:pointer; }
+  input,select,textarea{ font:inherit; color:var(--ink); }
+  :focus-visible{ outline:3px solid var(--tape); outline-offset:2px; }
+  .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+  .hide{ display:none !important; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  /* ---------- 頂欄 ---------- */
+  .top{ position:sticky; top:0; z-index:30; background:var(--surface); border-bottom:1px solid var(--border); box-shadow:0 1px 0 rgba(0,0,0,.02); }
+  .top-inner{ max-width:1240px; margin:0 auto; padding:12px 20px 0; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .brand{ margin-right:auto; display:flex; flex-direction:column; gap:1px; }
+  .brand .eyebrow{ font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
+  .brand h1{ font-size:21px; }
+  .brand h1 .tape-mark{ display:inline-block; width:14px; height:14px; background:var(--tape); transform:rotate(-8deg); margin-right:8px; vertical-align:-1px; border-radius:2px; }
+  .clock{ text-align:right; line-height:1.2; }
+  .clock .date{ font-size:14px; color:var(--ink-muted); font-weight:700; }
+  .clock .time{ font-size:24px; font-weight:600; font-family:var(--font-mono); }
+  .clock .next{ font-size:13px; color:var(--ink-muted); font-weight:700; margin-top:2px; }
+  .clock .next.soon{ color:var(--warn-ink); }
+  .icon-btn{ border:1px solid var(--border); background:var(--surface); color:var(--ink-muted); border-radius:999px; width:40px; height:40px; display:grid; place-items:center; font-size:17px; }
+  .icon-btn:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+  .progress{ max-width:1240px; margin:0 auto; padding:10px 20px 12px; display:flex; gap:6px; overflow-x:auto; scrollbar-width:thin; }
+  .pchip{
+    flex:0 0 auto; display:flex; align-items:center; gap:8px; border:1px solid var(--border); background:var(--surface-2);
+    border-radius:999px; padding:6px 14px 6px 8px; font-size:14px; font-weight:700; color:var(--ink-muted); white-space:nowrap;
+  }
+  .pchip .n{ width:24px; height:24px; border-radius:50%; display:grid; place-items:center; background:var(--surface-3); color:var(--ink-muted); font-size:13px; font-weight:800; }
+  .pchip.cur{ background:var(--tape); border-color:var(--tape); color:var(--on-tape); }
+  .pchip.cur .n{ background:var(--on-tape); color:var(--tape); }
+  .pchip.done{ background:var(--good-soft); border-color:transparent; color:var(--good-ink); }
+  .pchip.done .n{ background:var(--good); color:#fff; }
+
+  /* ---------- 版面 ---------- */
+  .layout{ max-width:1240px; margin:0 auto; padding:22px 20px 100px; display:grid; grid-template-columns:minmax(0,1fr); gap:20px; align-items:start; }
+  .layout > *{ min-width:0; }
+  @media (min-width:1040px){
+    .layout{ grid-template-columns:320px minmax(0,1fr); }
+  }
+  .rail{ display:flex; flex-direction:column; gap:16px; }
+  @media (max-width:1039px){ .rail{ order:2; } .main{ order:1; } }
+  .main{ display:flex; flex-direction:column; gap:20px; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px; }
+  .card.lift{ box-shadow:var(--shadow); }
+  .card h2{ font-size:16px; color:var(--ink-muted); letter-spacing:.02em; }
+  .banner{ border-radius:12px; padding:14px 18px; font-size:16px; font-weight:600; display:flex; gap:12px; align-items:flex-start; }
+  .banner.warn{ background:var(--warn-soft); color:var(--warn-ink); border:1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+  .banner.good{ background:var(--good-soft); color:var(--good-ink); }
+  .banner .ico{ font-size:20px; line-height:1.3; }
+
+  /* ---------- 截單時間 ---------- */
+  .deadlines{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+  .dl{ display:grid; grid-template-columns:auto 1fr; gap:4px 14px; align-items:center; padding:10px 12px; border-radius:10px; background:var(--surface-2); border-left:5px solid var(--good); }
+  .dl .t{ font-family:var(--font-mono); font-size:22px; font-weight:600; grid-row:span 2; }
+  .dl .who{ font-weight:700; font-size:15px; }
+  .dl .left{ font-size:14px; color:var(--ink-muted); }
+  .dl.soon{ border-left-color:var(--warn); }
+  .dl.soon .left{ color:var(--warn-ink); font-weight:700; }
+  .dl.past{ border-left-color:var(--border); opacity:.75; }
+  .dl.off{ border-left-color:var(--bad); }
+  .dl.off .left{ color:var(--bad-ink); font-weight:700; }
+  .rule-note{ font-size:14px; color:var(--ink-muted); margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
+
+  /* ---------- 步驟導覽 ---------- */
+  .steps-nav{ display:flex; flex-direction:column; gap:4px; padding:10px 8px; }
+  .snav{ display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:10px; width:100%; text-align:left; border:0; background:transparent; padding:10px 10px; border-radius:10px; font-size:15.5px; font-weight:700; color:var(--ink-muted); }
+  .snav:hover{ background:var(--surface-2); color:var(--ink); }
+  .snav .n{ width:30px; height:30px; border-radius:50%; display:grid; place-items:center; background:var(--surface-2); font-size:14px; font-weight:800; color:var(--ink-muted); border:2px solid var(--border); }
+  .snav .st{ font-size:12.5px; font-weight:700; color:var(--ink-faint); }
+  .snav.cur{ background:var(--tape-soft); color:var(--ink); }
+  .snav.cur .n{ background:var(--tape); color:var(--on-tape); border-color:var(--tape); }
+  .snav.done .n{ background:var(--good); color:#fff; border-color:var(--good); }
+  .snav.done .st{ color:var(--good); }
+  @media (max-width:1039px){ .steps-nav{ display:none; } }
+
+  /* ---------- 步驟卡 ---------- */
+  .step-head{ display:flex; flex-direction:column; gap:6px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+  .step-head .kicker{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:13.5px; font-weight:700; color:var(--ink-faint); letter-spacing:.04em; }
+  .step-head .kicker .badge-step{ background:var(--tape); color:var(--on-tape); border-radius:6px; padding:2px 9px; font-weight:900; }
+  .step-head h3{ font-size:27px; line-height:1.3; }
+  .step-head .why{ color:var(--ink-muted); font-size:16px; max-width:64ch; }
+  .where{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px; }
+  .where .sys{ font-size:14px; font-weight:700; color:var(--ink-muted); background:var(--surface-2); border-radius:999px; padding:5px 12px; }
+  .where a.open{ display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-weight:800; font-size:15px; background:var(--link-soft); color:var(--link); border-radius:999px; padding:7px 14px; }
+  .where a.open:hover{ filter:brightness(.96); }
+
+  .group{ margin-top:18px; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .group > summary{ list-style:none; cursor:pointer; padding:12px 16px; background:var(--surface-2); font-weight:800; font-size:16px; display:flex; align-items:center; gap:10px; }
+  .group > summary::-webkit-details-marker{ display:none; }
+  .group > summary .arrow{ margin-left:auto; color:var(--ink-faint); transition:transform .15s; }
+  .group[open] > summary .arrow{ transform:rotate(90deg); }
+  .group > summary .tag{ font-size:12.5px; font-weight:800; border-radius:999px; padding:2px 9px; background:var(--tape-soft); color:var(--ink); }
+  .group > summary .tag.off{ background:var(--surface-3); color:var(--ink-faint); }
+  .group .gbody{ padding:6px 8px 12px; }
+  .group.plain{ border:0; margin-top:10px; }
+  .group.plain .gbody{ padding:0; }
+
+  .tasks{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+  .task{ display:grid; grid-template-columns:34px 1fr; gap:14px; align-items:start; padding:12px 10px; border-radius:10px; cursor:pointer; }
+  .task:hover{ background:var(--surface-2); }
+  .task input{ position:absolute; opacity:0; width:1px; height:1px; }
+  .task .box{ width:30px; height:30px; border-radius:8px; border:2.5px solid var(--ink-faint); display:grid; place-items:center; margin-top:2px; background:var(--surface); transition:background .12s, border-color .12s; }
+  .task .box svg{ width:18px; height:18px; opacity:0; transform:scale(.6); transition:opacity .12s, transform .12s; }
+  .task.on .box{ background:var(--good); border-color:var(--good); }
+  .task.on .box svg{ opacity:1; transform:scale(1); }
+  .task input:focus-visible + .box{ outline:3px solid var(--tape); outline-offset:2px; }
+  .task .txt{ font-size:17px; font-weight:600; line-height:1.55; }
+  .task.on .txt{ color:var(--ink-muted); }
+  .task .sub{ display:block; font-size:14.5px; font-weight:500; color:var(--ink-muted); margin-top:3px; }
+  .task .kbd{ display:inline-block; font-family:var(--font-mono); font-size:14px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:0 7px; margin:0 2px; }
+
+  .tips{ margin-top:16px; border-radius:12px; padding:14px 18px; background:var(--tape-soft); border-left:5px solid var(--tape); }
+  .tips h4{ font-size:14px; letter-spacing:.06em; color:var(--ink-muted); margin-bottom:6px; }
+  .tips ul{ margin:0; padding-left:20px; font-size:15.5px; }
+  .tips li{ margin:4px 0; }
+  .stop{ margin-top:16px; border-radius:12px; padding:14px 18px; background:var(--bad-soft); color:var(--bad-ink); font-weight:700; display:flex; gap:12px; align-items:flex-start; }
+  .stop .ico{ font-size:20px; line-height:1.3; }
+
+  .helper{ margin-top:16px; border:1px dashed var(--border); border-radius:12px; padding:14px 16px; background:var(--surface); }
+  .helper h4{ font-size:14px; letter-spacing:.06em; color:var(--ink-muted); display:flex; align-items:center; gap:8px; }
+  .helper .sub{ font-size:14px; color:var(--ink-muted); margin-top:4px; }
+  .copyline{ display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  .copyline code{ flex:1 1 220px; min-width:0; overflow-wrap:anywhere; font-family:var(--font-mono); font-size:15px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
+  .copyline pre{ flex:1 1 220px; min-width:0; margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-family:var(--font-mono); font-size:14.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; line-height:1.5; }
+
+  .btn{ min-height:46px; border:1px solid var(--border); background:var(--surface-2); color:var(--ink); padding:9px 18px; border-radius:11px; font-size:16px; font-weight:700; display:inline-flex; align-items:center; gap:8px; justify-content:center; text-decoration:none; }
+  .btn:hover{ border-color:var(--ink-faint); }
+  .btn.primary{ background:var(--tape); border-color:var(--tape); color:var(--on-tape); font-weight:900; }
+  .btn.primary:hover{ background:var(--tape-deep); border-color:var(--tape-deep); }
+  .btn.ghost{ background:transparent; }
+  .btn.danger{ color:var(--bad); }
+  .btn.sm{ min-height:36px; padding:5px 12px; font-size:14px; border-radius:9px; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn.big{ min-height:56px; font-size:18px; padding:12px 26px; }
+
+  .step-foot{ margin-top:22px; padding-top:18px; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  .step-foot .count{ font-size:15px; color:var(--ink-muted); font-weight:700; }
+  .step-foot .count b{ color:var(--ink); font-size:18px; font-family:var(--font-mono); }
+  .step-foot .nav{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* ---------- 每張單的進度 ---------- */
+  .per-order{ margin-top:16px; }
+  .per-order h4{ font-size:14px; letter-spacing:.06em; color:var(--ink-muted); margin-bottom:8px; }
+  .po{ display:grid; grid-template-columns:1fr; gap:8px; padding:12px 14px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; background:var(--surface); }
+  .po.on{ border-color:var(--good); background:var(--good-soft); }
+  .po .row1{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .po .pno{ font-family:var(--font-mono); font-size:17px; font-weight:600; overflow-wrap:anywhere; }
+  .po .row2{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .po label.inl{ display:flex; align-items:center; gap:8px; font-size:14.5px; font-weight:700; color:var(--ink-muted); }
+  .po input[type="text"]{ min-height:42px; border:1px solid var(--border); border-radius:9px; padding:6px 10px; background:var(--surface); font-family:var(--font-mono); font-size:15.5px; min-width:180px; }
+  .po .items{ font-size:14.5px; color:var(--ink-muted); white-space:pre-line; }
+  .chk{ display:inline-flex; align-items:center; gap:10px; font-weight:800; font-size:15.5px; cursor:pointer; padding:6px 10px; border-radius:9px; border:1px solid var(--border); background:var(--surface); margin-left:auto; }
+  .chk input{ width:22px; height:22px; accent-color:var(--good); }
+  .chk.on{ border-color:var(--good); color:var(--good-ink); }
+
+  .badge{ display:inline-flex; align-items:center; font-size:12.5px; font-weight:800; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .badge.cvs{ background:var(--link-soft); color:var(--link); }
+  .badge.home{ background:var(--warn-soft); color:var(--warn-ink); }
+  .badge.ai{ background:var(--good-soft); color:var(--good-ink); }
+  .badge.xt{ background:var(--surface-3); color:var(--ink); }
+  .badge.stock{ background:var(--momo-soft); color:var(--momo-ink); }
+  .badge.cold{ background:#DCEBF7; color:#134B7A; }
+  :root[data-theme="dark"] .badge.cold{ background:#1E3247; color:#B9D8F3; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .badge.cold{ background:#1E3247; color:#B9D8F3; } }
+  .badge.momo{ background:var(--momo-soft); color:var(--momo-ink); }
+
+  /* ---------- 今日訂單 ---------- */
+  .orders-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .orders-head .sum{ font-size:14.5px; color:var(--ink-muted); font-weight:600; margin-left:auto; }
+  .order-list{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+  .oc{ border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:6px 12px; align-items:start; }
+  .oc .pno{ font-family:var(--font-mono); font-size:17px; font-weight:600; overflow-wrap:anywhere; }
+  .oc .tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .oc .items{ font-size:14.5px; color:var(--ink-muted); white-space:pre-line; margin-top:4px; }
+  .oc .ids{ font-size:13.5px; color:var(--ink-muted); margin-top:4px; font-family:var(--font-mono); }
+  .oc .dots{ display:flex; gap:6px; align-items:center; grid-column:2; grid-row:1 / span 3; flex-direction:column; }
+  .dot{ font-size:12px; font-weight:800; padding:3px 9px; border-radius:999px; background:var(--surface-2); color:var(--ink-faint); white-space:nowrap; }
+  .dot.on{ background:var(--good-soft); color:var(--good-ink); }
+  .oc .del{ grid-column:1 / -1; justify-self:end; }
+  .empty{ padding:18px; text-align:center; color:var(--ink-faint); font-size:15px; border:1px dashed var(--border); border-radius:12px; margin-top:14px; }
+
+  .form{ margin-top:14px; border:1px solid var(--border); border-radius:12px; padding:16px; background:var(--surface-2); display:grid; gap:14px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:14px; font-weight:800; color:var(--ink-muted); }
+  .field input[type="text"], .field textarea{ min-height:46px; border:1px solid var(--border); border-radius:10px; padding:9px 12px; background:var(--surface); font-size:16px; }
+  .field input.mono{ font-family:var(--font-mono); font-size:17px; }
+  .field textarea{ min-height:84px; resize:vertical; }
+  .field .hint{ font-size:13.5px; color:var(--ink-faint); }
+  .seg{ display:flex; gap:6px; flex-wrap:wrap; }
+  .seg button{ min-height:44px; border:1px solid var(--border); background:var(--surface); border-radius:10px; padding:6px 16px; font-weight:800; font-size:15.5px; color:var(--ink-muted); }
+  .seg button[aria-pressed="true"]{ background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  .form .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .form .err{ color:var(--bad-ink); background:var(--bad-soft); border-radius:8px; padding:8px 12px; font-size:14.5px; font-weight:700; }
+
+  /* ---------- 求助 ---------- */
+  .help .rules{ margin:10px 0 0; padding-left:20px; font-size:15px; }
+  .help .rules li{ margin:4px 0; }
+  .help textarea{ width:100%; min-height:90px; margin-top:10px; border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--surface-2); font-size:15px; resize:vertical; }
+  .help .sup{ display:flex; gap:8px; align-items:center; margin-top:12px; font-size:15px; }
+  .help .sup input{ flex:1; min-height:40px; border:1px solid var(--border); border-radius:9px; padding:6px 10px; background:var(--surface-2); font-size:15px; }
+  details.q{ margin-top:12px; border-top:1px dashed var(--border); padding-top:10px; }
+  details.q summary{ cursor:pointer; font-weight:800; font-size:14.5px; color:var(--ink-muted); }
+  .qitem{ margin-top:10px; font-size:14.5px; }
+  .qitem .qq{ font-weight:700; }
+  .qitem input{ width:100%; min-height:38px; margin-top:4px; border:1px solid var(--border); border-radius:8px; padding:5px 10px; background:var(--surface-2); font-size:14.5px; }
+
+  /* ---------- 完成畫面 ---------- */
+  .finish{ margin-top:16px; border-radius:14px; padding:22px; background:var(--good-soft); color:var(--good-ink); border:1px solid color-mix(in srgb, var(--good) 40%, transparent); }
+  .finish h4{ font-size:22px; }
+  .finish p{ margin-top:6px; font-size:16px; }
+  .finish .stats{ display:flex; gap:18px; flex-wrap:wrap; margin-top:12px; }
+  .finish .stats div{ font-size:14px; font-weight:700; }
+  .finish .stats b{ display:block; font-size:26px; font-family:var(--font-mono); }
+  .history{ margin-top:14px; font-size:14.5px; color:var(--ink-muted); }
+
+  /* ---------- 設定面板 ---------- */
+  .sheet{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; z-index:50; }
+  .sheet.show{ display:block; }
+  .sheet .panel{ position:absolute; right:0; top:0; bottom:0; width:min(440px, 100%); background:var(--surface); padding:22px; overflow:auto; display:flex; flex-direction:column; gap:16px; box-shadow:var(--shadow); }
+  .sheet h3{ font-size:19px; }
+  .sheet .field input{ background:var(--surface-2); }
+
+  .toast{ position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--surface); padding:12px 20px; border-radius:999px; font-weight:800; font-size:15.5px; opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; z-index:60; box-shadow:var(--shadow); }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width:640px){
+    .top-inner{ padding:10px 14px 0; gap:10px; }
+    .layout{ padding:14px 14px 90px; }
+    .card{ padding:16px; }
+    .step-head h3{ font-size:23px; }
+    .clock .time{ font-size:20px; }
+  }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="eyebrow">Alpha · 出貨管理</span>
+      <h1><span class="tape-mark" aria-hidden="true"></span>Lance 出貨導航</h1>
+    </div>
+    <div class="clock" aria-live="off">
+      <div class="date" id="todayText">—</div>
+      <div class="time" id="clockText">--:--</div>
+      <div class="next" id="nextDeadline"></div>
+    </div>
+    <button class="icon-btn" id="settingsBtn" title="設定" aria-label="設定">⚙</button>
+    <button class="icon-btn" id="themeToggle" title="切換深色／淺色" aria-label="切換深色／淺色">◐</button>
+  </div>
+  <nav class="progress" id="progress" aria-label="步驟進度"></nav>
+</header>
+
+<div class="layout">
+  <aside class="rail">
+    <section class="card">
+      <h2>今天的截單時間</h2>
+      <div class="deadlines" id="deadlines"></div>
+      <p class="rule-note">MOMO 寄倉只收<strong>常溫</strong>商品。冷凍的不會走寄倉。</p>
+    </section>
+    <nav class="card steps-nav" id="stepNav" aria-label="步驟清單"></nav>
+    <section class="card help">
+      <h2>卡住了？</h2>
+      <ol class="rules">
+        <li>不確定就<strong>先停下來問</strong>，不要猜。</li>
+        <li>問人不是麻煩別人，是把貨出對。</li>
+        <li>做錯了不用怕，馬上說，越早說越好處理。</li>
+      </ol>
+      <div class="sup"><span>找誰：</span><input type="text" id="supervisor" placeholder="主管的名字" aria-label="主管的名字"></div>
+      <label for="dayNotes" style="display:block;margin-top:14px;font-size:14px;font-weight:800;color:var(--ink-muted)">今天想問或遇到的事，先記在這裡</label>
+      <textarea id="dayNotes" placeholder="例：第三方有一張已延遲，不知道是不是取消了"></textarea>
+      <details class="q">
+        <summary>還在等主管回答的問題</summary>
+        <div id="questions"></div>
+      </details>
+    </section>
+  </aside>
+
+  <section class="main">
+    <div id="dayBanner" class="banner warn hide"><span class="ico">⚠</span><span id="dayBannerText"></span></div>
+    <article class="card lift" id="stepCard"></article>
+    <section class="card" id="ordersCard">
+      <div class="orders-head">
+        <h2>今日訂單</h2>
+        <span class="sum" id="ordersSum"></span>
+      </div>
+      <p style="font-size:14.5px;color:var(--ink-muted);margin-top:6px">把今天要出的每一張單加進來，後面每一步會逐張打勾，也會幫你產生要複製的文字。</p>
+      <div id="orderList" class="order-list"></div>
+      <div id="orderEmpty" class="empty">還沒有加入今天的訂單。在 momo SCM 看到要出的單，就按下面「新增一張單」。</div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" id="addOrderBtn">＋ 新增一張單</button>
+      </div>
+      <form class="form hide" id="orderForm" autocomplete="off">
+        <div class="field">
+          <label for="fPno">平台訂單號</label>
+          <input type="text" id="fPno" class="mono" inputmode="numeric" placeholder="例：26090122844797">
+          <span class="hint">有 -001-001 尾巴的，只要打前面那一段。</span>
+        </div>
+        <div class="field">
+          <label>怎麼送</label>
+          <div class="seg" id="fMethod" role="group" aria-label="配送方式">
+            <button type="button" data-v="cvs" aria-pressed="true">超商取貨</button>
+            <button type="button" data-v="home" aria-pressed="false">宅配（第三方）</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>哪個倉出</label>
+          <div class="seg" id="fWh" role="group" aria-label="出貨倉別">
+            <button type="button" data-v="ai" aria-pressed="true">愛上倉</button>
+            <button type="button" data-v="xt" aria-pressed="false">希塔倉</button>
+            <button type="button" data-v="stock" aria-pressed="false">MOMO 寄倉</button>
+          </div>
+          <span class="hint">看商品品號清單，再看是不是寄倉。不確定就先問，再填。</span>
+        </div>
+        <div class="field">
+          <label>溫層</label>
+          <div class="seg" id="fTemp" role="group" aria-label="溫層">
+            <button type="button" data-v="常溫" aria-pressed="true">常溫</button>
+            <button type="button" data-v="冷凍" aria-pressed="false">冷凍</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fItems">品項與數量（一行一個）</label>
+          <textarea id="fItems" placeholder="滴雞精單包*20&#10;雞湯大叔木漿棉-廚師款*2"></textarea>
+          <span class="hint">照這個寫法：品名*數量。之後回報倉庫的訊息會直接用這幾行。</span>
+        </div>
+        <div class="err hide" id="fErr"></div>
+        <div class="actions">
+          <button type="submit" class="btn primary">加入今日訂單</button>
+          <button type="button" class="btn ghost" id="cancelOrderBtn">取消</button>
+        </div>
+      </form>
+    </section>
+  </section>
+</div>
+
+<div class="sheet" id="settings" role="dialog" aria-modal="true" aria-label="設定">
+  <div class="panel">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h3 style="margin-right:auto">設定</h3>
+      <button class="icon-btn" id="closeSettings" aria-label="關閉">✕</button>
+    </div>
+    <div class="field">
+      <label for="sName">使用者名字</label>
+      <input type="text" id="sName" placeholder="Lance">
+    </div>
+    <div class="field">
+      <label for="sChannel">帶去核對 App 的通路名稱</label>
+      <input type="text" id="sChannel" placeholder="MOMO">
+      <span class="hint">按「開啟訂單出貨核對」時，會把今天日期和這個通路一起帶過去。</span>
+    </div>
+    <div class="field">
+      <label>今天的流程</label>
+      <button class="btn danger" id="resetDayBtn">清掉今天的打勾與訂單，重新開始</button>
+      <span class="hint">只清今天。以前完成的紀錄不會動。</span>
+    </div>
+    <div class="field">
+      <label>備份</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="exportBtn">匯出全部紀錄（JSON）</button>
+        <button class="btn" id="importBtn">還原備份</button>
+        <input type="file" id="importFile" class="hide" accept=".json">
+      </div>
+      <span class="hint">資料只存在這台電腦的瀏覽器裡。</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =========================================================
+   設定值：連結、核對 App、密碼
+   ========================================================= */
+var CHECK_APP_URL = 'https://claude.ai/code/artifact/ba69988f-909b-4b96-80b8-157a280ffb92';
+var LINKS = {
+  scm:   { name: 'momo 供應商後台（SCM）', url: 'https://scm.momoshop.com.tw/manage/login.jsp' },
+  lark:  { name: 'Lark 表「2026 新零售銷售報表」', url: 'https://zsghumuxn3qb.sg.larksuite.com/wiki/Jx7Tw8aYziERaakNlwDl9i9xghf?sheet=2m6roX' },
+  pdf:   { name: 'iLovePDF 解鎖', url: 'https://www.ilovepdf.com/zh-tw/unlock_pdf' },
+  ns:    { name: 'NetSuite（NS）', url: 'https://9244531.app.netsuite.com/' },
+  i3:    { name: '愛上新鮮後台', url: 'https://admin.i3fresh.tw/system/zh-TW/' },
+  qnap:  { name: '公司雲端（myQNAPcloud）', url: 'https://www.myqnapcloud.com/share/71f4j9j9799q8t80r7x39x7a_fdf67918m4p125s3r6t7v093d6d66373' }
+};
+var MOMO_PDF_PASSWORD = '90754866MOMO';
+var STORE_KEY = 'lance-ship-guide-v1';
+
+var METHOD = { cvs: '超商', home: '宅配' };
+var WH = { ai: '愛上倉', xt: '希塔倉', stock: 'MOMO 寄倉' };
+
+/* =========================================================
+   流程定義（依 Lance 整理的出貨流程）
+   ========================================================= */
+var STEPS = [
+  {
+    id: 'scm', short: '看訂單', title: '登入 momo SCM，看今天有幾張單要出',
+    why: '先知道今天有多少單、哪些是超取、哪些是宅配，後面每一步才不會漏。',
+    where: 'scm',
+    tasks: [
+      { k: 'login', t: '打開 momo SCM，輸入帳號、密碼，再輸入手機上的 OTP 六碼登入。' },
+      { k: 'count', t: '看首頁「未出貨訂單」：記下「超取」和「第三方」各有幾張未延遲、幾張已延遲。', sub: '把數字填在下面，晚一點對照用。' },
+      { k: 'delay', t: '如果「已延遲」不是 0：先確認那幾張是不是已經被取消了。不確定就問主管。' },
+      { k: 'add', t: '把今天要出的每一張單加到下面「今日訂單」：平台訂單號、超商或宅配、哪個倉出。' }
+    ],
+    tips: [
+      '未印單 ＝ 還沒出貨。已經印過單的，不要再印一次。',
+      '出貨倉別怎麼看：先看商品品號清單（Lark 表的「商品品號」分頁），再看這個商品是不是 MOMO 寄倉。'
+    ],
+    helpers: ['counts']
+  },
+  {
+    id: 'sheet', short: '填報表', title: '填寫 Lark「新零售銷售報表」',
+    why: '這張表是公司算業績和成本的底稿，每一張單都要有一列。',
+    where: 'lark',
+    tasks: [
+      { k: 'search', t: '先用搜尋找平台訂單號，確認這張單「還沒有」填過。', sub: '填過的就不要再填一次。' },
+      { k: 'wh', t: '出貨倉別：愛上 或 希塔。', sub: '依商品品號、是否寄倉判斷。' },
+      { k: 'month', t: '月份：例如 202609。' },
+      { k: 'brand', t: 'Brand：照商品品號清單填。贈品不填。' },
+      { k: 'channel', t: 'Channel：MOMO。' },
+      { k: 'date', t: 'order_create_date：填「發票日期」。' },
+      { k: 'pno', t: '平台訂單號。' },
+      { k: 'item', t: '品項：把前面的商品名稱複製過來。' },
+      { k: 'qty', t: '數量：幾入 × 幾組。', sub: '例：2 入 × 3 組 ＝ 6。' },
+      { k: 'price', t: '售價／單價：總價 ÷ 數量。' },
+      { k: 'f1', t: 'N～P 欄：把上面一列的公式往下拉，看數字有沒有跟著變。' },
+      { k: 'cost', t: '進價（未稅）。' },
+      { k: 'f2', t: 'R～S 欄：套公式。' },
+      { k: 'cogs', t: '商品成本：複製前面。' },
+      { k: 'f3', t: 'U～V 欄：套公式。' }
+    ],
+    tips: [
+      '「是否出貨」「倉庫訂單編號／託運單號」「銷售訂單」「NS打單與交貨」這幾欄現在先留空，後面的步驟會回來填。',
+      '如果不小心已經印單了，可以到 SCM「下載文件」看內容，照著填。'
+    ]
+  },
+  {
+    id: 'print', short: '印單存檔', title: '在 SCM 下載文件（印單），解鎖後存到資料夾',
+    why: '這些文件要給倉庫出貨，也要留給下班前的核對用。',
+    where: 'scm',
+    groups: [
+      { key: 'cvs', label: '超商取貨的單', when: function(o){ return o.method === 'cvs'; }, tasks: [
+        { k: 'c1', t: '勾選訂單 → 按「可出貨」→「下一步」。' },
+        { k: 'c2', t: '同一個人有好幾張單（用發票號碼確認）：收件人和地址一樣的可以併箱，箱號填同一個數字，照順序編號。', sub: '只有一張單的，箱號統一填 0。' },
+        { k: 'c3', t: '「下一步」→ 包材選「自由包材、紙箱」；小件貨重量填 0.3 →「下一步」→「完成」→「確認」。' },
+        { k: 'c4', t: '列印 3 個文件 → 關閉。' }
+      ]},
+      { key: 'home', label: '宅配（第三方）的單', when: function(o){ return o.method === 'home'; }, tasks: [
+        { k: 'h1', t: '先確認這批是「常溫」還是「冷凍」，兩種要分開處理。' },
+        { k: 'h2', t: '全部按「可出貨」→ 配送訊息全部刪掉 →「下一步」。' },
+        { k: 'h3', t: '之後和超商一樣：併箱與箱號 → 包材 →「完成」→「確認」→ 列印 3 個文件 → 關閉。' }
+      ]},
+      { key: 'save', label: '存檔與解鎖（每批都要）', always: true, tasks: [
+        { k: 's1', t: '把下載的檔案放到今天的資料夾，檔名照格式改好。', sub: '格式在下面，可以直接複製。' },
+        { k: 's2', t: '用 iLovePDF 解鎖 PDF。一次最多放 2 個檔。', sub: '密碼在下面，按一下就複製。' },
+        { k: 's3', t: '解壓縮下載回來的檔案。' },
+        { k: 's4', t: '打開每一份，確認訂單號、品項、數量都對。' }
+      ]}
+    ],
+    helpers: ['filenames', 'password'],
+    links: ['pdf']
+  },
+  {
+    id: 'ns', short: 'NS 銷售訂單', title: '在 NetSuite 建立銷售訂單',
+    why: '公司帳要靠這張銷售訂單。每一張平台訂單都要有一張 SO。',
+    where: 'ns',
+    stop: 'NS 一次只能一個人用。開始前先問一下：現在有沒有人正在用 NS？',
+    tasks: [
+      { k: 'n1', t: '建立單據 → 銷售及收款 → 輸入銷售訂單。' },
+      { k: 'n2', t: '客戶選「富邦(MOMO)」，其他欄位會自動帶入。' },
+      { k: 'n3', t: '日期：填「發票日期」。' },
+      { k: 'n4', t: '訂單名稱：(通路)(送貨方式)訂單-平台訂單號，訂單號打前面那段就好。', sub: '下面有幫你組好的文字，可以直接複製。' },
+      { k: 'n5', t: '部門：創新事業部。地點：零售客戶倉。' },
+      { k: 'n6', t: '品項：從下拉清單選，或按快捷鍵打「%」加關鍵字（S 開頭）。' },
+      { k: 'n7', t: '說明：複製備忘錄。' },
+      { k: 'n8', t: '數量、單價：單價看 Lark 表的「售價／單價（未稅）」。後面的公式要核對一次。' },
+      { k: 'n9', t: '電子發票。' },
+      { k: 'n10', t: '所有品項都要打齊，贈品打 0 元。' },
+      { k: 'n11', t: '一定要同一個外倉。' },
+      { k: 'n12', t: '出貨：填出貨日。發帳單：月結 30 天。' },
+      { k: 'n13', t: '核對資料 → 儲存。' },
+      { k: 'n14', t: '把 SO 號碼填回 Lark 表的「銷售訂單」欄，也填到下面每張單的格子裡。' }
+    ],
+    helpers: ['nsnames'],
+    perOrder: { key: 'so', label: 'SO 已建立', field: 'so', fieldLabel: 'SO 號碼', placeholder: 'SO00018004' }
+  },
+  {
+    id: 'wh', short: '倉庫出貨', title: '請倉庫出貨',
+    why: '愛上倉要到愛上後台建單；希塔倉要傳檔案並在 Lark 回報湯先生。兩邊做法不一樣，照自己的單看。',
+    groups: [
+      { key: 'ai', label: '愛上倉的單', when: function(o){ return o.wh === 'ai'; }, link: 'i3', tasks: [
+        { k: 'a1', t: '選擇平台：宅配選「MOMO-CAT」；超商選「MOMO7-11 & 全家超取」。' },
+        { k: 'a2', t: '選擇產品：下拉選商品、填數量，後面兩格填 0、0。' },
+        { k: 'a3', t: '訂購資訊 → 會員編號＝「銷售訂單-平台訂單號」，訂單號前面那段就好。', sub: '下面有組好的文字可以複製。' },
+        { k: 'a4', t: '超商的單：訂購人／收件人填「大智通電子商務組」，電話填超商電話，地址填集運地點，填託運單號，付款「無（已付款）」，選「否」。', sub: '週二、週四要在內部系統備註寫：若無超過 40 件、需當天出貨，請倉庫用一般黑貓宅配送到集運中心。' },
+        { k: 'a5', t: '宅配的單：找到平台訂單號，訂購人填「MOMO-訂購人」，填收件人電話（太複雜就填在「電話」欄），填託運單號，付款「無（已付款）」，選「否」。', sub: '客戶宅配單備註：送達前請先致電。' },
+        { k: 'a6', t: '預覽 → 送出。' },
+        { k: 'a7', t: '上傳雲端：進公司雲端的「希塔」資料夾，檔案丟在最外層。宅配只放「出貨總表」和「宅配單」（解鎖版）；超商只放「列印標籤」。' },
+        { k: 'a8', t: '等倉庫訂單號碼（OIM 開頭）出現，回 Lark 表：「是否出貨」打勾、填「倉庫訂單編號」。也填到下面的格子。' }
+      ]},
+      { key: 'xt', label: '希塔倉的單', when: function(o){ return o.wh === 'xt'; }, link: 'qnap', tasks: [
+        { k: 'x1', t: '到 Lark「宅配訂單出貨小組」群組，貼上給湯先生的訊息，並附上這批的 PDF。', sub: '訊息在下面已經幫你組好了。貼上後記得把「@湯恩齊 Keith」改成真的標記。' },
+        { k: 'x2', t: '等倉庫回覆託運單號，回 Lark 表：「是否出貨」打勾、填「託運單號」。也填到下面的格子。' }
+      ]},
+      { key: 'stock', label: 'MOMO 寄倉的單', when: function(o){ return o.wh === 'stock'; }, tasks: [
+        { k: 'k1', t: '寄倉的單由 MOMO 倉出貨，不用請我們的倉庫出。這張怎麼處理還沒有寫進流程，先問主管。' }
+      ]}
+    ],
+    tips: [
+      '愛上後台打錯了要取消訂單：進那張訂單 → 1 → 更新 → 取消 → 完成更新。',
+      '希塔倉每週四不出貨。'
+    ],
+    helpers: ['memberids', 'tangmsg'],
+    perOrder: { key: 'wh', label: '倉庫已收到', field: 'shipNo', fieldLabel: '倉庫訂單編號／託運單號', placeholder: 'OIM2609020001 或 802060980200' }
+  },
+  {
+    id: 'deliver', short: 'NS 交貨', title: '倉庫出貨後，回 NetSuite 做交貨',
+    why: '交貨做完，這張單在帳上才算真的出去了。',
+    where: 'ns',
+    tasks: [
+      { k: 'd1', t: '在 NS 搜尋這張的銷售訂單（SO 號）→ 點進去。' },
+      { k: 'd2', t: '按「交貨」→「儲存並新建」。' },
+      { k: 'd3', t: '不要按「送出」。', sub: '這一點很重要，按了會出問題。' },
+      { k: 'd4', t: '回 Lark 表，「NS打單與交貨」那一欄勾 Y。' }
+    ],
+    perOrder: { key: 'deliver', label: '交貨已完成' }
+  },
+  {
+    id: 'check', short: '核對收工', title: '核對今天的出貨，然後收工',
+    why: '把今天的訂單檔和出貨檔丟進「訂單出貨核對」，機器幫你比一次，確定每一張都對。',
+    tasks: [
+      { k: 'k1', t: '按下面的按鈕打開「訂單出貨核對」。日期和通路已經幫你填好了。' },
+      { k: 'k2', t: '左邊放今天「全部訂單」的資料夾，右邊放今天「出貨明細」的資料夾（就是第 3 步存檔的那些）。' },
+      { k: 'k3', t: '按「開始核對」。全部正確就按「存為當日紀錄」。' },
+      { k: 'k4', t: '有「資料不符」「未出貨」「多出貨」的：不要自己改，記下訂單號，去問主管。' },
+      { k: 'k5', t: '（等主管確認怎麼做）SCM 的「帳務 → 對帳資料 → [C1106] 日對帳」。' }
+    ],
+    helpers: ['checkapp', 'finish']
+  }
+];
+
+/* Lance 還在等答案的問題，主管可以直接在這裡填答案（存在這台電腦） */
+var QUESTIONS = [
+  { k: 'q1', q: '怎麼判斷哪些訂單是 MOMO 寄倉？' },
+  { k: 'q2', q: '希塔倉週四不出貨，其他倉的單那天要不要一起暫停？' },
+  { k: 'q3', q: 'SCM 的「日對帳」每天要做什麼？' },
+  { k: 'q4', q: '「上傳雲端到希塔資料夾」是愛上倉的單要做，還是希塔倉的單要做？' }
+];
+
+/* =========================================================
+   工具
+   ========================================================= */
+var $ = function(s, r){ return (r || document).querySelector(s); };
+var $$ = function(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+function pad(n){ return String(n).padStart(2, '0'); }
+function todayKey(){ var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+var WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+function fmtDateLong(d){ return d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日　星期' + WEEK[d.getDay()]; }
+function mmdd(d){ return pad(d.getMonth() + 1) + pad(d.getDate()); }
+function mainNo(pno){ return String(pno || '').trim().split(/[-－\s]/)[0]; }
+
+var toastTimer = null;
+function toast(msg){
+  var el = $('#toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1800);
+}
+function copyText(text, label){
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    toast(ok ? ('已複製' + (label ? '：' + label : '')) : '複製失敗，請用滑鼠選起來複製');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ toast('已複製' + (label ? '：' + label : '')); }, fallback);
+  } else fallback();
+}
+
+/* =========================================================
+   儲存
+   ========================================================= */
+var db = { days: {}, settings: {}, answers: {} };
+function load(){
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      var o = JSON.parse(raw);
+      db.days = o.days || {}; db.settings = o.settings || {}; db.answers = o.answers || {};
+    }
+  } catch (e) {}
+}
+var saveWarned = false;
+function save(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+  catch (e) { if (!saveWarned) { saveWarned = true; toast('這個瀏覽器存不了紀錄，關掉就會不見。請告訴主管'); } }
+}
+function day(){
+  var k = todayKey();
+  if (!db.days[k]) db.days[k] = { step: 0, checks: {}, orders: [], counts: {}, notes: '', completedAt: null };
+  return db.days[k];
+}
+
+/* =========================================================
+   時鐘與截單時間
+   ========================================================= */
+var DEADLINES = [
+  { who: '愛上倉 · 超取', time: '10:00', note: '超商取貨的單' },
+  { who: '愛上倉 · 宅配', time: '13:30', note: '宅配的單' },
+  { who: '希塔倉 · 給單', time: '14:00', note: '希塔倉的單，週四不出貨', thursdayOff: true }
+];
+function renderClock(){
+  var now = new Date();
+  $('#todayText').textContent = fmtDateLong(now);
+  $('#clockText').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  var isThu = now.getDay() === 4, nextTxt = '', nextSoon = false;
+  $('#deadlines').innerHTML = DEADLINES.map(function(d){
+    var hm = d.time.split(':'), t = new Date(now); t.setHours(+hm[0], +hm[1], 0, 0);
+    var diff = Math.round((t - now) / 60000), cls = 'dl', left;
+    if (d.thursdayOff && isThu) { cls += ' off'; left = '今天星期四，希塔倉不出貨'; }
+    else if (diff < 0) { cls += ' past'; left = '已過截單時間'; }
+    else if (diff <= 60) { cls += ' soon'; left = '還有 ' + diff + ' 分鐘'; }
+    else { left = '還有 ' + Math.floor(diff / 60) + ' 小時 ' + (diff % 60) + ' 分'; }
+    if (!nextTxt && diff >= 0 && !(d.thursdayOff && isThu)) { nextTxt = '下一個截單 ' + d.time + ' ' + d.who + '，' + left; nextSoon = diff <= 60; }
+    return '<div class="' + cls + '"><div class="t">' + d.time + '</div><div class="who">' + esc(d.who) + '</div><div class="left">' + esc(left) + ' · ' + esc(d.note) + '</div></div>';
+  }).join('');
+  var nx = $('#nextDeadline'); nx.textContent = nextTxt || '今天的截單時間都過了'; nx.classList.toggle('soon', nextSoon);
+  var banner = $('#dayBanner');
+  if (isThu) {
+    $('#dayBannerText').textContent = '今天星期四：希塔倉不出貨，希塔的單今天不要送單。其他倉是不是照常，先跟主管確認一次。';
+    banner.classList.remove('hide');
+  } else banner.classList.add('hide');
+}
+
+/* =========================================================
+   步驟狀態
+   ========================================================= */
+function stepTasks(step){
+  var out = [];
+  if (step.tasks) step.tasks.forEach(function(t){ out.push({ step: step.id, key: t.k, task: t, group: null }); });
+  if (step.groups) step.groups.forEach(function(g){
+    if (!groupRelevant(g)) return;
+    g.tasks.forEach(function(t){ out.push({ step: step.id, key: t.k, task: t, group: g }); });
+  });
+  return out;
+}
+function groupRelevant(g){
+  if (g.always) return true;
+  var orders = day().orders;
+  if (!orders.length) return true;            /* 還沒加單就全部顯示 */
+  return orders.some(g.when);
+}
+function isChecked(stepId, key){ return !!day().checks[stepId + ':' + key]; }
+function setChecked(stepId, key, v){ var d = day(); if (v) d.checks[stepId + ':' + key] = true; else delete d.checks[stepId + ':' + key]; save(); }
+function stepProgress(step){
+  var ts = stepTasks(step), done = ts.filter(function(x){ return isChecked(step.id, x.key); }).length;
+  return { done: done, total: ts.length };
+}
+function stepDone(step){
+  var p = stepProgress(step);
+  if (step.id === 'check') return !!day().completedAt;
+  return p.total > 0 && p.done === p.total;
+}
+
+/* =========================================================
+   畫面：進度列與側欄
+   ========================================================= */
+function renderProgress(){
+  var cur = day().step;
+  $('#progress').innerHTML = STEPS.map(function(s, i){
+    var cls = 'pchip' + (i === cur ? ' cur' : stepDone(s) ? ' done' : '');
+    return '<button class="' + cls + '" data-go="' + i + '"><span class="n">' + (stepDone(s) && i !== cur ? '✓' : (i + 1)) + '</span>' + esc(s.short) + '</button>';
+  }).join('');
+  $('#stepNav').innerHTML = STEPS.map(function(s, i){
+    var p = stepProgress(s), st;
+    if (stepDone(s)) st = '完成'; else if (p.done) st = p.done + ' / ' + p.total; else st = '';
+    var cls = 'snav' + (i === cur ? ' cur' : stepDone(s) ? ' done' : '');
+    return '<button class="' + cls + '" data-go="' + i + '"><span class="n">' + (stepDone(s) ? '✓' : (i + 1)) + '</span><span>' + esc(s.title) + '</span><span class="st">' + esc(st) + '</span></button>';
+  }).join('');
+}
+
+/* =========================================================
+   畫面：步驟卡
+   ========================================================= */
+function whereHTML(keys){
+  if (!keys || !keys.length) return '';
+  return '<div class="where">' + keys.map(function(k){
+    var L = LINKS[k]; if (!L) return '';
+    return '<span class="sys">' + esc(L.name) + '</span><a class="open" href="' + esc(L.url) + '" target="_blank" rel="noopener">打開 ↗</a>';
+  }).join('') + '</div>';
+}
+function taskHTML(stepId, t){
+  var on = isChecked(stepId, t.k);
+  return '<li><label class="task' + (on ? ' on' : '') + '">' +
+    '<input type="checkbox" data-task="' + esc(t.k) + '"' + (on ? ' checked' : '') + '>' +
+    '<span class="box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>' +
+    '<span class="txt">' + esc(t.t) + (t.sub ? '<span class="sub">' + esc(t.sub) + '</span>' : '') + '</span>' +
+    '</label></li>';
+}
+function renderStep(){
+  var d = day(), i = d.step, step = STEPS[i], p = stepProgress(step);
+  var html = '';
+  html += '<div class="step-head">' +
+    '<div class="kicker"><span class="badge-step">第 ' + (i + 1) + ' 步</span><span>共 ' + STEPS.length + ' 步</span>' + (stepDone(step) ? '<span style="color:var(--good)">✓ 已完成</span>' : '') + '</div>' +
+    '<h3>' + esc(step.title) + '</h3>' +
+    '<p class="why">' + esc(step.why) + '</p>' +
+    whereHTML([step.where].concat(step.links || []).filter(Boolean)) +
+    '</div>';
+
+  if (step.stop) html += '<div class="stop"><span class="ico">✋</span><span>' + esc(step.stop) + '</span></div>';
+
+  if (step.tasks) html += '<div class="group plain"><div class="gbody"><ul class="tasks">' + step.tasks.map(function(t){ return taskHTML(step.id, t); }).join('') + '</ul></div></div>';
+
+  if (step.groups) {
+    var orders = d.orders;
+    step.groups.forEach(function(g){
+      var rel = groupRelevant(g);
+      var n = g.always ? null : orders.filter(g.when).length;
+      var tag = g.always ? '' : (orders.length ? (n ? '<span class="tag">今天 ' + n + ' 張</span>' : '<span class="tag off">今天沒有</span>') : '');
+      html += '<details class="group"' + (rel ? ' open' : '') + '><summary>' + esc(g.label) + tag + '<span class="arrow">▶</span></summary><div class="gbody">' +
+        (g.link ? whereHTML([g.link]) : '') +
+        '<ul class="tasks">' + g.tasks.map(function(t){ return taskHTML(step.id, t); }).join('') + '</ul></div></details>';
+    });
+  }
+
+  if (step.tips && step.tips.length) html += '<div class="tips"><h4>注意</h4><ul>' + step.tips.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+
+  (step.helpers || []).forEach(function(h){ html += helperHTML(h, step); });
+
+  if (step.perOrder) html += perOrderHTML(step);
+
+  html += '<div class="step-foot">' +
+    '<div class="count">這一步打勾：<b>' + p.done + '</b> / ' + p.total + '</div>' +
+    '<div class="nav">' +
+      (i > 0 ? '<button class="btn ghost" data-nav="-1">← 上一步</button>' : '') +
+      (i < STEPS.length - 1 ? '<button class="btn primary big" data-nav="1">這一步做完了，下一步 →</button>' : '') +
+    '</div></div>';
+
+  $('#stepCard').innerHTML = html;
+}
+
+/* ---------- 每張單的進度 ---------- */
+function orderBadges(o){
+  return '<span class="badge ' + o.method + '">' + METHOD[o.method] + '</span>' +
+    '<span class="badge ' + o.wh + '">' + WH[o.wh] + '</span>' +
+    (o.temp === '冷凍' ? '<span class="badge cold">冷凍</span>' : '<span class="badge momo">常溫</span>');
+}
+function perOrderHTML(step){
+  var po = step.perOrder, orders = day().orders;
+  var html = '<div class="per-order"><h4>每一張單 · ' + esc(po.label) + '</h4>';
+  if (!orders.length) { html += '<div class="empty">還沒有加入今天的訂單。回第 1 步，或直接在下面「今日訂單」新增。</div></div>'; return html; }
+  orders.forEach(function(o){
+    var on = !!o.done[po.key];
+    html += '<div class="po' + (on ? ' on' : '') + '" data-oid="' + esc(o.id) + '">' +
+      '<div class="row1"><span class="pno">' + esc(o.pno) + '</span>' + orderBadges(o) +
+      '<label class="chk' + (on ? ' on' : '') + '"><input type="checkbox" data-done="' + esc(po.key) + '"' + (on ? ' checked' : '') + '>' + esc(po.label) + '</label></div>' +
+      (o.items ? '<div class="items">' + esc(o.items) + '</div>' : '') +
+      (po.field ? '<div class="row2"><label class="inl">' + esc(po.fieldLabel) + '<input type="text" data-field="' + esc(po.field) + '" value="' + esc(o[po.field] || '') + '" placeholder="' + esc(po.placeholder || '') + '"></label></div>' : '') +
+      (step.id === 'deliver' && o.so ? '<div class="row2"><span class="mono" style="font-size:14.5px;color:var(--ink-muted)">SO：' + esc(o.so) + '</span></div>' : '') +
+      '</div>';
+  });
+  return html + '</div>';
+}
+
+/* ---------- 小幫手（產生要複製的文字） ---------- */
+function copyLine(text, label, multiline){
+  return '<div class="copyline">' + (multiline ? '<pre>' + esc(text) + '</pre>' : '<code>' + esc(text) + '</code>') +
+    '<button class="btn sm" data-copy="' + esc(text) + '" data-copy-label="' + esc(label || '') + '">複製</button></div>';
+}
+function helperHTML(kind, step){
+  var d = day(), orders = d.orders, now = new Date();
+  if (kind === 'counts') {
+    var c = d.counts;
+    function box(k, label){ return '<label class="inl" style="display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:800;color:var(--ink-muted)">' + label + '<input type="text" inputmode="numeric" data-count="' + k + '" value="' + esc(c[k] || '') + '" style="min-height:44px;border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--surface);font-family:var(--font-mono);font-size:18px;width:110px"></label>'; }
+    return '<div class="helper"><h4>SCM「未出貨訂單」的數字</h4><p class="sub">照首頁上看到的填。加完今日訂單後，可以對一下張數有沒有一樣。</p>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">' + box('cvsOk', '超取 · 未延遲') + box('cvsLate', '超取 · 已延遲') + box('homeOk', '第三方 · 未延遲') + box('homeLate', '第三方 · 已延遲') + '</div></div>';
+  }
+  if (kind === 'filenames') {
+    var md = mmdd(now), combos = {};
+    orders.forEach(function(o){ combos[o.method + '|' + o.temp] = true; });
+    if (!Object.keys(combos).length) combos['home|常溫'] = true;
+    var html = '<div class="helper"><h4>今天的檔名</h4><p class="sub">宅配的格式來自 Lance 的筆記。超商的三個檔請照實際下載的文件名稱，這裡只是建議。</p>';
+    Object.keys(combos).sort().forEach(function(k){
+      var m = k.split('|')[0], t = k.split('|')[1];
+      var names = m === 'home'
+        ? ['第三方列印明細', '第三方列印宅配單', '第三方列印出貨總表'].map(function(x){ return md + 'MOMO宅配-' + t + '-' + x; })
+        : ['列印標籤', '列印明細', '列印出貨總表'].map(function(x){ return md + 'MOMO超商-' + t + '-' + x; });
+      html += '<div style="margin-top:10px;font-weight:800;font-size:14.5px">' + METHOD[m] + ' · ' + t + '</div>' + names.map(function(n){ return copyLine(n, '檔名'); }).join('');
+    });
+    return html + '</div>';
+  }
+  if (kind === 'password') {
+    return '<div class="helper"><h4>MOMO 文件密碼</h4><p class="sub">iLovePDF 解鎖時要輸入。</p>' + copyLine(MOMO_PDF_PASSWORD, '密碼') + '</div>';
+  }
+  if (kind === 'nsnames') {
+    if (!orders.length) return '<div class="helper"><h4>NS 訂單名稱</h4><p class="sub">加入今日訂單後，這裡會幫你組好每一張的名稱。</p></div>';
+    return '<div class="helper"><h4>NS 訂單名稱</h4><p class="sub">格式：(通路)(送貨方式)訂單-平台訂單號。</p>' +
+      orders.map(function(o){ return copyLine('(MOMO)(' + METHOD[o.method] + ')訂單-' + mainNo(o.pno), '訂單名稱'); }).join('') + '</div>';
+  }
+  if (kind === 'memberids') {
+    var ai = orders.filter(function(o){ return o.wh === 'ai'; });
+    if (!ai.length) return '';
+    return '<div class="helper"><h4>愛上後台的會員編號</h4><p class="sub">格式：銷售訂單-平台訂單號。還沒有 SO 號的，先回第 4 步填。</p>' +
+      ai.map(function(o){ return copyLine((o.so || '（還沒有SO號）') + '-' + mainNo(o.pno), '會員編號'); }).join('') + '</div>';
+  }
+  if (kind === 'tangmsg') {
+    var xt = orders.filter(function(o){ return o.wh === 'xt'; });
+    if (!xt.length) return '';
+    var lines = ['@湯恩齊 Keith 您好，以下是momo要出貨的訂單，再麻煩您協助'];
+    xt.forEach(function(o){ lines.push(o.so || '（還沒有SO號：' + mainNo(o.pno) + '）'); if (o.items) lines.push(o.items.trim()); });
+    var msg = lines.join('\n');
+    return '<div class="helper"><h4>給湯先生（希塔）的訊息</h4><p class="sub">貼到 Lark「宅配訂單出貨小組」，再附上這批的 PDF。</p>' + copyLine(msg, '訊息', true) + '</div>';
+  }
+  if (kind === 'checkapp') {
+    var ch = db.settings.channel || 'MOMO', date = todayKey();
+    var q = 'date=' + encodeURIComponent(date) + '&channel=' + encodeURIComponent(ch);
+    var url = CHECK_APP_URL + '?' + q + '#' + q;
+    return '<div class="helper"><h4>訂單出貨核對</h4><p class="sub">會帶著今天的日期（' + esc(date) + '）和通路（' + esc(ch) + '）打開。如果沒有自動帶入，就在那邊自己選一下日期。</p>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center"><a class="btn primary big" href="' + esc(url) + '" target="_blank" rel="noopener">開啟訂單出貨核對 ↗</a>' +
+      '<button class="btn sm ghost" data-copy="' + esc(url) + '" data-copy-label="連結">複製連結</button></div></div>';
+  }
+  if (kind === 'finish') {
+    var doneDays = Object.keys(db.days).filter(function(k){ return db.days[k].completedAt; }).sort();
+    var stats = orderStats(orders);
+    if (d.completedAt) {
+      var t = new Date(d.completedAt);
+      var name = db.settings.name || 'Lance';
+      return '<div class="finish"><h4>今天完成了。辛苦了，' + esc(name) + '。</h4>' +
+        '<p>' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ' 收工。今天的每一張單都走完流程。</p>' +
+        '<div class="stats"><div>今天的單<b>' + stats.total + '</b></div><div>超商<b>' + stats.cvs + '</b></div><div>宅配<b>' + stats.home + '</b></div><div>愛上倉<b>' + stats.ai + '</b></div><div>希塔倉<b>' + stats.xt + '</b></div></div>' +
+        '<div class="history">這是你完成的第 ' + doneDays.length + ' 個出貨日。</div>' +
+        '<div style="margin-top:12px"><button class="btn sm ghost" data-unfinish="1">還有事沒做完，取消收工</button></div></div>';
+    }
+    var unmet = [];
+    orders.forEach(function(o){ if (!o.done.so || !o.done.wh || !o.done.deliver) unmet.push(o.pno); });
+    return '<div class="helper"><h4>收工</h4><p class="sub">核對完、該問的問了，就按下面。今天的紀錄會留下來。</p>' +
+      (unmet.length ? '<div class="stop" style="margin-top:10px"><span class="ico">✋</span><span>還有 ' + unmet.length + ' 張單在第 4～6 步沒有全部打勾：' + esc(unmet.join('、')) + '。先回去確認，或問主管這些單是不是今天不出。</span></div>' : '') +
+      '<div style="margin-top:12px"><button class="btn primary big" data-finish="1">今天全部完成，收工</button></div>' +
+      (doneDays.length ? '<div class="history">到目前為止，你已經完成 ' + doneDays.length + ' 個出貨日。</div>' : '') + '</div>';
+  }
+  return '';
+}
+function orderStats(orders){
+  var s = { total: orders.length, cvs: 0, home: 0, ai: 0, xt: 0, stock: 0 };
+  orders.forEach(function(o){ s[o.method]++; s[o.wh]++; });
+  return s;
+}
+
+/* =========================================================
+   畫面：今日訂單
+   ========================================================= */
+function renderOrders(){
+  var orders = day().orders, s = orderStats(orders);
+  $('#ordersSum').textContent = orders.length ? ('共 ' + s.total + ' 張 · 超商 ' + s.cvs + ' · 宅配 ' + s.home + ' · 愛上 ' + s.ai + ' · 希塔 ' + s.xt + (s.stock ? ' · 寄倉 ' + s.stock : '')) : '';
+  $('#orderEmpty').classList.toggle('hide', !!orders.length);
+  $('#orderList').innerHTML = orders.map(function(o){
+    var ids = [];
+    if (o.so) ids.push('SO ' + o.so);
+    if (o.shipNo) ids.push('倉庫 ' + o.shipNo);
+    return '<div class="oc" data-oid="' + esc(o.id) + '">' +
+      '<div><div class="pno">' + esc(o.pno) + '</div><div class="tags">' + orderBadges(o) + '</div>' +
+      (o.items ? '<div class="items">' + esc(o.items) + '</div>' : '') +
+      (ids.length ? '<div class="ids">' + esc(ids.join(' · ')) + '</div>' : '') + '</div>' +
+      '<div class="dots"><span class="dot' + (o.done.so ? ' on' : '') + '">SO</span><span class="dot' + (o.done.wh ? ' on' : '') + '">倉庫</span><span class="dot' + (o.done.deliver ? ' on' : '') + '">交貨</span></div>' +
+      '<button class="btn sm ghost danger del" data-del="' + esc(o.id) + '">刪除這張</button>' +
+      '</div>';
+  }).join('');
+}
+
+var formSel = { method: 'cvs', wh: 'ai', temp: '常溫' };
+function bindSeg(id, key){
+  $('#' + id).addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    formSel[key] = b.getAttribute('data-v');
+    $$('button', $('#' + id)).forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); });
+  });
+}
+bindSeg('fMethod', 'method'); bindSeg('fWh', 'wh'); bindSeg('fTemp', 'temp');
+
+$('#addOrderBtn').addEventListener('click', function(){
+  $('#orderForm').classList.remove('hide'); $('#fErr').classList.add('hide');
+  $('#fPno').focus();
+});
+$('#cancelOrderBtn').addEventListener('click', function(){ $('#orderForm').classList.add('hide'); });
+$('#orderForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var pno = $('#fPno').value.trim().replace(/\s+/g, ''), err = $('#fErr');
+  if (!pno) { err.textContent = '請先填平台訂單號。'; err.classList.remove('hide'); $('#fPno').focus(); return; }
+  if (!/^[0-9A-Za-z#][0-9A-Za-z\-]{3,}$/.test(pno)) { err.textContent = '訂單號看起來不太對，只能有數字、英文和 -。再看一次 SCM 上的號碼。'; err.classList.remove('hide'); return; }
+  var d = day();
+  if (d.orders.some(function(o){ return mainNo(o.pno) === mainNo(pno); })) { err.textContent = '這張單今天已經加過了。'; err.classList.remove('hide'); return; }
+  d.orders.push({ id: 'o' + Date.now(), pno: pno, method: formSel.method, wh: formSel.wh, temp: formSel.temp, items: $('#fItems').value.trim(), so: '', shipNo: '', done: { so: false, wh: false, deliver: false } });
+  save();
+  $('#fPno').value = ''; $('#fItems').value = ''; err.classList.add('hide');
+  $('#orderForm').classList.add('hide');
+  toast('已加入 ' + pno);
+  renderAll();
+});
+$('#orderList').addEventListener('click', function(e){
+  var b = e.target.closest('[data-del]'); if (!b) return;
+  var d = day(), o = d.orders.filter(function(x){ return x.id === b.getAttribute('data-del'); })[0];
+  if (!o) return;
+  if (!confirm('要刪掉 ' + o.pno + ' 這張單嗎？')) return;
+  d.orders = d.orders.filter(function(x){ return x.id !== o.id; });
+  save(); renderAll();
+});
+
+/* =========================================================
+   事件：步驟卡
+   ========================================================= */
+$('#stepCard').addEventListener('change', function(e){
+  var d = day(), step = STEPS[d.step];
+  var t = e.target.closest('[data-task]');
+  if (t) {
+    setChecked(step.id, t.getAttribute('data-task'), t.checked);
+    t.closest('.task').classList.toggle('on', t.checked);
+    var p = stepProgress(step);
+    $('.step-foot .count', $('#stepCard')).innerHTML = '這一步打勾：<b>' + p.done + '</b> / ' + p.total;
+    if (p.total && p.done === p.total) toast('第 ' + (d.step + 1) + ' 步的項目都打勾了');
+    renderProgress();
+    return;
+  }
+  var dn = e.target.closest('[data-done]');
+  if (dn) {
+    var oid = dn.closest('[data-oid]').getAttribute('data-oid');
+    var o = d.orders.filter(function(x){ return x.id === oid; })[0];
+    if (o) { o.done[dn.getAttribute('data-done')] = dn.checked; save(); renderStep(); renderOrders(); renderProgress(); }
+    return;
+  }
+});
+$('#stepCard').addEventListener('input', function(e){
+  var d = day();
+  var f = e.target.closest('[data-field]');
+  if (f) {
+    var oid = f.closest('[data-oid]').getAttribute('data-oid');
+    var o = d.orders.filter(function(x){ return x.id === oid; })[0];
+    if (o) { o[f.getAttribute('data-field')] = f.value.trim(); save(); renderOrders(); }
+    return;
+  }
+  var c = e.target.closest('[data-count]');
+  if (c) { d.counts[c.getAttribute('data-count')] = c.value.trim(); save(); }
+});
+$('#stepCard').addEventListener('click', function(e){
+  var d = day();
+  var cp = e.target.closest('[data-copy]');
+  if (cp) { copyText(cp.getAttribute('data-copy'), cp.getAttribute('data-copy-label')); return; }
+  var nav = e.target.closest('[data-nav]');
+  if (nav) {
+    var dir = parseInt(nav.getAttribute('data-nav'), 10), step = STEPS[d.step];
+    if (dir > 0) {
+      var p = stepProgress(step);
+      if (p.total && p.done < p.total && !confirm('這一步還有 ' + (p.total - p.done) + ' 項沒打勾。確定要先往下一步嗎？\n（之後隨時可以回來補。）')) return;
+      if (p.total && p.done === p.total) toast('第 ' + (d.step + 1) + ' 步完成');
+    }
+    goStep(d.step + dir);
+    return;
+  }
+  var fin = e.target.closest('[data-finish]');
+  if (fin) {
+    if (!confirm('確定今天的出貨都完成了？')) return;
+    d.completedAt = new Date().toISOString(); save(); renderAll(); toast('今天完成，辛苦了');
+    return;
+  }
+  var unf = e.target.closest('[data-unfinish]');
+  if (unf) { d.completedAt = null; save(); renderAll(); return; }
+});
+function goStep(i){
+  i = Math.max(0, Math.min(STEPS.length - 1, i));
+  day().step = i; save();
+  renderStep(); renderProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.addEventListener('click', function(e){
+  var g = e.target.closest('[data-go]');
+  if (g) goStep(parseInt(g.getAttribute('data-go'), 10));
+});
+
+/* =========================================================
+   求助區、問題、設定
+   ========================================================= */
+$('#dayNotes').addEventListener('input', function(){ day().notes = $('#dayNotes').value; save(); });
+$('#supervisor').addEventListener('input', function(){ db.settings.supervisor = $('#supervisor').value.trim(); save(); });
+function renderQuestions(){
+  $('#questions').innerHTML = QUESTIONS.map(function(q){
+    return '<div class="qitem"><div class="qq">' + esc(q.q) + '</div><input type="text" data-ans="' + q.k + '" placeholder="主管的答案（可以直接填在這裡）" value="' + esc(db.answers[q.k] || '') + '"></div>';
+  }).join('');
+}
+$('#questions').addEventListener('input', function(e){
+  var a = e.target.closest('[data-ans]'); if (!a) return;
+  db.answers[a.getAttribute('data-ans')] = a.value; save();
+});
+
+$('#settingsBtn').addEventListener('click', function(){
+  $('#sName').value = db.settings.name || ''; $('#sChannel').value = db.settings.channel || '';
+  $('#settings').classList.add('show');
+});
+$('#closeSettings').addEventListener('click', function(){ $('#settings').classList.remove('show'); });
+$('#settings').addEventListener('click', function(e){ if (e.target === $('#settings')) $('#settings').classList.remove('show'); });
+$('#sName').addEventListener('input', function(){ db.settings.name = $('#sName').value.trim(); save(); });
+$('#sChannel').addEventListener('input', function(){ db.settings.channel = $('#sChannel').value.trim(); save(); renderStep(); });
+$('#resetDayBtn').addEventListener('click', function(){
+  if (!confirm('會清掉今天所有的打勾和訂單，重新從第 1 步開始。確定嗎？')) return;
+  delete db.days[todayKey()]; save(); $('#settings').classList.remove('show'); renderAll(); toast('今天已重新開始');
+});
+/* 存檔：在 claude.ai 上開這頁時走平台的存檔流程；直接用瀏覽器開檔案時一般下載 */
+var hostedSave = null;
+if (window.claude && typeof window.claude.use === 'function') {
+  try { window.claude.use('downloads').then(function(d){ hostedSave = d; }, function(){}); } catch (e) {}
+}
+$('#exportBtn').addEventListener('click', function(){
+  var name = '出貨導航備份_' + todayKey() + '.json', text = JSON.stringify(db, null, 2);
+  if (hostedSave) {
+    hostedSave.save({ filename: name, data: text }).then(function(){ toast('已存檔'); }, function(err){
+      if (err && err.code === 'declined') return;
+      toast('沒有存成功' + (err && err.message ? '：' + err.message : ''));
+    });
+    return;
+  }
+  var blob = new Blob([text], { type: 'application/json' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+});
+$('#importBtn').addEventListener('click', function(){ $('#importFile').click(); });
+$('#importFile').addEventListener('change', function(){
+  var f = $('#importFile').files[0]; if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    try {
+      var o = JSON.parse(rd.result);
+      if (!o || typeof o.days !== 'object') throw new Error('格式不對');
+      db = { days: o.days || {}, settings: o.settings || {}, answers: o.answers || {} };
+      save(); renderAll(); toast('已還原備份');
+    } catch (err) { alert('還原失敗：' + err.message); }
+    $('#importFile').value = '';
+  };
+  rd.readAsText(f);
+});
+
+/* ---------- 主題 ---------- */
+(function theme(){
+  var saved = null;
+  try { saved = localStorage.getItem(STORE_KEY + '-theme'); } catch (e) {}
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  $('#themeToggle').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    var isDark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem(STORE_KEY + '-theme', next); } catch (e) {}
+  });
+})();
+
+/* =========================================================
+   啟動
+   ========================================================= */
+function renderAll(){
+  var d = day();
+  renderClock(); renderProgress(); renderStep(); renderOrders(); renderQuestions();
+  $('#dayNotes').value = d.notes || '';
+  $('#supervisor').value = db.settings.supervisor || '';
+}
+load();
+renderAll();
+setInterval(function(){
+  renderClock();
+  /* 跨日：自動換到新的一天，從第 1 步開始 */
+  if (!db.days[todayKey()]) { renderAll(); }
+}, 30000);
+
+})();
+</script>

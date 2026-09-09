@@ -27,3 +27,10 @@
 ## 檔案
 
 - `index.html` — 完整工具（HTML + CSS + JavaScript，無外部依賴）。
+
+---
+
+## 其他工具
+
+- `lance-shipping-guide/` — **Lance 出貨導航**：依 Lance 的出貨流程逐步引導的打勾式 App，最後一步聯動「訂單出貨核對」。
+- `order-check/` — **訂單出貨核對**：兩個資料夾逐張比對訂單與出貨明細；本版加入接收出貨導航帶入的日期與通路。
