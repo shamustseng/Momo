@@ -356,7 +356,8 @@
       </div>
       <div class="field"><label for="setCostMode">訂單清單「進價(含稅)」欄位是</label>
         <select id="setCostMode">
-          <option value="unit">每一報表單位的進價 — Lance 對照表：總進價收入(含稅)＝進價×報表數量</option>
+          <option value="auto">與售價欄同基準（momo SCM 訂單清單：進價與售價都是該列金額）</option>
+          <option value="unit">每一報表單位的進價 — Lance 對照表字面：總進價收入(含稅)＝進價×報表數量</option>
           <option value="item">每一平台品項的進價 — 乘上平台數量</option>
           <option value="total">該列合計金額</option>
         </select>
@@ -437,9 +438,9 @@ const FIELDS = [
   { key:'orderNo',   label:'訂單編號',        required:true,  aliases:['訂單編號','平台訂單號','訂單號碼','訂單號','訂單序號','訂單id','ordernumber','orderno','orderid','order'] },
   { key:'shipNo',    label:'出貨單號',        aliases:['出貨單號','出貨編號','出貨單','shipno','shipmentno'] },
   { key:'trackNo',   label:'配送編號／宅配單號', aliases:['配送編號','宅配單號','託運單號','托運單號','物流單號','物流編號','貨運單號','貨運編號','配送單號','trackingno','tracking'] },
-  { key:'carrier',   label:'配送方式',        aliases:['配送方式','物流方式','出貨方式','運送方式','配送商','物流商','配送類型','物流公司','送貨方式','物流'] },
+  { key:'carrier',   label:'配送方式',        aliases:['配送方式','物流方式','出貨方式','運送方式','配送商','物流商','配送類型','物流公司','貨運公司出貨地址','貨運公司','送貨方式','物流'] },
   { key:'deadline',  label:'最晚出貨日',      aliases:['最晚出貨日','最後出貨日','出貨期限','預計出貨日','應出貨日','出貨日'] },
-  { key:'orderDate', label:'訂單日期',        aliases:['訂單日期','成立日期','訂購日期','下單日期','訂單成立時間','訂單時間','建立時間','成立時間','下單時間','ordercreatedate'] },
+  { key:'orderDate', label:'訂單日期',        aliases:['訂單日期','成立日期','訂購日期','下單日期','訂單成立時間','訂單時間','轉單日','建立時間','成立時間','下單時間','ordercreatedate'] },
   { key:'status',    label:'出貨／配送狀態',  aliases:['出貨狀態','配送狀態','處理狀態','狀態','status'] },
   { key:'orderStatus',label:'訂單狀態',       aliases:['訂單狀態','orderstatus'] },
   { key:'payStatus', label:'付款狀態',        aliases:['付款狀態','付款情形','繳費狀態','paymentstatus'] },
@@ -451,7 +452,8 @@ const FIELDS = [
   { key:'storeId',   label:'超商門市店號',    aliases:['門市店號','門市代號','超商店號','門市編號','店號','店舖代號'] },
   { key:'sku',       label:'商品編碼',        aliases:['商品編碼','商品編號','品號','商品代碼','商品代號','商品貨號','貨號','商品id','productno','sku'] },
   { key:'name',      label:'商品名稱',        required:true,  aliases:['商品名稱','商品品名','品名','品項','商品名','產品名稱','商品'] },
-  { key:'spec',      label:'規格',            aliases:['商品選項','規格','選項','款式','規格名稱','顏色','尺寸','商品規格'] },
+  { key:'spec',      label:'規格',            aliases:['商品選項','規格','單品詳細','選項','款式','規格名稱','顏色','尺寸','商品規格'] },
+  { key:'gift',      label:'贈品',            aliases:['贈品','是否贈品','gift'] },
   { key:'barcode',   label:'國際條碼',        aliases:['國際條碼','條碼','barcode','ean','upc'] },
   { key:'vendorCode',label:'商品原廠編號',    aliases:['商品原廠編號','原廠編號','原廠型號','廠商編號','廠商貨號','廠商料號','供應商編號','供應商貨號','料號','型號'] },
   { key:'qty',       label:'數量',            required:true,  aliases:['出貨數量','訂購數量','購買數量','商品數量','數量','件數','qty','quantity'] },
@@ -460,7 +462,7 @@ const FIELDS = [
   { key:'cost',      label:'進價（含稅）',    aliases:['進價(含稅)','進價','進貨價','進貨金額','供應價','成本價','供貨價'] },
   { key:'invoice',   label:'發票號碼',        aliases:['發票號碼','統一發票號碼','發票編號','發票'] },
   { key:'invoiceDate',label:'發票日期',       aliases:['發票日期','開立日期'] },
-  { key:'note',      label:'備註',            aliases:['顧客備註','訂單備註','客戶備註','買家備註','備註','留言','附註','管理者備註','店家備註'] },
+  { key:'note',      label:'備註',            aliases:['顧客備註','訂單備註','客戶備註','買家備註','宅單備註','客戶配送需求','備註','留言','附註','管理者備註','店家備註'] },
 ];
 const PAY_EXCLUDE = ['未付款','待付款','付款失敗','已退款','取消','逾期'];
 /* 商品主檔欄位 */
@@ -561,6 +563,8 @@ function cellToText(v, field){
   let s = String(v).trim();
   if(field==='phone' && /^9\d{8}$/.test(s)) s='0'+s;
   if(field==='deadline' || field==='orderDate' || field==='invoiceDate') s = normDate(s);
+  if(field==='carrier') s = s.split(/\r?\n/)[0].trim();                                   // 「宅急便\n320 桃園市…」只取貨運公司
+  if(field==='orderNo'){ const m = s.match(/^(\d{12,16})-\d{3}(-\d{3})*$/); if(m) s = m[1]; }  // momo 26091021486619-001-001-001 → 平台訂單號取前面
   return s;
 }
 const num = v => { const n = parseFloat(String(v??'').replace(/[^\d.\-]/g,'')); return isNaN(n) ? 0 : n; };
@@ -947,6 +951,7 @@ function tableRecords(src){
     const r = src.rows[i]; if(!r) continue;
     const rec = { _row:i+1, source:src.name, priceIsUnit };
     for(const f of FIELDS){ rec[f.key] = m[f.key]!=null ? cellToText(r[m[f.key]], f.key) : ''; }
+    rec.orderRef = m.orderNo!=null && r[m.orderNo]!=null ? String(r[m.orderNo]).trim() : '';
     if(!rec.orderNo && !rec.name) continue;
     if(!rec.orderNo && rec.name && lastOrderNo){ rec.orderNo = lastOrderNo; rec.inheritedOrder = true; }   // 依訂單匯出：後續品項列的訂單欄空白
     lastOrderNo = rec.orderNo || lastOrderNo;
@@ -1032,11 +1037,12 @@ function rebuildAll(){
   const tsrc = tableSource(); if(tsrc) recs.push(...tableRecords(tsrc));
   recs.push(...momoRecords());
   const priceModeSet = $('#setPriceMode').value; // auto／total（該列合計）／unit（每一平台品項單價）
-  const costMode = $('#setCostMode').value;       // unit（每報表單位，Lance：1Q×3L）／item（每平台品項）／total（該列合計）
+  const costModeSet = $('#setCostMode').value;    // auto（同售價基準）／unit（每報表單位，Lance 字面 1Q×3L）／item（每平台品項）／total（該列合計）
   recs.forEach(r=>{
     const priceMode = priceModeSet==='auto' ? (r.priceIsUnit ? 'unit' : 'total') : priceModeSet;
+    const costMode = costModeSet==='auto' ? (priceMode==='unit' ? 'item' : 'total') : costModeSet;
     const m = lookupMaster(r);
-    r.isGift = /^贈/.test(r.name||'') || !!(m && /^(y|是|v|1|true)$/i.test(m.gift||''));
+    r.isGift = /^贈/.test(r.name||'') || /^(y|是|v|1|true|yes)$/i.test(r.gift||'') || !!(m && /^(y|是|v|1|true)$/i.test(m.gift||''));
     r.brand = (m && m.brand) || guessBrand(r.name);
     r.warehouse = (m && m.warehouse) || '';
     r.nsCode = (m && m.nsCode) || '';
@@ -1085,13 +1091,52 @@ function rebuildAll(){
     if(state.master.length && g.lines.some(l=>!l.matched)) g.warnings.push('商品主檔比對不到');
     return g;
   });
+  mergeTableIntoMomo(list);
   const byKey = new Map();
   list.forEach(s=>{ const k1 = s.invoice ? 'inv:'+s.invoice : null; const k2 = s.receiver && s.address ? 'ra:'+s.receiver+'|'+s.address : null; [k1,k2].filter(Boolean).forEach(k=>{ if(!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(s); }); });
   byKey.forEach(arr=>{ if(arr.length>1) arr.forEach(s=>{ if(!s.info.includes('可併箱')) s.info.push('可併箱'); }); });
-  state.shipments = list;
+  list.forEach(g=>{ if(/[O○*＊]/.test(g.receiver||'') || /[O○*＊]{2,}/.test(g.address||'')) g.warnings.push('收件人資料被遮罩，請一併匯入宅配單 PDF'); });
+  state.shipments = list.filter(g=>!g.merged);
   const any = list.length>0;
   $('#secFilter').classList.toggle('hidden', !any); $('#secExport').classList.toggle('hidden', !any);
   if(any){ renderFilters(); applyFilters(); setStep(3); } else { setStep(state.sources.length ? 2 : 1); updateExportBar([]); renderMessage([]); }
+}
+
+/* 訂單清單（SCM 匯出）與 momo PDF 依平台訂單號合併：PDF 給收件人／地址／電話／宅配單號，清單給售價／進價／狀態／發票 */
+function mergeTableIntoMomo(list){
+  const isMomo = g => g.lines.some(l=>/^momo/.test(l.source||''));
+  const momoByOrder = new Map();
+  list.filter(isMomo).forEach(g=>g.orderNos.forEach(o=>{ if(!momoByOrder.has(o)) momoByOrder.set(o, []); momoByOrder.get(o).push(g); }));
+  if(!momoByOrder.size) return;
+  const tailOf = s => String(s||'').replace(/\D/g,'').slice(-5);
+  const normName = s => String(s||'').replace(/\s/g,'').replace(/-無$/,'');
+  list.filter(g=>!isMomo(g)).forEach(tg=>{
+    const targets = [...new Set([...tg.orderNos].flatMap(o=>momoByOrder.get(o)||[]))]; if(!targets.length) return;
+    let allMatched = true;
+    tg.lines.forEach(tl=>{
+      const tail = tailOf(tl.sku);
+      const cands = targets.flatMap(g=>g.lines).filter(ml=>(tail.length>=4 && tailOf(ml.sku)===tail) || (normName(ml.name) && normName(ml.name)===normName(tl.name)));
+      if(!cands.length){ allMatched = false; return; }
+      const sumQty = cands.reduce((a,c)=>a+(c.qty||0),0) || 1;
+      cands.forEach(ml=>{
+        const factor = tl.qty ? Math.min(1, (ml.qty||0)/Math.max(tl.qty, sumQty)) : 1;   // 清單一列 qty 2 對到 PDF 兩列 qty 1 → 金額按比例分
+        if(ml.lineTotal==null && tl.lineTotal!=null) ml.lineTotal = +(tl.lineTotal*factor).toFixed(2);
+        if(ml.costTotal==null && tl.costTotal!=null) ml.costTotal = +(tl.costTotal*factor).toFixed(2);
+        ml.unitPrice = ml.lineTotal!=null && ml.units ? +(ml.lineTotal/ml.units).toFixed(4) : ml.unitPrice;
+        ml.unitCostExTax = ml.costTotal!=null && ml.units ? +(ml.costTotal/ml.units/1.05).toFixed(4) : ml.unitCostExTax;
+        ml.priceRaw = ml.priceRaw ?? tl.priceRaw; ml.costRaw = ml.costRaw ?? tl.costRaw;
+        for(const k of ['status','orderStatus','payStatus','orderDate','invoice','invoiceDate','note','buyer','deadline']) if(!ml[k] && tl[k]) ml[k] = tl[k];
+        if(tl.isGift) ml.isGift = true;
+        if(!/訂單清單/.test(ml.source)) ml.source += '＋訂單清單';
+      });
+    });
+    targets.forEach(g=>{
+      for(const k of ['deadline','orderDate','invoice','invoiceDate','note','buyer']) if(!g[k] && tg[k]) g[k] = tg[k];
+      tg.status.forEach(v=>g.status.add(v)); tg.pay.forEach(v=>g.pay.add(v)); g.sources.add('訂單清單');
+      g.statusText = [...g.status].join('、'); g.payText = [...g.pay].join('、'); g.sourceText = [...g.sources].join('＋');
+    });
+    if(allMatched) tg.merged = true; else tg.info.push('部分品項未對到 PDF');
+  });
 }
 
 /* ==================== 檔案清單 ==================== */
@@ -1495,7 +1540,7 @@ $('#setShortNames').value = LS.get('shortNames', DEFAULT_SHORT_NAMES);
 $('#setShortNames').addEventListener('input', e=>{ LS.set('shortNames', e.target.value); rebuildAll(); });
 $('#setPriceMode').value = LS.get('priceMode', P.priceMode);
 $('#setPriceMode').addEventListener('change', e=>{ LS.set('priceMode', e.target.value); rebuildAll(); });
-$('#setCostMode').value = LS.get('costMode', 'unit');
+$('#setCostMode').value = LS.get('costMode', 'auto');
 $('#setCostMode').addEventListener('change', e=>{ LS.set('costMode', e.target.value); rebuildAll(); });
 $('#setSupplier').value = LS.get('supplier', '');
 $('#setTitle').value = LS.get('title', '裝箱明細');
