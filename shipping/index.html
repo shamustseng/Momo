@@ -346,15 +346,22 @@
         </div>
       </div>
     </div>
-    <div class="grid two" style="margin-top:12px">
-      <div class="field"><label for="setPriceMode">訂單清單裡的「售價／進價」欄位是</label>
+    <div class="grid three" style="margin-top:12px">
+      <div class="field"><label for="setPriceMode">訂單清單「售價(含稅)」欄位是</label>
         <select id="setPriceMode">
           <option value="auto">自動判斷（欄名含「單價」視為單價，否則視為該列合計）</option>
-          <option value="total">該列合計金額（含稅）— 依 Lance 對照表：售價/單價＝售價÷報表數量</option>
-          <option value="unit">每一平台品項的單價（含稅）— 程式先乘上平台數量再換算</option>
+          <option value="total">該列合計金額 — Lance 對照表：總金額(含稅)＝售價；售價/單價＝售價÷報表數量</option>
+          <option value="unit">每一平台品項的單價 — 先乘上平台數量再換算</option>
         </select>
       </div>
-      <div class="hint" style="align-self:end">報表「數量」＝平台數量 × 入數（從品名的 x10包／*3入 抓，或商品主檔「入數」欄）；「品項」用簡稱。</div>
+      <div class="field"><label for="setCostMode">訂單清單「進價(含稅)」欄位是</label>
+        <select id="setCostMode">
+          <option value="unit">每一報表單位的進價 — Lance 對照表：總進價收入(含稅)＝進價×報表數量</option>
+          <option value="item">每一平台品項的進價 — 乘上平台數量</option>
+          <option value="total">該列合計金額</option>
+        </select>
+      </div>
+      <div class="hint" style="align-self:end">報表「數量」＝平台數量 × 入數（從品名的 x10包／*3入 抓，或商品主檔「入數」欄）；「品項」用簡稱；「月份」＝發票日期的 yyyymm；贈品（單價 0）Brand 留空。</div>
     </div>
     <details style="margin-top:12px">
       <summary>打單資料參數（Channel／NS 客戶／愛上平台名稱）</summary>
@@ -764,6 +771,8 @@ function parseMomoPdf(pages){
   return out;
 }
 const after = (s, re) => { const m = s.match(re); return m ? m[1].trim() : ''; };
+/* 通路名：PDF 上出現 momo／CYBERBIZ 等字樣（Lance：Channel 依 PDF 通路填入） */
+function detectChannel(text){ if(/cyberbiz/i.test(text)) return 'CYBERBIZ'; if(/momo/i.test(text)) return 'MOMO'; if(/shopee|蝦皮/i.test(text)) return 'SHOPEE'; if(/pchome/i.test(text)) return 'PCHOME'; return ''; }
 function parsePackingPage(pg){
   const items = pg.items;
   const find = re => { for(const it of items){ const m = it.s.match(re); if(m) return m[1].trim(); } return ''; };
@@ -773,6 +782,7 @@ function parsePackingPage(pg){
   };
   const orderIt = items.find(i=>/訂單編號[:：]/.test(i.s));
   if(orderIt){ const c = items.find(i=>Math.abs(i.y-orderIt.y)<3 && i.x>orderIt.x+150 && !/最晚出貨日/.test(i.s)); head.carrier = c ? c.s : ''; }
+  head.channel = detectChannel(items.map(i=>i.s).join('\n'));
   const hdr = items.find(i=>i.s==='序號'); if(!hdr) return [];
   const cols = {}; for(const it of items){ if(Math.abs(it.y-hdr.y)<3) cols[it.s]=it.x; }
   const cx = { sku: cols['商品編碼']??74, name: cols['商品名稱']??142, barcode: cols['國際條碼']??332, qty: cols['數量']??406, vendor: cols['商品原廠編號']??439, check: cols['檢查']??533 };
@@ -809,7 +819,7 @@ function parseLabelPage(pg){
     const bottom = k+1<regions.length ? regions[k+1].top : pg.h;
     const its = items.filter(i=>i.y>=rg.top && i.y<bottom);
     const text = its.map(i=>i.s).join('\n');
-    const lab = { trackNo: rg.track || after(text, /宅配單號\s*(\d{10,14})/), shipNo: after(text, /客戶單號\s*(\d{8,16})/), orderNo: after(text, /訂單編號[:：]\s*(\d+)/), invoice: after(text, /發票號碼\s*[:：]\s*([A-Z]{2}\d{8})/), invoiceDate: normDate(after(text, /發票日期\s*[:：]\s*(\S+)/)), shipDate: normDate(after(text, /寄件日\/(\S+)/)), pieces: after(text, /件數\s*(\d+\/\d+)/), contentSku: after(text, /內容物\s*(\**\d+)/) };
+    const lab = { trackNo: rg.track || after(text, /宅配單號\s*(\d{10,14})/), shipNo: after(text, /客戶單號\s*(\d{8,16})/), orderNo: after(text, /訂單編號[:：]\s*(\d+)/), invoice: after(text, /發票號碼\s*[:：]\s*([A-Z]{2}\d{8})/), invoiceDate: normDate(after(text, /發票日期\s*[:：]\s*(\S+)/)), shipDate: normDate(after(text, /寄件日\/(\S+)/)), pieces: after(text, /件數\s*(\d+\/\d+)/), contentSku: after(text, /內容物\s*(\**\d+)/), channel: detectChannel(text) };
     const dims = its.find(i=>/cm\s*\*/.test(i.s)); lab.dims = dims ? dims.s.replace(/【.*?】/g,'').replace(/\s*cm\s*\*\s*/g,'×').replace(/\s*cm\s*$/,'').trim() : '';
     lab.merged = !!(dims && /併/.test(dims.s));
     const side = its.filter(i=>i.x > pg.w*0.85 && /^[常溫冷藏凍]$/.test(i.s)).map(i=>i.s).join(''); lab.temp = /冷凍/.test(side)?'冷凍':/冷藏/.test(side)?'冷藏':/常溫/.test(side)?'常溫':'';
@@ -981,9 +991,9 @@ function momoRecords(){
     const key = p.shipNo || p.trackNo || p.orderNo; if(seen.has(key)) return; seen.add(key);
     const lab = byShip.get(p.shipNo) || byTrack.get(p.trackNo) || {}; const tot = totByTrack.get(p.trackNo || lab.trackNo) || {};
     if(lab.trackNo) used.add(lab.trackNo); if(tot.trackNo) used.add(tot.trackNo);
-    p.lines.forEach(l=>recs.push({ source:'momo 明細', orderNo:p.orderNo, shipNo:p.shipNo, trackNo:p.trackNo||lab.trackNo||'', carrier:p.carrier||'', deadline:p.deadline||'', orderDate:'', status:'', receiver: lab.receiver || p.receiver, phone: lab.phone||'', address: lab.address||'', sku:l.sku, name:l.name, spec:'', barcode:l.barcode, vendorCode:l.vendorCode, qty:l.qty, cod: num(tot.cod), invoice: lab.invoice||'', invoiceDate: lab.invoiceDate||'', note:'', dims: (tot.dims||[]).join('；') || lab.dims || '', temp: lab.temp||'', pieces: tot.pieces || lab.pieces || '', printDate:p.printDate||'', shipDate: lab.shipDate||'' }));
+    p.lines.forEach(l=>recs.push({ source:'momo 明細', orderNo:p.orderNo, shipNo:p.shipNo, trackNo:p.trackNo||lab.trackNo||'', carrier:p.carrier||'', deadline:p.deadline||'', orderDate:'', status:'', receiver: lab.receiver || p.receiver, phone: lab.phone||'', address: lab.address||'', sku:l.sku, name:l.name, spec:'', barcode:l.barcode, vendorCode:l.vendorCode, qty:l.qty, cod: num(tot.cod), invoice: lab.invoice||'', invoiceDate: lab.invoiceDate||'', note:'', dims: (tot.dims||[]).join('；') || lab.dims || '', temp: lab.temp||'', pieces: tot.pieces || lab.pieces || '', printDate:p.printDate||'', shipDate: lab.shipDate||'', channel: lab.channel || p.channel || '' }));
   });
-  labels.forEach(l=>{ if(used.has(l.trackNo) || (l.shipNo && seen.has(l.shipNo))) return; seen.add(l.shipNo||l.trackNo); used.add(l.trackNo); const tot = totByTrack.get(l.trackNo)||{}; recs.push({ source:'momo 宅配單', orderNo:l.orderNo, shipNo:l.shipNo, trackNo:l.trackNo, carrier:'第三方-宅急便', deadline:'', receiver:l.receiver||tot.receiver||'', phone:l.phone||'', address:l.address||'', sku:l.contentSku||'', name: l.contentSku ? `商品 ${l.contentSku}（缺列印明細，請補上）` : '（缺列印明細，請補上）', barcode:'', vendorCode:'', qty: 1, cod:num(tot.cod), invoice:l.invoice||'', invoiceDate:l.invoiceDate||'', note:'', dims:(tot.dims||[]).join('；')||l.dims||'', temp:l.temp||'', pieces:tot.pieces||l.pieces||'', shipDate:l.shipDate||'', missingLines:true }); });
+  labels.forEach(l=>{ if(used.has(l.trackNo) || (l.shipNo && seen.has(l.shipNo))) return; seen.add(l.shipNo||l.trackNo); used.add(l.trackNo); const tot = totByTrack.get(l.trackNo)||{}; recs.push({ source:'momo 宅配單', orderNo:l.orderNo, shipNo:l.shipNo, trackNo:l.trackNo, carrier:'第三方-宅急便', deadline:'', receiver:l.receiver||tot.receiver||'', phone:l.phone||'', address:l.address||'', sku:l.contentSku||'', name: l.contentSku ? `商品 ${l.contentSku}（缺列印明細，請補上）` : '（缺列印明細，請補上）', barcode:'', vendorCode:'', qty: 1, cod:num(tot.cod), invoice:l.invoice||'', invoiceDate:l.invoiceDate||'', note:'', dims:(tot.dims||[]).join('；')||l.dims||'', temp:l.temp||'', pieces:tot.pieces||l.pieces||'', shipDate:l.shipDate||'', channel:l.channel||'', missingLines:true }); });
   totals.forEach(t=>{ if(used.has(t.trackNo)) return; used.add(t.trackNo); recs.push({ source:'momo 總表', orderNo:t.orderNo, shipNo:'', trackNo:t.trackNo, carrier:'第三方-宅急便', receiver:t.receiver, phone:'', address:'', sku:'', name:'（缺列印明細，請補上）', qty:1, cod:num(t.cod), dims:t.dims.join('；'), pieces:t.pieces, missingLines:true }); });
   return recs;
 }
@@ -1022,6 +1032,7 @@ function rebuildAll(){
   const tsrc = tableSource(); if(tsrc) recs.push(...tableRecords(tsrc));
   recs.push(...momoRecords());
   const priceModeSet = $('#setPriceMode').value; // auto／total（該列合計）／unit（每一平台品項單價）
+  const costMode = $('#setCostMode').value;       // unit（每報表單位，Lance：1Q×3L）／item（每平台品項）／total（該列合計）
   recs.forEach(r=>{
     const priceMode = priceModeSet==='auto' ? (r.priceIsUnit ? 'unit' : 'total') : priceModeSet;
     const m = lookupMaster(r);
@@ -1036,9 +1047,9 @@ function rebuildAll(){
     r.units = (r.qty||0) * r.packQty;
     r.shortName = shortName(r.name, r.brand, m);
     const scmPrice = r.priceRaw!=null ? (priceMode==='unit' ? r.priceRaw * (r.qty||0) : r.priceRaw) : (m && m.price!=='' ? num(m.price) * (r.qty||0) : null);
-    const scmCost  = r.costRaw!=null  ? (priceMode==='unit' ? r.costRaw  * (r.qty||0) : r.costRaw)  : (m && m.cost!==''  ? num(m.cost)  * (r.qty||0) : null);
-    r.lineTotal = r.isGift ? 0 : scmPrice;      // 4a 售價(含稅) 合計
-    r.costTotal = r.isGift ? 0 : scmCost;       // 5a 進價(含稅) 合計
+    const scmCost  = r.costRaw!=null  ? (costMode==='unit' ? r.costRaw * r.units : costMode==='item' ? r.costRaw * (r.qty||0) : r.costRaw) : (m && m.cost!=='' ? num(m.cost) * (r.qty||0) : null);
+    r.lineTotal = r.isGift ? 0 : scmPrice;      // 3O 總金額(含稅) = 1M 售價(含稅)
+    r.costTotal = r.isGift ? 0 : scmCost;       // 3S 總進價收入(含稅) = 1Q 進價(含稅) × 3L
     r.unitPrice = r.lineTotal!=null && r.units ? +(r.lineTotal / r.units).toFixed(4) : null;          // 4c
     r.unitCostExTax = r.costTotal!=null && r.units ? +(r.costTotal / r.units / 1.05).toFixed(4) : null; // 5c
     r.unitCost = m && m.unitCost!=='' ? num(m.unitCost) : '';   // 商品成本(未稅，每單位)
@@ -1051,7 +1062,7 @@ function rebuildAll(){
     if(!groups.has(key)) groups.set(key, { key, order, lines:[], orderNos:new Set(), status:new Set(), pay:new Set(), warnings:[], info:[], sources:new Set() });
     const g = groups.get(key);
     g.lines.push(rec); if(rec.orderNo) g.orderNos.add(rec.orderNo); if(rec.status) g.status.add(rec.status); if(rec.orderStatus) g.status.add(rec.orderStatus); if(rec.payStatus) g.pay.add(rec.payStatus); g.sources.add(rec.source);
-    for(const k of ['shipNo','trackNo','carrier','deadline','orderDate','buyer','receiver','phone','address','storeName','storeId','invoice','invoiceDate','note','dims','temp','pieces','printDate','shipDate']) if(!g[k] && rec[k]) g[k]=rec[k];
+    for(const k of ['shipNo','trackNo','carrier','deadline','orderDate','buyer','receiver','phone','address','storeName','storeId','invoice','invoiceDate','note','dims','temp','pieces','printDate','shipDate','channel']) if(!g[k] && rec[k]) g[k]=rec[k];
     if(rec.cod && !g.cod) g.cod = rec.cod;
   });
   const exported = new Set(LS.get('exported', []));
@@ -1325,35 +1336,38 @@ function buildPickSheet(wb, sel, cfg){
 /* 新零售銷售報表：欄位依 SOP 截圖 A–U，轉換規則依 Lance「ai訂單轉換」對照表 */
 function buildRetailSheet(wb, sel, cfg){
   const ws = wb.addWorksheet('新零售銷售報表', { views:[{ state:'frozen', ySplit:1 }] });
-  const cols = ['出貨倉別','是否出貨','倉庫訂單編號/託運單號','NS打單與交貨','月份','Brand','Channel','order_create_date','平台訂單號','銷售訂單','品項','數量','售價/單價','售價/單價(未稅)','總金額(含稅)','總金額(未稅)','進價(未稅)','進價總額(未稅)','進價總額(含稅)','商品成本(未稅)','商品成本總額','宅配單號','收件人','平台品名','平台數量','入數','備註'];
+  // 欄位 A–U 對齊報表；C、E–I、K–S 的來源與公式依 Lance「ai訂單轉換」第 2 版
+  const cols = ['出貨倉別','是否出貨','倉庫訂單編號/託運單號','NS打單與交貨','月份','Brand','Channel','order_create_date','平台訂單號','銷售訂單','品項','數量','售價/單價','售價/單價(未稅)','總金額(含稅)','總金額(未稅)','進價(未稅)','總進價收入(未稅)','總進價收入(含稅)','商品成本(未稅)','商品成本總額','宅配單號','收件人','平台品名','平台數量','入數','備註'];
   headerRow(ws, 1, cols, [10,8,20,10,8,10,8,12,16,12,26,6,12,12,12,12,10,12,12,12,12,14,10,40,8,6,20]);
   let r = 2;
   sel.forEach(s=>{
-    const d = s.invoiceDate || s.orderDate || s.printDate || cfg.date;                 // 6：order_create_date = 發票日期
+    const d = s.invoiceDate || s.orderDate || s.printDate || cfg.date;                 // H：order_create_date = 發票日期
     const dm = d.match(/^(\d{4})\/(\d{2})\/(\d{2})/); const dateVal = dm ? new Date(+dm[1], +dm[2]-1, +dm[3]) : d;
-    const month = dm ? +(dm[1]+dm[2]) : '';
+    const month = dm ? +(dm[1]+dm[2]) : '';                                            // E：月份 = 發票日期 20xx/yy → 20xxyy
+    const channel = s.channel || cfg.channel;                                          // G：Channel = PDF 上的通路名（momo購物網 → MOMO）
     s.lines.forEach(l=>{
-      const vals = [l.warehouse||'', 'Y', s.trackNo||'', '', month, l.brand||'', cfg.channel, dateVal, s.orderNo, '',
-        l.shortName || l.name,                        // 2：品項 = 簡稱
-        l.units,                                      // 3：數量 = SCM 數量 × 入數
-        { formula:`IF(L${r}=0,0,O${r}/L${r})` },      // 4：售價/單價 = 售價(含稅) ÷ 數量
-        { formula:`M${r}/1.05` },                     // 售價/單價(未稅)
-        l.lineTotal==null ? null : l.lineTotal,       // 總金額(含稅) = SCM 售價(含稅)
-        { formula:`N${r}*L${r}` },                    // 總金額(未稅)
-        { formula:`IF(L${r}=0,0,S${r}/L${r}/1.05)` }, // 5：進價(未稅) = 進價(含稅) ÷ 數量 ÷ 1.05
-        { formula:`Q${r}*L${r}` },                    // 進價總額(未稅)
-        l.costTotal==null ? null : l.costTotal,       // 進價總額(含稅) = SCM 進價(含稅)
-        l.unitCost===''?null:l.unitCost,              // 商品成本(未稅)
-        { formula:`T${r}*L${r}` },                    // 商品成本總額
+      const zeroPrice = l.isGift || l.unitPrice===0;                                   // F：3M=0（贈品）不填 Brand
+      const vals = [l.warehouse||'', 'Y', s.trackNo||'', '', month, zeroPrice ? '' : (l.brand||''), channel, dateVal, s.orderNo, '',
+        l.shortName || l.name,                        // K：品項 = 簡稱
+        l.units,                                      // L：數量 = 1L × 入數
+        { formula:`IF(L${r}=0,0,O${r}/L${r})` },      // M：售價/單價 = 1M ÷ 3L
+        { formula:`M${r}/1.05` },                     // N：售價/單價(未稅) = 3M × 未稅
+        l.lineTotal==null ? null : l.lineTotal,       // O：總金額(含稅) = 1M
+        { formula:`O${r}/1.05` },                     // P：總金額(未稅) = 1M × 未稅
+        { formula:`IF(L${r}=0,0,R${r}/L${r})` },      // Q：進價(未稅) = 3R ÷ 3L
+        { formula:`S${r}/1.05` },                     // R：總進價收入(未稅) = 3S × 未稅
+        l.costTotal==null ? null : l.costTotal,       // S：總進價收入(含稅) = 1Q × 3L
+        l.unitCost===''?null:l.unitCost,              // T：商品成本(未稅)
+        { formula:`T${r}*L${r}` },                    // U：商品成本總額
         s.trackNo||'', s.receiver||'', l.name, l.qty, l.packQty,
-        [l.isGift?'贈品':'', l.priceRaw==null && l.lineTotal!=null ? '售價取自商品主檔' : '', l.lineTotal==null && !l.isGift ? '缺售價' : '', s.warnings.join('；')].filter(Boolean).join('；')];
+        [l.isGift?'贈品':'', l.priceRaw==null && l.lineTotal!=null ? '售價取自商品主檔' : '', l.lineTotal==null && !l.isGift ? '缺售價' : '', l.costTotal==null && !l.isGift ? '缺進價' : '', s.warnings.join('；')].filter(Boolean).join('；')];
       const row = bodyRow(ws, r, vals, { wrap:[11,24], center:[2,4,5,7,12,25,26], numFmt:{8:'yyyy/mm/dd',13:'0.00',14:'0.000',15:'0',16:'0.00',17:'0.000',18:'0.00',19:'0',20:'0.00',21:'0.00'} });
       if(!l.matched && state.master.length) row.getCell(11).font = f({ color:{argb:'FFC4362F'} });
       r++;
     });
   });
   ws.autoFilter = { from:'A1', to:`AA${r-1}` };
-  ws.getCell(`A${r+1}`).value = '轉換規則（Lance ai訂單轉換表）：平台訂單號＝訂單編號；品項＝簡稱；數量＝SCM數量×入數；售價/單價＝售價(含稅)÷數量；進價(未稅)＝進價(含稅)÷數量÷1.05；order_create_date＝發票日期；託運單號＝宅配單號。售價／進價來自訂單清單的售價／進價欄，沒有時取商品主檔。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
+  ws.getCell(`A${r+1}`).value = '轉換規則（Lance ai訂單轉換表 v2）：託運單號＝PDF 宅配單號；月份＝發票日期 yyyymm；Brand＝品名含雞湯大叔／賴山嶼，單價 0 不填；Channel＝PDF 通路名；order_create_date＝發票日期；平台訂單號＝訂單編號；品項＝簡稱；數量＝數量×入數；售價/單價＝售價(含稅)÷數量；總金額(含稅)＝售價(含稅)；進價(未稅)＝總進價收入(未稅)÷數量；總進價收入(含稅)＝進價(含稅)×數量；未稅＝含稅÷1.05。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
 }
 /* NS 銷售訂單打單清單 */
 function buildNsSheet(wb, sel, cfg){
@@ -1481,6 +1495,8 @@ $('#setShortNames').value = LS.get('shortNames', DEFAULT_SHORT_NAMES);
 $('#setShortNames').addEventListener('input', e=>{ LS.set('shortNames', e.target.value); rebuildAll(); });
 $('#setPriceMode').value = LS.get('priceMode', P.priceMode);
 $('#setPriceMode').addEventListener('change', e=>{ LS.set('priceMode', e.target.value); rebuildAll(); });
+$('#setCostMode').value = LS.get('costMode', 'unit');
+$('#setCostMode').addEventListener('change', e=>{ LS.set('costMode', e.target.value); rebuildAll(); });
 $('#setSupplier').value = LS.get('supplier', '');
 $('#setTitle').value = LS.get('title', '裝箱明細');
 $('#setLayout').value = LS.get('layout', 'single');
