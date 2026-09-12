@@ -8,6 +8,7 @@ const path = require('path');
 const store = require('./lib/store');
 const { refresh, snapshot } = require('./lib/refresh');
 const { toCsv, toMarkdown } = require('./lib/export');
+const { buildStaticHtml } = require('./lib/static');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = {
@@ -151,6 +152,12 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { keywords });
   }
 
+  if (route === '/api/export.html') {
+    const at = stamp();
+    return sendDownload(res, `產品清單_${at}.html`, `alpha-products_${at}.html`,
+      buildStaticHtml(store.load()), 'text/html; charset=utf-8');
+  }
+
   if (route === '/api/export.csv' || route === '/api/export.md') {
     const data = store.load();
     const products = selectProducts(data, {
@@ -207,6 +214,7 @@ async function main() {
   node server.js --host 0.0.0.0     開放同網段的同事連線
   node server.js --refresh-only     只重新抓取，不啟動網頁
   node server.js --refresh-only --export 清單.csv
+  node server.js --export 產品清單.html   輸出不需伺服器的單檔網頁（可直接雙擊開）
   node server.js --source momo      搭配 --refresh-only，只抓單一來源
 `);
     return;
@@ -214,17 +222,22 @@ async function main() {
 
   const config = store.loadConfig();
 
-  if (hasFlag('--refresh-only')) {
-    const which = argValue('--source', 'all');
-    console.log(`開始抓取（${which}）…`);
-    const data = await refresh(which);
-    for (const entry of snapshot().log) console.log(' ·', entry.message);
+  if (hasFlag('--refresh-only') || argValue('--export')) {
+    let data = store.load();
+    if (hasFlag('--refresh-only')) {
+      const which = argValue('--source', 'all');
+      console.log(`開始抓取（${which}）…`);
+      data = await refresh(which);
+      for (const entry of snapshot().log) console.log(' ·', entry.message);
+    }
     const exportPath = argValue('--export');
     if (exportPath) {
       const products = store.allProducts(data);
-      const body = exportPath.endsWith('.md')
-        ? toMarkdown(products, updatedMap(data))
-        : toCsv(products);
+      const body = exportPath.endsWith('.html')
+        ? buildStaticHtml(data)
+        : exportPath.endsWith('.md')
+          ? toMarkdown(products, updatedMap(data))
+          : toCsv(products);
       fs.writeFileSync(exportPath, body);
       console.log(`已輸出 ${products.length} 筆到 ${exportPath}`);
     }

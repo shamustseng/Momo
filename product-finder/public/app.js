@@ -250,7 +250,7 @@ function exportQuery() {
 
 function download(kind) {
   window.location.href = `/api/export.${kind}${exportQuery()}`;
-  toast(kind === 'csv' ? '已開始下載 CSV' : '已開始下載 Markdown');
+  toast({ csv: '已開始下載 CSV', md: '已開始下載 Markdown', html: '已開始下載單檔網頁' }[kind]);
 }
 
 async function copyText(text, message) {
@@ -337,7 +337,7 @@ $('export-menu').addEventListener('click', (event) => {
   const action = event.target.dataset.export;
   if (!action) return;
   $('export-menu').hidden = true;
-  if (action === 'csv' || action === 'md') download(action);
+  if (action === 'csv' || action === 'md' || action === 'html') download(action);
   else copyList(action === 'links');
 });
 

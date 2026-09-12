@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>阿爾法產品清單</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<style>
+:root{
+  --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+  --border:#DDD6C7; --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+  --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+  --momo:#D6316B; --momo-soft:#FBE3EC; --momo-ink:#7A1A3D;
+  --alpha:#B5730A; --alpha-soft:#F6E8D2; --alpha-ink:#6B4507;
+  --good:#2F9E44; --bad:#C4362F; --warn:#B5730A;
+  --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+  --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+    --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+    --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+    --momo:#D9527F; --momo-soft:#3B2029; --momo-ink:#F6C3D5;
+    --alpha:#B67F2E; --alpha-soft:#3A2D16; --alpha-ink:#F0D19C;
+    --good:#4CAF6B; --bad:#E2665F; --warn:#D9A441;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+  }
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+  font-size:14.5px; line-height:1.7; -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+a{ color:var(--accent); }
+h1,h2,h3{ text-wrap:balance; font-weight:800; letter-spacing:-0.01em; margin:0; }
+button,input,select,textarea{ font:inherit; color:inherit; }
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+
+/* ---------- 頂列 ---------- */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.topbar-inner{ max-width:1180px; margin:0 auto; padding:12px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; }
+.brand{ display:flex; flex-direction:column; gap:2px; margin-right:auto; }
+.brand .eyebrow{ font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
+.brand h1{ font-size:19px; }
+.tabs{ display:flex; gap:4px; background:var(--surface-2); padding:3px; border-radius:10px; }
+.tab{
+  border:0; background:transparent; color:var(--ink-muted); font-weight:700; font-size:13.5px;
+  padding:7px 14px; border-radius:8px; cursor:pointer; white-space:nowrap;
+}
+.tab:hover{ color:var(--ink); }
+.tab.is-active{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
+.actions{ display:flex; gap:8px; align-items:center; }
+
+.btn{
+  border:1px solid var(--border); background:var(--surface); color:var(--ink);
+  font-weight:700; font-size:13.5px; padding:8px 14px; border-radius:9px; cursor:pointer;
+  transition:background .15s, border-color .15s;
+}
+.btn:hover{ background:var(--surface-2); }
+.btn:disabled{ opacity:.55; cursor:progress; }
+.btn-primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn-primary:hover:not(:disabled){ background:var(--accent-hover); border-color:var(--accent-hover); }
+.btn-quiet{ border-color:transparent; background:transparent; color:var(--ink-muted); padding:4px 8px; }
+.btn-quiet:hover{ background:var(--surface-2); }
+
+.menu{ position:relative; }
+.menu-panel{
+  position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:210px;
+  background:var(--surface); border:1px solid var(--border); border-radius:11px;
+  box-shadow:var(--shadow); padding:5px; display:flex; flex-direction:column;
+}
+.menu-panel button{
+  border:0; background:transparent; text-align:left; padding:9px 12px; border-radius:8px;
+  cursor:pointer; font-size:13.5px; font-weight:600;
+}
+.menu-panel button:hover{ background:var(--surface-2); }
+
+/* ---------- 版面 ---------- */
+.wrap{ max-width:1180px; margin:0 auto; padding:18px 20px 60px; }
+.panel{ background:var(--surface); border:1px solid var(--border); border-radius:13px; box-shadow:var(--shadow); }
+
+.toolbar{ padding:14px 16px; display:flex; flex-wrap:wrap; gap:12px 18px; align-items:flex-end; }
+.field{ display:flex; flex-direction:column; gap:4px; }
+.field.search{ flex:1 1 340px; min-width:0; }
+.label{ font-size:11.5px; font-weight:700; letter-spacing:.05em; color:var(--ink-faint); text-transform:uppercase; }
+.toolbar input[type="search"], .toolbar select{
+  background:var(--surface-2); border:1px solid var(--border); border-radius:9px;
+  padding:9px 12px; width:100%; min-width:0;
+}
+.check{ display:flex; align-items:center; gap:7px; font-size:13.5px; color:var(--ink-muted); font-weight:600; padding-bottom:9px; }
+.count{ margin:0 0 9px auto; font-size:13px; color:var(--ink-muted); font-weight:700; }
+
+/* ---------- 來源狀態 ---------- */
+.status-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-top:14px; }
+.status-card{ background:var(--surface); border:1px solid var(--border); border-left-width:4px; border-radius:11px; padding:12px 14px; }
+.status-card.momo{ border-left-color:var(--momo); }
+.status-card.alphaplus{ border-left-color:var(--alpha); }
+.status-card h3{ font-size:14px; display:flex; align-items:center; gap:8px; }
+.status-card .meta{ font-size:12.5px; color:var(--ink-muted); margin:3px 0 0; }
+.status-card .msg{ font-size:12.5px; margin:6px 0 0; color:var(--warn); }
+.status-card .msg.bad{ color:var(--bad); }
+.dot{ width:8px; height:8px; border-radius:50%; background:var(--good); flex:none; }
+.dot.stale{ background:var(--warn); }
+.dot.bad{ background:var(--bad); }
+
+/* ---------- 抓取進度 ---------- */
+.job{ margin-top:14px; padding:12px 16px; }
+.job-head{ display:flex; align-items:center; gap:10px; }
+.job-log{ margin:10px 0 0; padding-left:20px; font-size:12.5px; color:var(--ink-muted); max-height:200px; overflow:auto; }
+.spinner{
+  width:14px; height:14px; border-radius:50%; flex:none;
+  border:2px solid var(--border); border-top-color:var(--accent); animation:spin .8s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* ---------- 結果 ---------- */
+.results{ margin-top:16px; display:flex; flex-direction:column; gap:10px; }
+.group-head{ display:flex; align-items:baseline; gap:10px; margin:10px 2px 2px; }
+.group-head h2{ font-size:15px; }
+.group-head .n{ font-size:12.5px; color:var(--ink-faint); font-weight:700; }
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; display:grid; gap:4px 14px; align-items:center;
+  grid-template-columns:1fr auto auto; box-shadow:var(--shadow);
+}
+.card .name{ font-weight:700; font-size:14.5px; text-decoration:none; color:var(--ink); }
+.card .name:hover{ color:var(--accent); text-decoration:underline; }
+.card .sub{ grid-column:1; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; color:var(--ink-faint); }
+.card .price{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; white-space:nowrap; }
+.card .price.none{ color:var(--ink-faint); font-size:12.5px; font-weight:600; }
+.card .row-actions{ display:flex; gap:6px; }
+.pill{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--surface-3); color:var(--ink-muted); }
+.pill.momo{ background:var(--momo-soft); color:var(--momo-ink); }
+.pill.alphaplus{ background:var(--alpha-soft); color:var(--alpha-ink); }
+.pill.warn{ background:var(--alpha-soft); color:var(--alpha-ink); }
+.empty{ padding:40px 20px; text-align:center; color:var(--ink-muted); }
+
+/* ---------- 設定與頁尾 ---------- */
+.settings{ margin-top:20px; padding:12px 16px; }
+.settings summary{ cursor:pointer; font-weight:700; font-size:13.5px; }
+.settings .hint{ font-size:12.5px; color:var(--ink-muted); margin:8px 0; }
+.settings textarea{
+  width:100%; background:var(--surface-2); border:1px solid var(--border);
+  border-radius:9px; padding:9px 12px; resize:vertical; margin-bottom:8px;
+}
+.saved{ font-size:12.5px; color:var(--good); font-weight:700; margin-left:8px; }
+.foot{ margin-top:26px; font-size:12px; color:var(--ink-faint); }
+
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+  background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:10px;
+  font-size:13.5px; font-weight:700; box-shadow:var(--shadow); z-index:50;
+}
+
+@media (max-width:640px){
+  .topbar-inner{ padding:10px 14px; }
+  .brand{ margin-right:0; }
+  .tabs{ order:3; width:100%; overflow-x:auto; }
+  .actions{ margin-left:auto; }
+  .wrap{ padding:14px 14px 50px; }
+  .card{ grid-template-columns:1fr auto; }
+  .card .row-actions{ grid-column:1 / -1; justify-content:flex-start; margin-top:6px; }
+}
+
+.static-note{ font-size:12.5px; color:var(--ink-muted); margin:0; }
+.card .sub .stamp{ margin-left:auto; }
+.copy-hint{ font-size:12px; color:var(--ink-faint); margin:8px 2px 0; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">Alpha Restaurant Group</span>
+      <h1>產品清單</h1>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab is-active" data-source="all" role="tab">全部</button>
+      <button class="tab" data-source="momo" role="tab">momo 購物網</button>
+      <button class="tab" data-source="alphaplus" role="tab">Alpha Plus 官網</button>
+    </nav>
+    <div class="actions">
+      <div class="menu">
+        <button class="btn btn-primary" id="export-btn" aria-haspopup="true" aria-expanded="false">一鍵輸出</button>
+        <div class="menu-panel" id="export-menu" hidden>
+          <button data-export="clip">複製全部名稱＋價格＋連結</button>
+          <button data-export="links">只複製連結</button>
+          <button data-export="csv">下載 CSV（Excel）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel toolbar">
+    <label class="field search">
+      <span class="label">搜尋商品</span>
+      <input type="search" id="q" placeholder="輸入商品名稱、關鍵字或商品編號，例如：辣醬、賴山嶼、15250521" autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="label">排序</span>
+      <select id="sort">
+        <option value="default">預設（來源順序）</option>
+        <option value="price-asc">價格：低 → 高</option>
+        <option value="price-desc">價格：高 → 低</option>
+        <option value="name">名稱</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="only-listed"> 只看上架中</label>
+    <p class="count" id="count">—</p>
+  </section>
+
+  <section class="status-row" id="status-row"></section>
+  <section id="results" class="results" aria-live="polite"></section>
+
+  <footer class="foot">
+    <p id="generated"></p>
+    <p>這是單檔版清單，資料固定在產出當下；要更新請在 product-finder 重新抓取後再輸出一次。價格與上架狀態以各站台當下顯示為準。</p>
+  </footer>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script id="data" type="application/json">{"generatedAt":"2026-09-12T09:02:47.969Z","sources":{"momo":{"label":"momo 購物網","updatedAt":"2026-09-12T00:00:00+08:00","seeded":true,"warnings":["這是內建的初始清單，不是即時抓取的結果。"],"error":null,"products":[{"source":"momo","sku":"15250521","name":"雞湯大叔×賴山嶼 青花椒辣醬240g","price":330,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15250521","status":"","keywords":["賴山嶼","雞湯大叔"]},{"source":"momo","sku":"15235085","name":"雞湯大叔×賴山嶼 青花椒辣醬240g*2入","price":650,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15235085","status":"","keywords":["賴山嶼","雞湯大叔"]},{"source":"momo","sku":"15634154","name":"雞湯大叔×賴山嶼 青花椒辣醬240g*3入","price":930,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15634154","status":"","keywords":["賴山嶼","雞湯大叔"]},{"source":"momo","sku":"15467510","name":"雞湯大叔/雞湯桑/麵屋一燈/賴山嶼通用 $799抵$888好禮即享券（一次抵用型）","price":799,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467510","status":"","keywords":["賴山嶼","雞湯大叔"]},{"source":"momo","sku":"15689825","name":"雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王 399抵499即享券","price":399,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689825","status":"09/19 00:00 開賣","keywords":["賴山嶼","雞湯大叔"]},{"source":"momo","sku":"15689826","name":"雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王 799抵999即享券","price":799,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689826","status":"09/19 00:00 開賣","keywords":["賴山嶼","雞湯大叔"]},{"source":"momo","sku":"15491916","name":"雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組","price":849,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15491916","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15356778","name":"雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240g","price":280,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15356778","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15642252","name":"雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240g*2入","price":640,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15642252","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15414344","name":"快樂雞滴雞精60mlx10包（常溫）","price":790,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15414344","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15127931","name":"快樂雞滴雞精禮盒(6入/盒)","price":650,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15127931","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15126499","name":"黑松露牛肝菌雞湯禮盒（1入）","price":599,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15126499","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15474320","name":"黑松露牛肝菌雞湯禮盒2入","price":849,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15474320","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15540751","name":"雞湯大叔×海瑞摃丸 泰度打拋摃丸*4包組","price":799,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15540751","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15394742","name":"$482雞湯火鍋套餐（雪花牛或梅花豬擇一）好禮即享券","price":438,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394742","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15394739","name":"$646雞湯火鍋套餐（海鮮拼盤）好禮即享券","price":587,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394739","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15394740","name":"$613松露野菇雞湯火鍋套餐（板腱牛）好禮即享券","price":557,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394740","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15467509","name":"$1494泰國季限定-泰chill雙人套餐好禮即享券","price":1299,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467509","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"15633823","name":"泰鮮雙享組（蛤蜊雞湯3包+打拋摃丸2）","price":888,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15633823","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"14614419","name":"松露旨味雞白湯拉麵","price":298,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614419","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"14614418","name":"東京雞白湯拉麵","price":248,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614418","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"14614420","name":"海膽魚子雞白湯拉麵","price":298,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614420","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"14614416","name":"櫻花柚子拉麵","price":248,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614416","status":"","keywords":["雞湯大叔"]},{"source":"momo","sku":"14614417","name":"松露牛肝菌拉麵","price":248,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614417","status":"","keywords":["雞湯大叔"]}]},"alphaplus":{"label":"Alpha Plus 官網","updatedAt":null,"seeded":true,"warnings":["官網商品尚未抓取過，需在 product-finder 重新抓取後重新輸出。"],"error":null,"products":[]}}}</script>
+<script>
+'use strict';
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const LABELS = { momo: 'momo 購物網', alphaplus: 'Alpha Plus 官網' };
+const ORDER = ['momo', 'alphaplus'];
+const state = { source: 'all', q: '', sort: 'default', onlyListed: false };
+const $ = (id) => document.getElementById(id);
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+const fmtPrice = (p) => (p === null || p === undefined) ? null : '$' + Number(p).toLocaleString('zh-TW');
+function fmtTime(iso) {
+  if (!iso) return '尚未抓取';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '尚未抓取';
+  return d.toLocaleString('zh-TW', { hour12: false, timeZone: 'Asia/Taipei', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function visible() {
+  let list = [];
+  for (const key of ORDER) {
+    if (state.source !== 'all' && state.source !== key) continue;
+    const s = DATA.sources[key];
+    if (s) list.push(...s.products);
+  }
+  const terms = state.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length) list = list.filter((p) => {
+    const hay = (p.name + ' ' + p.sku + ' ' + p.keywords.join(' ')).toLowerCase();
+    return terms.every((t) => hay.includes(t));
+  });
+  if (state.onlyListed) list = list.filter((p) => !p.status);
+  const byPrice = (a, b) => ((a.price ?? Infinity) - (b.price ?? Infinity)) || a.name.localeCompare(b.name, 'zh-TW');
+  if (state.sort === 'price-asc') list.sort(byPrice);
+  else if (state.sort === 'price-desc') list.sort((a, b) => byPrice(b, a));
+  else if (state.sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+  return list;
+}
+
+function card(p) {
+  const c = el('div', 'card');
+  const a = el('a', 'name', p.name); a.href = p.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  c.append(a);
+  const price = fmtPrice(p.price);
+  c.append(el('span', price ? 'price' : 'price none', price || '價格未取得'));
+  const actions = el('div', 'row-actions');
+  const copy = el('button', 'btn btn-quiet', '複製連結');
+  copy.addEventListener('click', () => copyText(p.url, '已複製連結'));
+  actions.append(copy); c.append(actions);
+  const sub = el('div', 'sub');
+  sub.append(el('span', 'pill ' + p.source, LABELS[p.source]));
+  if (p.sku) sub.append(el('span', 'pill', '編號 ' + p.sku));
+  if (p.status) sub.append(el('span', 'pill warn', p.status));
+  for (const k of p.keywords) sub.append(el('span', 'pill', k));
+  c.append(sub);
+  return c;
+}
+
+function render() {
+  const row = $('status-row'); row.replaceChildren();
+  for (const key of ORDER) {
+    const s = DATA.sources[key]; if (!s) continue;
+    const box = el('div', 'status-card ' + key);
+    const h = el('h3');
+    h.append(el('span', 'dot' + (s.error ? ' bad' : (s.seeded || !s.updatedAt) ? ' stale' : '')), document.createTextNode(s.label));
+    box.append(h, el('p', 'meta', s.products.length + ' 件商品　·　資料時間：' + fmtTime(s.updatedAt)));
+    if (s.error) box.append(el('p', 'msg bad', '抓取失敗：' + s.error));
+    for (const w of s.warnings) box.append(el('p', 'msg', w));
+    row.append(box);
+  }
+
+  const list = visible();
+  const results = $('results'); results.replaceChildren();
+  if (!list.length) {
+    const empty = el('div', 'panel empty');
+    empty.append(el('p', null, state.q ? '找不到符合「' + state.q + '」的商品。' : '這個來源目前沒有商品資料。'));
+    results.append(empty);
+  } else if (state.sort === 'default' && state.source === 'all') {
+    for (const key of ORDER) {
+      const group = list.filter((p) => p.source === key); if (!group.length) continue;
+      const head = el('div', 'group-head');
+      head.append(el('h2', null, LABELS[key]), el('span', 'n', group.length + ' 件'));
+      results.append(head); group.forEach((p) => results.append(card(p)));
+    }
+  } else list.forEach((p) => results.append(card(p)));
+
+  const total = ORDER.reduce((n, k) => n + ((DATA.sources[k] || { products: [] }).products.length), 0);
+  $('count').textContent = '顯示 ' + list.length + ' / 共 ' + total + ' 件';
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+async function copyText(text, msg) {
+  try { await navigator.clipboard.writeText(text); toast(msg); }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.append(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove();
+    toast(ok ? msg : '複製失敗，請改用下載 CSV');
+  }
+}
+function csvCell(v) { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportAction(kind) {
+  const list = visible();
+  if (!list.length) return toast('目前沒有可輸出的商品');
+  if (kind === 'links') return copyText(list.map((p) => p.url).join('\n'), '已複製 ' + list.length + ' 個連結');
+  if (kind === 'clip') return copyText(list.map((p) => p.name + '｜' + (fmtPrice(p.price) || '價格未取得') + (p.status ? '｜' + p.status : '') + '｜' + p.url).join('\n'), '已複製 ' + list.length + ' 筆');
+  const rows = [['來源', '商品名稱', '售價(TWD)', '商品連結', '商品編號', '狀態', '對應關鍵字']];
+  for (const p of list) rows.push([LABELS[p.source], p.name, p.price ?? '', p.url, p.sku, p.status || '上架中', p.keywords.join(' / ')]);
+  const csv = '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '產品清單_' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.csv';
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('已開始下載 CSV');
+}
+
+$('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab'); if (!tab) return;
+  state.source = tab.dataset.source;
+  for (const n of $('tabs').children) n.classList.toggle('is-active', n === tab);
+  render();
+});
+let qTimer;
+$('q').addEventListener('input', (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.q = e.target.value; render(); }, 120); });
+$('sort').addEventListener('change', (e) => { state.sort = e.target.value; render(); });
+$('only-listed').addEventListener('change', (e) => { state.onlyListed = e.target.checked; render(); });
+$('export-btn').addEventListener('click', () => { const m = $('export-menu'); m.hidden = !m.hidden; $('export-btn').setAttribute('aria-expanded', String(!m.hidden)); });
+document.addEventListener('click', (e) => { if (!e.target.closest('.menu')) { $('export-menu').hidden = true; $('export-btn').setAttribute('aria-expanded', 'false'); } });
+$('export-menu').addEventListener('click', (e) => { const k = e.target.dataset.export; if (!k) return; $('export-menu').hidden = true; exportAction(k); });
+document.addEventListener('keydown', (e) => { if (e.key === '/' && document.activeElement !== $('q')) { e.preventDefault(); $('q').focus(); } });
+
+$('generated').textContent = '此檔產出時間：' + fmtTime(DATA.generatedAt);
+render();
+</script>
+</body>
+</html>
