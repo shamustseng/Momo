@@ -56,10 +56,20 @@ async function refresh(which = 'all') {
       const startedAt = Date.now();
       try {
         const result = await ADAPTERS[key](sourceConfig, config.network, note);
+        for (const warning of result.warnings || []) note(`${label}：${warning}`);
+
+        // 一筆都沒抓到幾乎一定是連線被擋或網站改版，不是商品真的全下架。
+        // 這種情況當成失敗處理：保留上一次的清單，不更新時間。
+        if (result.products.length === 0) {
+          throw new Error(
+            (result.warnings && result.warnings[0]) || '沒有抓到任何商品（可能是連線被擋或網站改版）'
+          );
+        }
+
         data.sources[key] = {
           label,
           updatedAt: new Date().toISOString(),
-          ok: result.products.length > 0,
+          ok: true,
           error: null,
           seeded: false,
           strategy: result.strategy || null,
@@ -79,7 +89,8 @@ async function refresh(which = 'all') {
           // 抓取失敗時保留上一次的資料，總比清空讓同事查不到東西好
           products: previous ? previous.products || [] : [],
         };
-        note(`${label}：失敗 —— ${err.message}（保留上次資料）`);
+        const kept = data.sources[key].products.length;
+        note(`${label}：失敗 —— ${err.message}${kept ? `（保留上次的 ${kept} 筆）` : ''}`);
       }
     }
     store.save(data);

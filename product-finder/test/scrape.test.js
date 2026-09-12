@@ -179,3 +179,26 @@ test('匯出：CSV 會跳脫逗號引號，Markdown 會分來源', () => {
   assert.ok(md.includes('## Alpha Plus 官網（1 筆）'));
   assert.ok(md.includes('價格未取得'));
 });
+
+test('重新抓取：抓到 0 筆時保留上一次的資料，不覆蓋', async () => {
+  const fs = require('node:fs');
+  const store = require('../lib/store');
+  const { refresh } = require('../lib/refresh');
+  const backup = fs.existsSync(store.CACHE) ? fs.readFileSync(store.CACHE, 'utf8') : null;
+  try {
+    // 先種一份有資料的快取
+    store.save({ version: 1, sources: { momo: { label: 'momo 購物網', updatedAt: '2026-09-01T00:00:00Z', ok: true,
+      products: [{ id: 'momo:1', source: 'momo', sku: '1', name: '舊資料', price: 1, url: 'u', keywords: [] }] } } });
+    // 全部連線失敗
+    globalThis.fetch = async (url) => ({ ok: false, status: 0, url, text: async () => '' });
+
+    const data = await refresh('momo');
+    assert.strictEqual(data.sources.momo.products.length, 1, '舊資料要保留');
+    assert.strictEqual(data.sources.momo.products[0].name, '舊資料');
+    assert.strictEqual(data.sources.momo.updatedAt, '2026-09-01T00:00:00Z', '失敗不該更新時間');
+    assert.ok(data.sources.momo.error, '要標記錯誤');
+  } finally {
+    if (backup === null) fs.rmSync(store.CACHE, { force: true });
+    else fs.writeFileSync(store.CACHE, backup);
+  }
+});

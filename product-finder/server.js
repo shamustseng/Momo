@@ -229,6 +229,11 @@ async function main() {
       console.log(`開始抓取（${which}）…`);
       data = await refresh(which);
       for (const entry of snapshot().log) console.log(' ·', entry.message);
+      const failed = Object.values(data.sources).filter((s) => s.error);
+      if (failed.length) {
+        console.error(`\n有 ${failed.length} 個來源抓取失敗，已保留上一次的資料。`);
+        process.exitCode = 1; // 讓排程工具看得出來這次沒抓成功
+      }
     }
     const exportPath = argValue('--export');
     if (exportPath) {
