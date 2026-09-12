@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>阿爾法餐飲 產品查詢器｜momo × Alpha Plus 官網</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E8F62'/%3E%3Ctext x='16' y='22' font-size='18' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='white'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">Alpha Restaurant Group</span>
+      <h1>產品查詢器</h1>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab is-active" data-source="all" role="tab">全部</button>
+      <button class="tab" data-source="momo" role="tab">momo 購物網</button>
+      <button class="tab" data-source="alphaplus" role="tab">Alpha Plus 官網</button>
+    </nav>
+    <div class="actions">
+      <button class="btn btn-primary" id="refresh-btn">重新抓取兩邊</button>
+      <div class="menu">
+        <button class="btn" id="export-btn" aria-haspopup="true" aria-expanded="false">一鍵輸出</button>
+        <div class="menu-panel" id="export-menu" hidden>
+          <button data-export="csv">下載 CSV（Excel）</button>
+          <button data-export="md">下載 Markdown</button>
+          <button data-export="clip">複製全部名稱＋連結</button>
+          <button data-export="links">只複製連結</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel toolbar">
+    <label class="field search">
+      <span class="label">搜尋商品</span>
+      <input type="search" id="q" placeholder="輸入商品名稱、關鍵字或商品編號，例如：辣醬、賴山嶼、15250521" autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="label">排序</span>
+      <select id="sort">
+        <option value="default">預設（來源順序）</option>
+        <option value="price-asc">價格：低 → 高</option>
+        <option value="price-desc">價格：高 → 低</option>
+        <option value="name">名稱</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="only-listed"> 只看上架中</label>
+    <p class="count" id="count">—</p>
+  </section>
+
+  <section class="status-row" id="status-row"></section>
+
+  <section class="panel job" id="job-panel" hidden>
+    <div class="job-head">
+      <span class="spinner" aria-hidden="true"></span>
+      <strong id="job-title">正在抓取…</strong>
+      <button class="btn btn-quiet" id="job-toggle">顯示明細</button>
+    </div>
+    <ol class="job-log" id="job-log" hidden></ol>
+  </section>
+
+  <section id="results" class="results" aria-live="polite"></section>
+
+  <section class="panel settings">
+    <details>
+      <summary>momo 搜尋關鍵字設定</summary>
+      <p class="hint">重新抓取 momo 時會用這些關鍵字逐一搜尋，結果自動去除重複。用逗號或換行分隔。</p>
+      <textarea id="keywords" rows="3" spellcheck="false"></textarea>
+      <button class="btn" id="save-keywords">儲存關鍵字</button>
+      <span class="saved" id="keywords-saved" hidden>已儲存</span>
+    </details>
+  </section>
+
+  <footer class="foot">
+    <p>資料為程式即時抓取 momo 搜尋結果與 Alpha Plus 官網商品頁，僅供內部查詢使用；價格與上架狀態請以各站台當下顯示為準。</p>
+  </footer>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

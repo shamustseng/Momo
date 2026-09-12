@@ -1,0 +1,17 @@
+{
+  "name": "alpha-product-finder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "阿爾法餐飲 產品查詢器 — 一次查 momo 購物網與 Alpha Plus 官網上架中的商品與連結",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "refresh": "node server.js --refresh-only",
+    "export": "node server.js --refresh-only --export products.csv",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

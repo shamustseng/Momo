@@ -1,0 +1,24 @@
+{
+  "port": 5173,
+  "sources": {
+    "momo": {
+      "label": "momo 購物網",
+      "enabled": true,
+      "keywords": ["雞湯大叔", "賴山嶼"],
+      "maxPagesPerKeyword": 5
+    },
+    "alphaplus": {
+      "label": "Alpha Plus 官網",
+      "enabled": true,
+      "origin": "https://alphaplus.cyberbiz.co",
+      "locale": "zh-TW",
+      "maxProducts": 400
+    }
+  },
+  "network": {
+    "concurrency": 3,
+    "delayMs": 350,
+    "timeoutMs": 20000,
+    "retries": 2
+  }
+}
