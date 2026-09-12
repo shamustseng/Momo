@@ -10,7 +10,8 @@
     "refresh": "node server.js --refresh-only",
     "export": "node server.js --refresh-only --export products.csv",
     "test": "node --test test/*.test.js",
-    "build": "node server.js --export 產品清單.html"
+    "build": "node server.js --export 產品清單.html",
+    "hosted": "node scripts/build-hosted.js --refresh"
   },
   "engines": {
     "node": ">=18"

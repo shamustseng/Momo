@@ -202,3 +202,13 @@ test('重新抓取：抓到 0 筆時保留上一次的資料，不覆蓋', async
     else fs.writeFileSync(store.CACHE, backup);
   }
 });
+
+test('momo：mustMatch 會過濾掉模糊比對撈到的別家商品', async () => {
+  stubFetch([
+    ['searchShop.jsp', () => ({ body: `<ul>${momoListItem('10001', '【雞湯桑】東京雞白湯拉麵', '248')}${momoListItem('10002', '佑米 304不鏽鋼蒸汽鍋 桑拿雞蒸鍋', '1937')}</ul>` })],
+  ]);
+  const { products } = await momo.scrape(
+    { keywords: ['雞湯桑'], maxPagesPerKeyword: 1, mustMatch: ['雞湯桑', '雞湯大叔'] }, NET
+  );
+  assert.deepStrictEqual(products.map((p) => p.sku), ['10001']);
+});

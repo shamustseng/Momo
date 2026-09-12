@@ -4,8 +4,21 @@
     "momo": {
       "label": "momo 購物網",
       "enabled": true,
-      "keywords": ["雞湯大叔", "賴山嶼"],
-      "maxPagesPerKeyword": 5
+      "keywords": [
+        "雞湯大叔",
+        "賴山嶼",
+        "雞湯桑",
+        "麵屋一燈"
+      ],
+      "maxPagesPerKeyword": 5,
+      "mustMatch": [
+        "雞湯大叔",
+        "BROTH MASTER",
+        "賴山嶼",
+        "雞湯桑",
+        "麵屋一燈",
+        "阿爾法餐飲"
+      ]
     },
     "alphaplus": {
       "label": "Alpha Plus 官網",

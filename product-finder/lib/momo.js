@@ -17,6 +17,39 @@ const detailUrl = (code) => `${ORIGIN}/goods/GoodsDetail.jsp?i_code=${code}`;
  * 欄位，之後會用商品頁的 meta 標籤補齊。
  */
 function parseSearchHtml(html) {
+  const fromJsonLd = parseSearchJsonLd(html);
+  if (fromJsonLd.length) return fromJsonLd;
+  return parseSearchChunks(html);
+}
+
+/** 搜尋頁的 JSON-LD 內有完整的商品名稱、價格、圖片，一次拿齊，不用再開商品頁。 */
+function parseSearchJsonLd(html) {
+  const items = [];
+  const seen = new Set();
+  for (const node of H.jsonLd(html)) {
+    const products = node['@type'] === 'ItemList' && Array.isArray(node.itemListElement)
+      ? node.itemListElement.map((e) => (e && e.item) || e)
+      : [node];
+    for (const prod of products) {
+      if (!prod || typeof prod !== 'object') continue;
+      const type = Array.isArray(prod['@type']) ? prod['@type'].join(',') : String(prod['@type'] || '');
+      if (!/product/i.test(type)) continue;
+      const m = String(prod.url || '').match(/i_code=(\d{4,})/);
+      if (!m || seen.has(m[1])) continue;
+      seen.add(m[1]);
+      items.push({
+        code: m[1],
+        name: H.decode(prod.name || ''),
+        price: H.priceFromOffers(prod.offers),
+        image: firstImage(prod.image),
+        availability: H.availabilityFromOffers(prod.offers),
+      });
+    }
+  }
+  return items;
+}
+
+function parseSearchChunks(html) {
   const hits = [];
   const re = /i_code=(\d{4,})/g;
   let m;
@@ -123,6 +156,7 @@ async function scrape(sourceConfig, net, log = () => {}) {
 
   for (const keyword of keywords) {
     let found = 0;
+    let seen = 0;
     for (let page = 1; page <= maxPages; page++) {
       log(`momo：搜尋「${keyword}」第 ${page} 頁`);
       const res = await fetchText(SEARCH(keyword, page), {
@@ -136,6 +170,7 @@ async function scrape(sourceConfig, net, log = () => {}) {
       }
       const items = parseSearchHtml(res.body);
       if (items.length === 0) break;
+      seen += items.length;
 
       let fresh = 0;
       for (const item of items) {
@@ -151,8 +186,8 @@ async function scrape(sourceConfig, net, log = () => {}) {
       if (fresh === 0) break; // 已經翻到重複頁，沒有新商品了
       await new Promise((r) => setTimeout(r, net.delayMs));
     }
-    log(`momo：「${keyword}」累計 ${found} 筆新商品`);
-    if (found === 0) warnings.push(`「${keyword}」沒有搜到任何商品，請確認關鍵字或 momo 是否改版。`);
+    log(`momo：「${keyword}」搜到 ${seen} 筆，其中 ${found} 筆是新商品`);
+    if (seen === 0) warnings.push(`「${keyword}」沒有搜到任何商品，請確認關鍵字或 momo 是否改版。`);
   }
 
   // 名稱或價格缺漏的，逐一開商品頁補齊
@@ -177,8 +212,17 @@ async function scrape(sourceConfig, net, log = () => {}) {
     });
   }
 
+  // momo 的關鍵字搜尋是模糊比對（「雞湯桑」會撈到別家的「桑拿雞蒸鍋」），
+  // 所以只留名稱裡真的有我們品牌字樣的商品
+  const mustMatch = (sourceConfig.mustMatch || []).map((t) => String(t).toLowerCase()).filter(Boolean);
+  const isOurs = (name) => !mustMatch.length || mustMatch.some((t) => name.toLowerCase().includes(t));
+  const offBrand = all.filter((item) => item.name && !isOurs(item.name));
+  if (offBrand.length) {
+    log(`momo：略過 ${offBrand.length} 筆非本集團商品（${offBrand.slice(0, 2).map((i) => i.name.slice(0, 18)).join('、')}…）`);
+  }
+
   const products = all
-    .filter((item) => item.name)
+    .filter((item) => item.name && isOurs(item.name))
     .map((item) => ({
       id: `momo:${item.code}`,
       source: 'momo',
@@ -188,12 +232,12 @@ async function scrape(sourceConfig, net, log = () => {}) {
       currency: 'TWD',
       url: detailUrl(item.code),
       image: item.image || '',
-      status: item.status || '',
+      status: item.status || (/soldout|outofstock|discontinued/i.test(item.availability || '') ? '售完或未開賣' : ''),
       keywords: item.keywords,
     }));
 
-  const dropped = all.length - products.length;
-  if (dropped > 0) warnings.push(`有 ${dropped} 筆商品抓不到名稱，已略過。`);
+  const nameless = all.filter((item) => !item.name).length;
+  if (nameless > 0) warnings.push(`有 ${nameless} 筆商品抓不到名稱，已略過。`);
 
   return { products, warnings };
 }

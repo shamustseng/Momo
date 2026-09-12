@@ -30,7 +30,12 @@
 | `node server.js --refresh-only` | 只重新抓取、不開介面 |
 | `node server.js --refresh-only --export 清單.csv` | 抓完直接輸出成檔案（可排程） |
 | `node server.js --source momo --refresh-only` | 只重抓單一來源 |
+| `node server.js --export 產品清單.html` | 產出不需伺服器的單檔網頁（可直接雙擊開、可搜尋） |
+| `npm run hosted` | 重新抓取後產出線上版（claude.ai）的檔案到 `dist/hosted/` |
 | `npm test` | 跑測試 |
+
+在公司以外、需要走 proxy 的環境（例如 Claude Code 雲端 session）執行時，Node 內建的 fetch 不會自動讀
+`HTTPS_PROXY`，要加 `NODE_USE_ENV_PROXY=1`。
 
 ## 介面怎麼用
 
@@ -49,14 +54,17 @@
 
 | 來源 | 做法 |
 | --- | --- |
-| momo | 讀搜尋結果頁，取出商品編號、名稱、價格；列表頁少掉的欄位會再開商品頁用 `og:` / `product:price` 標籤補齊 |
-| Alpha Plus 官網 | 依序嘗試 `/products.json` → `sitemap.xml` → 逐頁爬 `/products/` 連結，再從商品頁的 JSON-LD 或 `og:` 標籤取名稱與價格 |
+| momo | 搜尋結果頁內有 JSON-LD 商品清單（名稱、價格、圖片、連結），直接讀；沒有的話退回解析 HTML，再缺的欄位開商品頁用 `og:` / `product:price` 標籤補齊 |
+| Alpha Plus 官網 | 依序嘗試 `/products.json`（實測 404）→ `sitemap.xml`（實測可用：`/sitemap.xml` → `/zh-TW/sitemap.xml`）→ 逐頁爬 `/products/` 連結，再從商品頁的 JSON-LD 取名稱與價格 |
 
 官網那邊之所以準備三種方式，是因為不確定 CYBERBIZ 有沒有開放商品 API；哪一種先成功就用哪一種，
 介面上的來源卡片會顯示實際用到的方式與警告訊息。
 
 抓取結果存在 `data/cache.json`（不進版控）。第一次打開時還沒有快取，會先顯示
-`data/seed.json` 裡 2026-09-12 人工查到的 24 筆 momo 商品，按一次「重新抓取」就會換成即時資料。
+`data/seed.json` 裡 2026-09-12 實際抓取的資料（momo 24 筆、官網 11 筆），按一次「重新抓取」就會換成即時資料。
+
+momo 的關鍵字搜尋是模糊比對（「雞湯桑」會撈到別家的「桑拿雞蒸鍋」），所以 `config.json` 的
+`mustMatch` 列了集團品牌字樣，名稱裡沒有這些字的商品會被略過。
 
 ## 注意事項
 
@@ -83,3 +91,9 @@ public/            網頁介面
 data/seed.json     初始清單（第一次使用時的預設資料）
 test/              測試
 ```
+
+## 線上版與「重新搜尋」按鈕
+
+`npm run hosted` 產出的三個檔案可發布成 claude.ai Artifact。線上版多一個**重新搜尋**按鈕：按下後頁面會把
+「有人要求重抓」寫進自己的新版本，負責維護的 Claude session 收到通知後重新抓取、更新頁面，所有開著的人
+自動看到新資料（通常 2–3 分鐘）。只有對該 Artifact 有編輯權的人按得動；唯讀檢視會看不到按鈕。

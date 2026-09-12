@@ -220,13 +220,15 @@ function parseProductHtml(html, url) {
     (product && Array.isArray(product.image) ? product.image[0] : '') ||
     '';
 
-  const slug = normalizeProductUrl(url).split('/products/')[1] || url;
+  const rawSlug = normalizeProductUrl(url).split('/products/')[1] || url;
+  let slug = rawSlug;
+  try { slug = decodeURIComponent(rawSlug); } catch { /* 保留原樣 */ }
   const idMatch = slug.match(/^\d+/);
 
   return {
-    id: `alphaplus:${idMatch ? idMatch[0] : slug}`,
+    id: `alphaplus:${slug}`,
     source: 'alphaplus',
-    sku: idMatch ? idMatch[0] : slug,
+    sku: idMatch ? idMatch[0] : '',
     name,
     price,
     currency: 'TWD',

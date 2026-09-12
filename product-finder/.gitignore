@@ -2,3 +2,4 @@ node_modules/
 # 抓取結果是本機快取，每台電腦各自重抓即可，不進版控
 data/cache.json
 *.log
+dist/

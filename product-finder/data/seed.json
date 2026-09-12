@@ -1,116 +1,42 @@
 {
   "version": 1,
-  "note": "初始資料為 2026-09-12 以「雞湯大叔」「賴山嶼」人工查詢 momo 的結果，按「重新抓取」即可換成即時資料。",
+  "note": "初始資料為 2026-09-12 實際抓取結果；按「重新抓取」即可更新。",
   "sources": {
     "momo": {
       "label": "momo 購物網",
-      "updatedAt": "2026-09-12T00:00:00+08:00",
+      "updatedAt": "2026-09-12T09:28:22.415Z",
       "ok": true,
       "error": null,
       "seeded": true,
+      "strategy": null,
       "warnings": [
-        "這是內建的初始清單，不是即時抓取的結果。"
+        "這是內建的初始資料（2026-09-12 抓取），按「重新抓取」可更新。"
       ],
       "products": [
         {
           "id": "momo:15250521",
           "source": "momo",
           "sku": "15250521",
-          "name": "雞湯大叔×賴山嶼 青花椒辣醬240g",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 青花椒辣醬240g",
           "price": 330,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15250521",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/250/521/15250521_OL.jpg?t=1785229185",
           "status": "",
           "keywords": [
-            "賴山嶼",
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15235085",
-          "source": "momo",
-          "sku": "15235085",
-          "name": "雞湯大叔×賴山嶼 青花椒辣醬240g*2入",
-          "price": 650,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15235085",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "賴山嶼",
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15634154",
-          "source": "momo",
-          "sku": "15634154",
-          "name": "雞湯大叔×賴山嶼 青花椒辣醬240g*3入",
-          "price": 930,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15634154",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "賴山嶼",
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15467510",
-          "source": "momo",
-          "sku": "15467510",
-          "name": "雞湯大叔/雞湯桑/麵屋一燈/賴山嶼通用 $799抵$888好禮即享券（一次抵用型）",
-          "price": 799,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467510",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "賴山嶼",
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15689825",
-          "source": "momo",
-          "sku": "15689825",
-          "name": "雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王 399抵499即享券",
-          "price": 399,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689825",
-          "image": "",
-          "status": "09/19 00:00 開賣",
-          "keywords": [
-            "賴山嶼",
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15689826",
-          "source": "momo",
-          "sku": "15689826",
-          "name": "雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王 799抵999即享券",
-          "price": 799,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689826",
-          "image": "",
-          "status": "09/19 00:00 開賣",
-          "keywords": [
-            "賴山嶼",
-            "雞湯大叔"
+            "雞湯大叔",
+            "賴山嶼"
           ]
         },
         {
           "id": "momo:15491916",
           "source": "momo",
           "sku": "15491916",
-          "name": "雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組",
           "price": 849,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15491916",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/491/916/15491916_OL.jpg?t=1785315844",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -120,25 +46,11 @@
           "id": "momo:15356778",
           "source": "momo",
           "sku": "15356778",
-          "name": "雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240g",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240g",
           "price": 280,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15356778",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15642252",
-          "source": "momo",
-          "sku": "15642252",
-          "name": "雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240g*2入",
-          "price": 640,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15642252",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/356/778/15356778_OL.jpg?t=1785345464",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -148,39 +60,11 @@
           "id": "momo:15414344",
           "source": "momo",
           "sku": "15414344",
-          "name": "快樂雞滴雞精60mlx10包（常溫）",
+          "name": "【BROTH MASTER 雞湯大叔】快樂雞滴雞精60mlx10包 常溫 (紅羽母雞滴煉精華 純粹無添加)",
           "price": 790,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15414344",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15127931",
-          "source": "momo",
-          "sku": "15127931",
-          "name": "快樂雞滴雞精禮盒(6入/盒)",
-          "price": 650,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15127931",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15126499",
-          "source": "momo",
-          "sku": "15126499",
-          "name": "黑松露牛肝菌雞湯禮盒（1入）",
-          "price": 599,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15126499",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/414/344/15414344_OL.jpg?t=1782357977",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -190,11 +74,85 @@
           "id": "momo:15474320",
           "source": "momo",
           "sku": "15474320",
-          "name": "黑松露牛肝菌雞湯禮盒2入",
+          "name": "【BROTH MASTER 雞湯大叔】黑松露牛肝菌雞湯禮盒2入 (濃郁蕈菇風味)",
           "price": 849,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15474320",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/474/320/15474320_OL.jpg?t=1783925366",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15467510",
+          "source": "momo",
+          "sku": "15467510",
+          "name": "【阿爾法餐飲集團】雞湯大叔/雞湯桑/麵屋一燈/賴山嶼通用 $799抵$888好禮即享券(一次抵用型)",
+          "price": 799,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467510",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/467/510/15467510_OL.jpg?t=1788545197",
+          "status": "",
+          "keywords": [
+            "雞湯大叔",
+            "賴山嶼",
+            "雞湯桑",
+            "麵屋一燈"
+          ]
+        },
+        {
+          "id": "momo:15394742",
+          "source": "momo",
+          "sku": "15394742",
+          "name": "【BROTH MASTER 雞湯大叔】$482雞湯火鍋套餐(雪花牛或梅花豬擇一)好禮即享券",
+          "price": 438,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394742",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/394/742/15394742_OL.jpg?t=1788781408",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15127931",
+          "source": "momo",
+          "sku": "15127931",
+          "name": "【BROTH MASTER 雞湯大叔】快樂雞滴雞精禮盒(6入/盒) 常溫 (紅羽母雞滴煉精華 純粹無添加)",
+          "price": 650,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15127931",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/127/931/15127931_OL.jpg?t=1782250278",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15235085",
+          "source": "momo",
+          "sku": "15235085",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 青花椒辣醬240g*2入",
+          "price": 650,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15235085",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/235/085/15235085_OL.jpg?t=1781726306",
+          "status": "",
+          "keywords": [
+            "雞湯大叔",
+            "賴山嶼"
+          ]
+        },
+        {
+          "id": "momo:15126499",
+          "source": "momo",
+          "sku": "15126499",
+          "name": "【BROTH MASTER 雞湯大叔】黑松露牛肝菌雞湯禮盒 (濃郁蕈菇風味)",
+          "price": 599,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15126499",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/126/499/15126499_OL.jpg?t=1775643383",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -204,53 +162,11 @@
           "id": "momo:15540751",
           "source": "momo",
           "sku": "15540751",
-          "name": "雞湯大叔×海瑞摃丸 泰度打拋摃丸*4包組",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔×海瑞摃丸 泰度打拋摃丸*4包組 (網紅娘娘監製)",
           "price": 799,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15540751",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15394742",
-          "source": "momo",
-          "sku": "15394742",
-          "name": "$482雞湯火鍋套餐（雪花牛或梅花豬擇一）好禮即享券",
-          "price": 438,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394742",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15394739",
-          "source": "momo",
-          "sku": "15394739",
-          "name": "$646雞湯火鍋套餐（海鮮拼盤）好禮即享券",
-          "price": 587,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394739",
-          "image": "",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
-          ]
-        },
-        {
-          "id": "momo:15394740",
-          "source": "momo",
-          "sku": "15394740",
-          "name": "$613松露野菇雞湯火鍋套餐（板腱牛）好禮即享券",
-          "price": 557,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394740",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/540/751/15540751_OL.jpg?t=1785393237",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -260,11 +176,25 @@
           "id": "momo:15467509",
           "source": "momo",
           "sku": "15467509",
-          "name": "$1494泰國季限定-泰chill雙人套餐好禮即享券",
+          "name": "【BROTH MASTER 雞湯大叔】$1494泰國季限定-泰chill雙人套餐好禮即享券(贈蒜香羅勒雞腿排乙份)",
           "price": 1299,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467509",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/467/509/15467509_OL.jpg?t=1788781249",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15394739",
+          "source": "momo",
+          "sku": "15394739",
+          "name": "【BROTH MASTER 雞湯大叔】$646雞湯火鍋套餐(海鮮拼盤)好禮即享券",
+          "price": 587,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394739",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/394/739/15394739_OL.jpg?t=1788781436",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -274,98 +204,314 @@
           "id": "momo:15633823",
           "source": "momo",
           "sku": "15633823",
-          "name": "泰鮮雙享組（蛤蜊雞湯3包+打拋摃丸2）",
+          "name": "【BROTH MASTER 雞湯大叔】泰鮮雙享組 (含蛤蜊雞湯*3包+打拋摃丸*2)",
           "price": 888,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15633823",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/633/823/15633823_OL.jpg?t=1787735668",
           "status": "",
           "keywords": [
             "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15394740",
+          "source": "momo",
+          "sku": "15394740",
+          "name": "【BROTH MASTER 雞湯大叔】$613松露野菇雞湯火鍋套餐(板腱牛)好禮即享券",
+          "price": 557,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394740",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/394/740/15394740_OL.jpg?t=1788781283",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15642252",
+          "source": "momo",
+          "sku": "15642252",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240gx2入",
+          "price": 640,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15642252",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/642/252/15642252_OL.jpg?t=1787905580",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15634154",
+          "source": "momo",
+          "sku": "15634154",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 青花椒辣醬240g*3入",
+          "price": 930,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15634154",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/634/154/15634154_OL.jpg?t=1787738235",
+          "status": "",
+          "keywords": [
+            "雞湯大叔",
+            "賴山嶼"
+          ]
+        },
+        {
+          "id": "momo:15689826",
+          "source": "momo",
+          "sku": "15689826",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王 799抵999 即享券(限內用/一次抵用型)",
+          "price": 799,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689826",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/689/826/15689826_OL.jpg?t=1789101133",
+          "status": "",
+          "keywords": [
+            "雞湯大叔",
+            "賴山嶼",
+            "雞湯桑",
+            "麵屋一燈"
+          ]
+        },
+        {
+          "id": "momo:15689825",
+          "source": "momo",
+          "sku": "15689825",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王 399抵499 即享券(限內用/一次抵用型)",
+          "price": 399,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689825",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0015/689/825/15689825_OL.jpg?t=1789101128",
+          "status": "",
+          "keywords": [
+            "雞湯大叔",
+            "賴山嶼",
+            "雞湯桑",
+            "麵屋一燈"
           ]
         },
         {
           "id": "momo:14614419",
           "source": "momo",
           "sku": "14614419",
-          "name": "松露旨味雞白湯拉麵",
+          "name": "【雞湯桑】$298松露旨味雞白湯拉麵 好禮即享券",
           "price": 298,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614419",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/419/14614419_OL.jpg?t=1761804063",
           "status": "",
           "keywords": [
-            "雞湯大叔"
+            "雞湯大叔",
+            "雞湯桑"
           ]
         },
         {
           "id": "momo:14614418",
           "source": "momo",
           "sku": "14614418",
-          "name": "東京雞白湯拉麵",
+          "name": "【雞湯桑】$248東京雞白湯拉麵 好禮即享券",
           "price": 248,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614418",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/418/14614418_OL.jpg?t=1761804061",
           "status": "",
           "keywords": [
-            "雞湯大叔"
+            "雞湯大叔",
+            "雞湯桑"
           ]
         },
         {
           "id": "momo:14614420",
           "source": "momo",
           "sku": "14614420",
-          "name": "海膽魚子雞白湯拉麵",
+          "name": "【雞湯桑】$298海膽魚子雞白湯拉麵 好禮即享券",
           "price": 298,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614420",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/420/14614420_OL.jpg?t=1761804064",
           "status": "",
           "keywords": [
-            "雞湯大叔"
+            "雞湯大叔",
+            "雞湯桑"
           ]
         },
         {
           "id": "momo:14614416",
           "source": "momo",
           "sku": "14614416",
-          "name": "櫻花柚子拉麵",
+          "name": "【雞湯桑】$248櫻花柚子拉麵 好禮即享券",
           "price": 248,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614416",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/416/14614416_OL.jpg?t=1761804058",
           "status": "",
           "keywords": [
-            "雞湯大叔"
+            "雞湯大叔",
+            "雞湯桑"
           ]
         },
         {
           "id": "momo:14614417",
           "source": "momo",
           "sku": "14614417",
-          "name": "松露牛肝菌拉麵",
+          "name": "【雞湯桑】$248松露牛肝菌拉麵 好禮即享券",
           "price": 248,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614417",
-          "image": "",
+          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/417/14614417_OL.jpg?t=1761804060",
           "status": "",
           "keywords": [
-            "雞湯大叔"
+            "雞湯大叔",
+            "雞湯桑"
           ]
         }
       ]
     },
     "alphaplus": {
       "label": "Alpha Plus 官網",
-      "updatedAt": null,
-      "ok": false,
+      "updatedAt": "2026-09-12T09:28:29.332Z",
+      "ok": true,
       "error": null,
       "seeded": true,
+      "strategy": "sitemap",
       "warnings": [
-        "官網商品尚未抓取過，請按「重新抓取」。"
+        "這是內建的初始資料（2026-09-12 抓取），按「重新抓取」可更新。"
       ],
-      "products": []
+      "products": [
+        {
+          "id": "alphaplus:雞湯大叔xkai_翡翠檸檬康普氣泡茶",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "【雞湯大叔 x Kai】翡翠檸檬康普氣泡茶",
+          "price": 269,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9B%9E%E6%B9%AF%E5%A4%A7%E5%8F%94xkai_%E7%BF%A1%E7%BF%A0%E6%AA%B8%E6%AA%AC%E5%BA%B7%E6%99%AE%E6%B0%A3%E6%B3%A1%E8%8C%B6",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzcxNjI1NzEyLzE3ODgwNTUyMjBfZTg0ZTc3OWNhYWFiYzBiODYzY2EuanBlZyJdLFsicCIsInRodW1iIiwiNDgweDQ4MCJdXQ.jpeg?sha=d53b469b858e842d",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:百香土鳳梨氣泡飲-賴山嶼",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "賴山嶼 百香土鳳梨氣泡飲 （24入組)",
+          "price": 1650,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E7%99%BE%E9%A6%99%E5%9C%9F%E9%B3%B3%E6%A2%A8%E6%B0%A3%E6%B3%A1%E9%A3%B2-%E8%B3%B4%E5%B1%B1%E5%B6%BC",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY0NDA1NTkwLzE3NjczMzE0MDdfY2FkNjk4OGY5Zjg2MTg0ZTAxZjUuanBlZyJdLFsicCIsInRodW1iIiwiNDgweDQ4MCJdXQ.jpeg?sha=c04792b0cef46e63",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:經典限定椒香成雙禮盒-內含青花椒辣醬茶油剝皮辣椒各1瓶",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "【經典限定】椒香成雙禮盒 (內含青花椒辣醬+茶油剝皮辣椒各1瓶) (限量加贈品牌保冷袋)",
+          "price": 1099,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E7%B6%93%E5%85%B8%E9%99%90%E5%AE%9A%E6%A4%92%E9%A6%99%E6%88%90%E9%9B%99%E7%A6%AE%E7%9B%92-%E5%85%A7%E5%90%AB%E9%9D%92%E8%8A%B1%E6%A4%92%E8%BE%A3%E9%86%AC%E8%8C%B6%E6%B2%B9%E5%89%9D%E7%9A%AE%E8%BE%A3%E6%A4%92%E5%90%841%E7%93%B6",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY5NTQ0NDcyLzE3ODQxNjY3MzVfODcyN2ZlMzFkNDcwNTVhZGI2NDIucG5nIl0sWyJwIiwidGh1bWIiLCI0ODB4NDgwIl1d.png?sha=688600e084b73ee5",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:泰度打拋摃丸",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "【雞湯大叔x 海瑞摃丸】泰度打拋摃丸300g (爸氣開飯3入組)",
+          "price": 630,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E6%B3%B0%E5%BA%A6%E6%89%93%E6%8B%8B%E6%91%83%E4%B8%B8",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY5NDg0MTkzLzE3ODQwNzM5NDhfZjJjNWRkZmVkMDdmMDQyNjg2YWQucG5nIl0sWyJwIiwidGh1bWIiLCI0ODB4NDgwIl1d.png?sha=32ce2ed72d8ddc04",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:蛤蜊雞湯",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "限時免運【消夜救星】雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組",
+          "price": 999,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E8%9B%A4%E8%9C%8A%E9%9B%9E%E6%B9%AF",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY5MjEwMjM5LzE3ODI5NjI2ODhfNmI2YzY1YTM2OGNiMGVhZjk2YTYuanBlZyJdLFsicCIsInRodW1iIiwiNDgweDQ4MCJdXQ.jpeg?sha=0a9f6ca957e3ecb9",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:茶油剝皮辣椒",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "【白飯小偷】雞湯大叔 X 洄瀾醬人 茶油剝皮辣椒240g",
+          "price": 390,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E8%8C%B6%E6%B2%B9%E5%89%9D%E7%9A%AE%E8%BE%A3%E6%A4%92",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY3ODczNjU0LzE3ODM5OTQwMDBfNzhjNjE4YTYwODIxMzE3NmFkOTYuanBlZyJdLFsicCIsInRodW1iIiwiNDgweDQ4MCJdXQ.jpeg?sha=2f0c387a6ce537ba",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:青花椒辣醬3入",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "賴山嶼 青花椒辣醬（超值三入）",
+          "price": 899,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9D%92%E8%8A%B1%E6%A4%92%E8%BE%A3%E9%86%AC3%E5%85%A5",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY2MTYyMDU1LzE3ODAwNDIxNzRfYTA0OTkwMTgyOWNjZjY2ZGZiZDEucG5nIl0sWyJwIiwidGh1bWIiLCI0ODB4NDgwIl1d.png?sha=6d671a70667ce406",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:百香土鳳梨氣泡飲",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "賴山嶼 百香土鳳梨氣泡飲 （6入組）",
+          "price": 415,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E7%99%BE%E9%A6%99%E5%9C%9F%E9%B3%B3%E6%A2%A8%E6%B0%A3%E6%B3%A1%E9%A3%B2",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY0NDA1NzMzLzE3ODQyNzA0NzhfNDEwMmM4ZWE0ZTk2NDhlNTIyMjUucG5nIl0sWyJwIiwidGh1bWIiLCI0ODB4NDgwIl1d.png?sha=d0da51d60c548d5a",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:爪爪兄弟餐包-蔬果燉雞",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "爪爪兄弟 寵物餐包-蔬果燉雞 20入組",
+          "price": 1490,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E7%88%AA%E7%88%AA%E5%85%84%E5%BC%9F%E9%A4%90%E5%8C%85-%E8%94%AC%E6%9E%9C%E7%87%89%E9%9B%9E",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzY0NDA0MzUxLzE3NjczMjE3MTJfYjBjYzM2MWIxYmI4N2EyYjhkZjcuanBlZyJdLFsicCIsInRodW1iIiwiNDgweDQ4MCJdXQ.jpeg?sha=38804ab0f2f8dfd6",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:松露雞湯禮盒",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "【限時免運】黑松露牛肝菌雞湯禮盒 2入組",
+          "price": 999,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E6%9D%BE%E9%9C%B2%E9%9B%9E%E6%B9%AF%E7%A6%AE%E7%9B%92",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzYzMjExMzEzLzE3ODY5NDAzODdfZWY1ZTRkODYwY2U5NWY0N2VhZTMucG5nIl0sWyJwIiwidGh1bWIiLCI0ODB4NDgwIl1d.png?sha=d0aef630987b7e50",
+          "status": "",
+          "keywords": []
+        },
+        {
+          "id": "alphaplus:滴雞精禮盒",
+          "source": "alphaplus",
+          "sku": "",
+          "name": "雞湯大叔快樂雞滴雞精",
+          "price": 990,
+          "currency": "TWD",
+          "url": "https://alphaplus.cyberbiz.co/zh-TW/products/%E6%BB%B4%E9%9B%9E%E7%B2%BE%E7%A6%AE%E7%9B%92",
+          "image": "https://cdn-general.cybassets.com/media/W1siZiIsIjM0MTc5L3Byb2R1Y3RzLzU5ODk0NDE0LzE3ODAwNDA5ODVfNmEyMjQ3MTNiZmZiOTQyNDY5N2UucG5nIl0sWyJwIiwidGh1bWIiLCI0ODB4NDgwIl1d.png?sha=1f30ed360da35aa2",
+          "status": "",
+          "keywords": []
+        }
+      ]
     }
   }
 }
