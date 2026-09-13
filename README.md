@@ -27,3 +27,9 @@
 ## 檔案
 
 - `index.html` — 完整工具（HTML + CSS + JavaScript，無外部依賴）。
+
+## 讓 Claude 讀取 Lark 資料
+
+`.mcp.json` 已宣告 Lark 官方 MCP 伺服器。在 Claude 雲端環境設定 `LARK_APP_ID`、
+`LARK_APP_SECRET` 兩個環境變數後，新 session 即可直接查多維表格（例如庫存表）。
+完整步驟見 [`docs/lark-mcp-setup.md`](docs/lark-mcp-setup.md)。

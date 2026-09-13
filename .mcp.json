@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "lark": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@larksuiteoapi/lark-mcp@0.5.1",
+        "mcp",
+        "--app-id", "${LARK_APP_ID}",
+        "--app-secret", "${LARK_APP_SECRET}",
+        "--domain", "${LARK_DOMAIN:-https://open.larksuite.com}",
+        "--tools", "${LARK_TOOLS:-preset.default,preset.base.batch}",
+        "--language", "zh"
+      ]
+    }
+  }
+}
