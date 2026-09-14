@@ -162,7 +162,7 @@ function card(p) {
   actions.append(copy); c.append(actions);
   const sub = el('div', 'sub');
   sub.append(el('span', 'pill ' + p.source, LABELS[p.source]));
-  if (p.sku) sub.append(el('span', 'pill', '編號 ' + p.sku));
+  if (p.sku) sub.append(el('span', 'pill', p.source === 'momo' ? 'momo 品號 ' + p.sku : '編號 ' + p.sku));
   if (p.status) sub.append(el('span', 'pill warn', p.status));
   for (const k of p.keywords) sub.append(el('span', 'pill', k));
   c.append(sub);
@@ -272,8 +272,8 @@ async function copyText(text, msg) {
 }
 function csvCell(v) { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function buildCsv(list) {
-  const rows = [['來源', '商品名稱', '售價(TWD)', '商品連結', '商品編號', '狀態', '對應關鍵字']];
-  for (const p of list) rows.push([LABELS[p.source], p.name, p.price ?? '', p.url, p.sku, p.status || '上架中', p.keywords.join(' / ')]);
+  const rows = [['來源', '商品名稱', '售價(TWD)', '商品連結', 'momo 品號', '狀態', '對應關鍵字']];
+  for (const p of list) rows.push([LABELS[p.source], p.name, p.price ?? '', p.url, p.source === 'momo' ? p.sku : '', p.status || '上架中', p.keywords.join(' / ')]);
   return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 function exportAction(kind) {

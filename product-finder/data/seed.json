@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "note": "初始資料為 2026-09-12 實際抓取結果；按「重新抓取」即可更新。",
+  "note": "初始資料為 2026-09-14 實際抓取結果；按「重新抓取」即可更新。",
   "sources": {
     "momo": {
       "label": "momo 購物網",
-      "updatedAt": "2026-09-12T09:28:22.415Z",
+      "updatedAt": "2026-09-14T05:39:22.119Z",
       "ok": true,
       "error": null,
       "seeded": true,
       "strategy": null,
       "warnings": [
-        "這是內建的初始資料（2026-09-12 抓取），按「重新抓取」可更新。"
+        "這是內建的初始資料（2026-09-14 抓取），按「重新抓取」可更新。"
       ],
       "products": [
         {
@@ -21,25 +21,11 @@
           "price": 330,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15250521",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/250/521/15250521_OL.jpg?t=1785229185",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/250/521/15250521_OL.jpg?t=1785229185",
           "status": "",
           "keywords": [
             "雞湯大叔",
             "賴山嶼"
-          ]
-        },
-        {
-          "id": "momo:15491916",
-          "source": "momo",
-          "sku": "15491916",
-          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組",
-          "price": 849,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15491916",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/491/916/15491916_OL.jpg?t=1785315844",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
           ]
         },
         {
@@ -50,7 +36,21 @@
           "price": 280,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15356778",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/356/778/15356778_OL.jpg?t=1785345464",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/356/778/15356778_OL.jpg?t=1785345464",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15491916",
+          "source": "momo",
+          "sku": "15491916",
+          "name": "【BROTH MASTER 雞湯大叔】雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組",
+          "price": 849,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15491916",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/491/916/15491916_OL.jpg?t=1785315844",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -64,7 +64,7 @@
           "price": 790,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15414344",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/414/344/15414344_OL.jpg?t=1782357977",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/414/344/15414344_OL.jpg?t=1782357977",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -78,7 +78,21 @@
           "price": 849,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15474320",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/474/320/15474320_OL.jpg?t=1783925366",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/474/320/15474320_OL.jpg?t=1783925366",
+          "status": "",
+          "keywords": [
+            "雞湯大叔"
+          ]
+        },
+        {
+          "id": "momo:15394742",
+          "source": "momo",
+          "sku": "15394742",
+          "name": "【BROTH MASTER 雞湯大叔】$482雞湯火鍋套餐(雪花牛或梅花豬擇一)好禮即享券",
+          "price": 438,
+          "currency": "TWD",
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394742",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/394/742/15394742_OL.jpg?t=1788781408",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -92,27 +106,13 @@
           "price": 799,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467510",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/467/510/15467510_OL.jpg?t=1788545197",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/467/510/15467510_OL.jpg?t=1788545197",
           "status": "",
           "keywords": [
             "雞湯大叔",
             "賴山嶼",
             "雞湯桑",
             "麵屋一燈"
-          ]
-        },
-        {
-          "id": "momo:15394742",
-          "source": "momo",
-          "sku": "15394742",
-          "name": "【BROTH MASTER 雞湯大叔】$482雞湯火鍋套餐(雪花牛或梅花豬擇一)好禮即享券",
-          "price": 438,
-          "currency": "TWD",
-          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394742",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/394/742/15394742_OL.jpg?t=1788781408",
-          "status": "",
-          "keywords": [
-            "雞湯大叔"
           ]
         },
         {
@@ -123,7 +123,7 @@
           "price": 650,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15127931",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/127/931/15127931_OL.jpg?t=1782250278",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/127/931/15127931_OL.jpg?t=1782250278",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -137,7 +137,7 @@
           "price": 650,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15235085",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/235/085/15235085_OL.jpg?t=1781726306",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/235/085/15235085_OL.jpg?t=1781726306",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -152,7 +152,7 @@
           "price": 599,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15126499",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/126/499/15126499_OL.jpg?t=1775643383",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/126/499/15126499_OL.jpg?t=1775643383",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -166,7 +166,7 @@
           "price": 799,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15540751",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/540/751/15540751_OL.jpg?t=1785393237",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/540/751/15540751_OL.jpg?t=1785393237",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -180,7 +180,7 @@
           "price": 1299,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467509",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/467/509/15467509_OL.jpg?t=1788781249",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/467/509/15467509_OL.jpg?t=1788781249",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -194,7 +194,7 @@
           "price": 587,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394739",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/394/739/15394739_OL.jpg?t=1788781436",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/394/739/15394739_OL.jpg?t=1788781436",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -208,7 +208,7 @@
           "price": 888,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15633823",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/633/823/15633823_OL.jpg?t=1787735668",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/633/823/15633823_OL.jpg?t=1787735668",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -222,7 +222,7 @@
           "price": 557,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394740",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/394/740/15394740_OL.jpg?t=1788781283",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/394/740/15394740_OL.jpg?t=1788781283",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -236,7 +236,7 @@
           "price": 640,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15642252",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/642/252/15642252_OL.jpg?t=1787905580",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/642/252/15642252_OL.jpg?t=1787905580",
           "status": "",
           "keywords": [
             "雞湯大叔"
@@ -250,7 +250,7 @@
           "price": 930,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15634154",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/634/154/15634154_OL.jpg?t=1787738235",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/634/154/15634154_OL.jpg?t=1787738235",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -265,7 +265,7 @@
           "price": 799,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689826",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/689/826/15689826_OL.jpg?t=1789101133",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/689/826/15689826_OL.jpg?t=1789101133",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -282,7 +282,7 @@
           "price": 399,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689825",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0015/689/825/15689825_OL.jpg?t=1789101128",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0015/689/825/15689825_OL.jpg?t=1789101128",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -299,7 +299,7 @@
           "price": 298,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614419",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/419/14614419_OL.jpg?t=1761804063",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0014/614/419/14614419_OL.jpg?t=1761804063",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -314,7 +314,7 @@
           "price": 248,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614418",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/418/14614418_OL.jpg?t=1761804061",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0014/614/418/14614418_OL.jpg?t=1761804061",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -329,7 +329,7 @@
           "price": 298,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614420",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/420/14614420_OL.jpg?t=1761804064",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0014/614/420/14614420_OL.jpg?t=1761804064",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -344,7 +344,7 @@
           "price": 248,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614416",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/416/14614416_OL.jpg?t=1761804058",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0014/614/416/14614416_OL.jpg?t=1761804058",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -359,7 +359,7 @@
           "price": 248,
           "currency": "TWD",
           "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614417",
-          "image": "https://img3.momoshop.com.tw/goodsimg/0014/614/417/14614417_OL.jpg?t=1761804060",
+          "image": "https://img2.momoshop.com.tw/goodsimg/0014/614/417/14614417_OL.jpg?t=1761804060",
           "status": "",
           "keywords": [
             "雞湯大叔",
@@ -370,13 +370,13 @@
     },
     "alphaplus": {
       "label": "Alpha Plus 官網",
-      "updatedAt": "2026-09-12T09:28:29.332Z",
+      "updatedAt": "2026-09-14T05:39:29.436Z",
       "ok": true,
       "error": null,
       "seeded": true,
       "strategy": "sitemap",
       "warnings": [
-        "這是內建的初始資料（2026-09-12 抓取），按「重新抓取」可更新。"
+        "這是內建的初始資料（2026-09-14 抓取），按「重新抓取」可更新。"
       ],
       "products": [
         {

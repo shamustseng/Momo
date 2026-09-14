@@ -212,3 +212,19 @@ test('momo：mustMatch 會過濾掉模糊比對撈到的別家商品', async () 
   );
   assert.deepStrictEqual(products.map((p) => p.sku), ['10001']);
 });
+
+test('匯出：momo 品號只出現在 momo 商品上，Alpha Plus 留空', () => {
+  const products = [
+    { source: 'momo', sku: '15250521', name: '雞湯大叔×賴山嶼 青花椒辣醬240g', price: 330, url: 'https://a', status: '', keywords: [] },
+    { source: 'alphaplus', sku: '', name: '康普氣泡茶', price: 269, url: 'https://b', status: '', keywords: [] },
+  ];
+  const csv = toCsv(products);
+  assert.ok(csv.includes('momo 品號'), 'CSV 表頭要明確標示是 momo 的品號');
+  const lines = csv.trim().split('\r\n');
+  assert.ok(lines[1].includes(',15250521,'), 'momo 那列要帶品號');
+  assert.ok(lines[2].includes(',,'), 'Alpha Plus 那列品號欄要留空');
+
+  const md = toMarkdown(products, {});
+  assert.ok(md.includes('momo 品號 15250521'), 'Markdown 也要標示 momo 品號');
+  assert.ok(!md.includes('康普氣泡茶｜momo 品號'), 'Alpha Plus 商品不該出現 momo 品號字樣');
+});

@@ -162,7 +162,7 @@ function productCard(product) {
 
   const sub = el('div', 'sub');
   sub.append(el('span', `pill ${product.source}`, LABELS[product.source] || product.source));
-  if (product.sku) sub.append(el('span', 'pill', `編號 ${product.sku}`));
+  if (product.sku) sub.append(el('span', 'pill', product.source === 'momo' ? `momo 品號 ${product.sku}` : `編號 ${product.sku}`));
   if (product.status) sub.append(el('span', 'pill warn', product.status));
   for (const keyword of product.keywords || []) sub.append(el('span', 'pill', keyword));
   card.append(sub);

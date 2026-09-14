@@ -9,7 +9,8 @@ function csvCell(value) {
 
 /** 匯出 CSV。加 BOM，Excel 開啟中文才不會變亂碼。 */
 function toCsv(products, { bom = true } = {}) {
-  const header = ['來源', '商品名稱', '售價(TWD)', '商品連結', '商品編號', '狀態', '對應關鍵字'];
+  // 「momo 品號」是 momo 官網商品頁上寫的「品號」（即 i_code），Alpha Plus 官網沒有對應編號，該欄留空
+  const header = ['來源', '商品名稱', '售價(TWD)', '商品連結', 'momo 品號', '狀態', '對應關鍵字'];
   const lines = [header.map(csvCell).join(',')];
   for (const p of products) {
     lines.push([
@@ -17,7 +18,7 @@ function toCsv(products, { bom = true } = {}) {
       p.name,
       p.price === null || p.price === undefined ? '' : p.price,
       p.url,
-      p.sku || '',
+      p.source === 'momo' ? (p.sku || '') : '',
       p.status || '上架中',
       (p.keywords || []).join(' / '),
     ].map(csvCell).join(','));
@@ -41,7 +42,8 @@ function toMarkdown(products, updatedAt = {}) {
     for (const p of list) {
       const price = p.price === null || p.price === undefined ? '價格未取得' : `$${p.price.toLocaleString('zh-TW')}`;
       const status = p.status ? `｜${p.status}` : '';
-      out.push(`- ${p.name}｜${price}${status}｜${p.url}`);
+      const sku = p.source === 'momo' && p.sku ? `｜momo 品號 ${p.sku}` : '';
+      out.push(`- ${p.name}｜${price}${sku}${status}｜${p.url}`);
     }
     out.push('');
   }
