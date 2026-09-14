@@ -232,13 +232,15 @@ function renderRefreshState() {
   const at = DATA.refreshRequestedAt;
   if (!at) { banner.hidden = true; return; }
   const ageMin = (Date.now() - new Date(at).getTime()) / 60000;
+  // 重新搜尋由背景排程處理，每小時至少會巡一次，所以 60 分鐘內都算正常等待範圍
+  const STALE_AFTER_MIN = 60;
   banner.hidden = false;
-  banner.classList.toggle('stale', ageMin > 15);
-  $('refresh-text').textContent = ageMin > 15
-    ? '上次於 ' + fmtTime(at) + ' 送出的重新搜尋還沒完成，可以再按一次「重新搜尋」。'
-    : '已於 ' + fmtTime(at) + ' 送出重新搜尋，正在抓取 momo 與官網，完成後本頁會自動更新（通常 2–3 分鐘）。';
+  banner.classList.toggle('stale', ageMin > STALE_AFTER_MIN);
+  $('refresh-text').textContent = ageMin > STALE_AFTER_MIN
+    ? '上次於 ' + fmtTime(at) + ' 送出的重新搜尋超過一小時還沒完成，可能系統忙線，可以再按一次「重新搜尋」或請 Shamus 確認。'
+    : '已於 ' + fmtTime(at) + ' 送出重新搜尋，正在抓取 momo 與官網，完成後本頁會自動更新（通常幾分鐘內，最長約一小時）。';
   const btn = $('refresh-btn');
-  if (!btn.hidden) btn.disabled = ageMin <= 15;
+  if (!btn.hidden) btn.disabled = ageMin <= STALE_AFTER_MIN;
 }
 
 function renderIndex(payload) {
