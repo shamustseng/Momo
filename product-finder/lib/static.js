@@ -32,14 +32,21 @@ function preparePayload(data) {
       })),
     };
   }
-  return { generatedAt: new Date().toISOString(), refreshRequestedAt: null, sources };
+  return {
+    generatedAt: new Date().toISOString(),
+    refreshRequestedAt: null,
+    refreshStatus: null,   // 'pending' | 'failed' | null（沒有進行中的請求）
+    refreshError: null,
+    sources,
+  };
 }
 
 const EXTRA_CSS = `
 .static-note{ font-size:12.5px; color:var(--ink-muted); margin:0; }
 .refresh-banner{ margin-top:14px; padding:12px 16px; display:flex; align-items:center; gap:10px; font-size:13.5px; }
 .refresh-banner .spinner{ display:inline-block; }
-.refresh-banner.stale .spinner{ display:none; }
+.refresh-banner.stale .spinner, .refresh-banner.failed .spinner{ display:none; }
+.refresh-banner.failed{ background:var(--danger-bg, #fdecea); color:var(--danger-ink, #8a1f11); border-color:var(--danger-border, #f3b4ab); }
 .copy-overlay{
   position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.45);
   display:flex; align-items:center; justify-content:center; padding:20px;
@@ -227,20 +234,34 @@ function render() {
 
 /* ---------- 重新搜尋（只有線上版會亮起來） ---------- */
 
+// 背景排程每 10 分鐘巡一次未完成的請求，所以 10 分鐘內沒有回應就視為逾時失敗
+const REFRESH_TIMEOUT_MIN = 10;
+
 function renderRefreshState() {
   const banner = $('refresh-banner');
   const at = DATA.refreshRequestedAt;
-  if (!at) { banner.hidden = true; return; }
-  const ageMin = (Date.now() - new Date(at).getTime()) / 60000;
-  // 重新搜尋由背景排程處理，每小時至少會巡一次，所以 60 分鐘內都算正常等待範圍
-  const STALE_AFTER_MIN = 60;
-  banner.hidden = false;
-  banner.classList.toggle('stale', ageMin > STALE_AFTER_MIN);
-  $('refresh-text').textContent = ageMin > STALE_AFTER_MIN
-    ? '上次於 ' + fmtTime(at) + ' 送出的重新搜尋超過一小時還沒完成，可能系統忙線，可以再按一次「重新搜尋」或請 Shamus 確認。'
-    : '已於 ' + fmtTime(at) + ' 送出重新搜尋，正在抓取 momo 與官網，完成後本頁會自動更新（通常幾分鐘內，最長約一小時）。';
   const btn = $('refresh-btn');
-  if (!btn.hidden) btn.disabled = ageMin <= STALE_AFTER_MIN;
+
+  if (DATA.refreshStatus === 'failed') {
+    banner.hidden = false;
+    banner.classList.remove('stale');
+    banner.classList.add('failed');
+    $('refresh-text').textContent = '重新搜尋失敗：' + (DATA.refreshError || '發生未知錯誤') + '，請再試一次。';
+    if (!btn.hidden) btn.disabled = false;
+    return;
+  }
+
+  if (!at) { banner.hidden = true; banner.classList.remove('failed', 'stale'); return; }
+
+  const ageMin = (Date.now() - new Date(at).getTime()) / 60000;
+  const timedOut = ageMin > REFRESH_TIMEOUT_MIN;
+  banner.hidden = false;
+  banner.classList.toggle('failed', timedOut);
+  banner.classList.remove('stale');
+  $('refresh-text').textContent = timedOut
+    ? '已於 ' + fmtTime(at) + ' 送出的重新搜尋超過 10 分鐘沒有回應，視為失敗，請再試一次。'
+    : '已於 ' + fmtTime(at) + ' 送出重新搜尋，正在抓取 momo 與官網，完成後本頁會自動更新（10 分鐘內會有結果）。';
+  if (!btn.hidden) btn.disabled = !timedOut;
 }
 
 function renderIndex(payload) {
@@ -277,7 +298,12 @@ function setupRefreshButton(artifact) {
     btn.disabled = true;
     btn.textContent = '送出中…';
     try {
-      await artifact.publish(renderIndex({ ...DATA, refreshRequestedAt: new Date().toISOString() }));
+      await artifact.publish(renderIndex({
+        ...DATA,
+        refreshRequestedAt: new Date().toISOString(),
+        refreshStatus: 'pending',
+        refreshError: null,
+      }));
       // 成功後頁面會自動重新載入到新版本，不需要再做什麼
     } catch (err) {
       const code = err && err.code;
@@ -437,6 +463,8 @@ $('copy-retry').addEventListener('click', async () => {
 $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
 render();
 setupCapabilities();
+// 有請求還在等待時，每 20 秒重畫一次橫幅，逾時能自動變成「失敗」，不用使用者手動重新整理
+setInterval(() => { if (DATA.refreshRequestedAt && DATA.refreshStatus !== 'failed') renderRefreshState(); }, 20000);
 `;
 
 function appJs(hosted) {
