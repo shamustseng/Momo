@@ -1,0 +1,532 @@
+<title>泰Chill 煎餃權利金測算器</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+    --border:#DDD6C7; --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+    --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+    --lf:#B8322B; --lf-soft:#F8E2DF; --lf-ink:#6E1B16;
+    --nn:#7A4BB5; --nn-soft:#ECE3F7; --nn-ink:#3F2466;
+    --good:#2F9E44; --bad:#C4362F;
+    --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+    --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+      --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+      --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+      --lf:#D8574F; --lf-soft:#3E1F1C; --lf-ink:#F5C6C1;
+      --nn:#A47BE0; --nn-soft:#2E2340; --nn-ink:#DCCBF5;
+      --good:#4CAF6B; --bad:#E2665F;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+    --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+    --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+    --lf:#D8574F; --lf-soft:#3E1F1C; --lf-ink:#F5C6C1;
+    --nn:#A47BE0; --nn-soft:#2E2340; --nn-ink:#DCCBF5;
+    --good:#4CAF6B; --bad:#E2665F;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--ink); font-family:var(--font-ui); font-size:14.5px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+  h1,h2,h3{ text-wrap:balance; font-weight:800; letter-spacing:-0.01em; margin:0; }
+  .num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  button,input,select{ font:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .topbar{ position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
+  .topbar-inner{ max-width:1180px; margin:0 auto; padding:14px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; }
+  .brand{ display:flex; flex-direction:column; gap:2px; margin-right:auto; }
+  .brand .eyebrow{ font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; }
+  .brand h1{ font-size:19px; }
+  .theme-toggle{ border:1px solid var(--border); background:var(--surface); color:var(--ink-muted); border-radius:999px; width:32px; height:32px; cursor:pointer; display:grid; place-items:center; }
+  .theme-toggle:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+  .page{ max-width:1180px; margin:0 auto; padding-block:26px 90px; padding-inline:20px; display:flex; flex-direction:column; gap:22px; }
+  .hero p{ max-width:66ch; color:var(--ink-muted); margin:8px 0 0; }
+  .hero .source{ font-size:12.5px; color:var(--ink-faint); margin-top:10px; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; }
+  .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); border-top:3px solid var(--border); }
+  .kpi.lf{ border-top-color:var(--lf); } .kpi.nn{ border-top-color:var(--nn); } .kpi.alpha{ border-top-color:var(--accent); }
+  .kpi .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:700; }
+  .kpi .value{ font-size:25px; font-weight:700; margin-top:6px; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .kpi .value small{ font-size:12px; font-weight:600; color:var(--ink-faint); }
+  .kpi .delta{ font-size:12.5px; margin-top:6px; color:var(--ink-muted); }
+
+  .layout{ display:grid; grid-template-columns:minmax(280px,380px) 1fr; gap:22px; align-items:start; }
+  @media (max-width: 860px){ .layout{ grid-template-columns:1fr; } }
+  .column{ display:flex; flex-direction:column; gap:22px; min-width:0; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow); min-width:0; }
+  .card > h2{ font-size:17px; }
+  .card > .sub{ color:var(--ink-muted); font-size:13px; margin:4px 0 0; max-width:70ch; }
+  .card-body{ margin-top:18px; display:flex; flex-direction:column; gap:16px; }
+  .group-title{ font-size:11.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; margin-top:6px; padding-top:14px; border-top:1px dashed var(--border); }
+  .group-title:first-child{ margin-top:0; padding-top:0; border-top:0; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:12.5px; font-weight:700; color:var(--ink-muted); }
+  .field .hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; }
+  .field input[type="number"], .field select{ background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--ink); width:100%; }
+  .field .range-row{ display:flex; align-items:center; gap:10px; }
+  .field .range-row input[type="range"]{ flex:1; accent-color:var(--accent); min-width:0; }
+  .field .range-row output{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:13px; min-width:56px; text-align:right; }
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .seg{ display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--surface-2); }
+  .seg button{ flex:1; border:0; background:transparent; color:var(--ink-muted); padding:7px 8px; cursor:pointer; font-size:12.5px; font-weight:600; }
+  .seg button[aria-pressed="true"]{ background:var(--surface); color:var(--ink); box-shadow:inset 0 0 0 1px var(--border); }
+  .btn-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .btn{ border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .btn:hover{ background:var(--surface-2); }
+  .btn.ghost{ color:var(--ink-muted); }
+
+  .flow{ display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:8px; align-items:stretch; }
+  @media (max-width: 640px){ .flow{ grid-template-columns:1fr; } .flow .arrow{ transform:rotate(90deg); justify-self:center; } }
+  .party{ border-radius:12px; padding:14px 16px; border:1px solid var(--border); background:var(--surface-2); display:flex; flex-direction:column; gap:4px; }
+  .party.lf{ background:var(--lf-soft); border-color:transparent; color:var(--lf-ink); }
+  .party.alpha{ background:var(--accent-soft); border-color:transparent; color:var(--accent-ink); }
+  .party.nn{ background:var(--nn-soft); border-color:transparent; color:var(--nn-ink); }
+  .party .role{ font-size:11px; letter-spacing:.07em; text-transform:uppercase; font-weight:700; opacity:.75; }
+  .party .name{ font-weight:800; font-size:15px; }
+  .party .amt{ font-size:20px; font-weight:800; margin-top:4px; }
+  .party .foot{ font-size:12px; opacity:.85; line-height:1.5; }
+  .arrow{ align-self:center; color:var(--ink-faint); font-size:22px; line-height:1; padding:0 2px; }
+
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th,td{ padding:9px 10px; border-bottom:1px solid var(--border); text-align:right; vertical-align:top; }
+  th{ font-size:11.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); font-weight:700; white-space:nowrap; }
+  th:first-child, td:first-child{ text-align:left; }
+  td.num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  tr.total td{ font-weight:800; border-top:2px solid var(--ink); border-bottom:0; }
+  td .sub{ display:block; font-size:11.5px; color:var(--ink-faint); font-family:var(--font-ui); white-space:normal; }
+  .pill{ display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; }
+  .pill.lf{ background:var(--lf-soft); color:var(--lf-ink); } .pill.nn{ background:var(--nn-soft); color:var(--nn-ink); } .pill.alpha{ background:var(--accent-soft); color:var(--accent-ink); }
+  .neg{ color:var(--bad); }
+
+  .clauses{ display:flex; flex-direction:column; gap:14px; }
+  .clause{ display:grid; grid-template-columns:150px 1fr; gap:6px 16px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .clause:last-child{ border-bottom:0; }
+  @media (max-width: 640px){ .clause{ grid-template-columns:1fr; } }
+  .clause .src{ font-size:12px; color:var(--ink-faint); font-weight:700; line-height:1.5; }
+  .clause .txt{ font-size:13.5px; }
+  .clause .txt q{ color:var(--ink-muted); font-style:normal; quotes:"「" "」"; }
+  .notes li{ margin-bottom:6px; color:var(--ink-muted); font-size:13.5px; }
+  .notes li b{ color:var(--ink); }
+  .sched{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; }
+  .sched .item{ border:1px solid var(--border); border-radius:12px; padding:14px 16px; background:var(--surface-2); }
+  .sched .item h3{ font-size:14px; margin-bottom:6px; }
+  .sched ol{ margin:0; padding-left:18px; font-size:13px; color:var(--ink-muted); }
+  .sched li{ margin:3px 0; }
+</style>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">雞湯大叔 × 龍鳳 × 娘娘駕到</span>
+      <h1>泰Chill 打拋豬煎餃 權利金測算器</h1>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="切換深淺色主題" title="切換主題">◐</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <h2 style="font-size:22px">龍鳳付阿爾法多少，阿爾法再付娘娘多少</h2>
+    <p>依三份合約重建兩段金流：龍鳳（旗山龍鳳食品）按出廠價 2% 付產品授權金給阿爾法（希塔食品／雞湯大叔）；阿爾法再依商品附約分潤給娘娘團隊（開什麼國際玩笑有限公司）。調整左側假設，右側即時重算。</p>
+    <div class="source">依據：《聯名合作備忘錄 MOU》2026/08/06、《雞湯大叔×泰國娘娘聯名商品合作案 合作合約書》2026/07/10、《商品附約：泰Chill 打拋豬煎餃（龍鳳水餃）》2026/07/10。</div>
+  </section>
+
+  <section class="kpi-grid" aria-label="重點數字">
+    <div class="kpi lf">
+      <div class="label">龍鳳 → 阿爾法 產品授權金（未稅）</div>
+      <div class="value num" id="kRoyalty">—</div>
+      <div class="delta" id="kRoyaltySub">—</div>
+    </div>
+    <div class="kpi nn">
+      <div class="label">阿爾法 → 娘娘 商品分潤（未稅）</div>
+      <div class="value num" id="kNn">—</div>
+      <div class="delta" id="kNnSub">—</div>
+    </div>
+    <div class="kpi alpha">
+      <div class="label">阿爾法 淨留權利金</div>
+      <div class="value num" id="kNet">—</div>
+      <div class="delta" id="kNetSub">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">肖像權授權金（代收代付）</div>
+      <div class="value num" id="kPortrait">—</div>
+      <div class="delta">龍鳳付阿爾法，阿爾法轉付娘娘，阿爾法淨額 0</div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <div class="column">
+      <section class="card" id="inputs">
+        <h2>假設設定</h2>
+        <p class="sub">預設值全部取自合約文字，可依實際協議調整。</p>
+        <div class="card-body">
+          <div class="group-title">銷售情境</div>
+          <div class="field">
+            <label for="ordered">訂購總量（包）</label>
+            <input type="number" id="ordered" min="0" step="1000" value="30000">
+            <span class="hint">MOU：首次最低起訂量 30,000 包。</span>
+          </div>
+          <div class="field">
+            <label for="sold">合作期間實際銷售包數</label>
+            <input type="number" id="sold" min="0" step="1000" value="30000">
+            <div class="btn-row">
+              <button class="btn" type="button" data-sold="15000">售出一半</button>
+              <button class="btn" type="button" data-sold="30000">MOQ 售罄</button>
+              <button class="btn" type="button" data-sold="60000">追加一倍</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="lfShare">龍鳳通路佔銷售比例</label>
+            <div class="range-row">
+              <input type="range" id="lfShare" min="0" max="100" step="5" value="50">
+              <output id="lfShareOut">50%</output>
+            </div>
+            <span class="hint">龍鳳通路：全聯、美廉社、大全聯、康達盛通。其餘視為阿爾法通路：雞湯大叔門店、momo、PChome、Yahoo、FriDay、LINE 禮物、新光三越／時代百貨。</span>
+          </div>
+          <div class="field">
+            <label for="refAmount">娘娘導流訂單成交金額（未稅，元）</label>
+            <input type="number" id="refAmount" min="0" step="10000" value="0">
+            <span class="hint">附約第五條第 3 項：娘娘導流至阿爾法完成的訂單，按成交金額 3% 另付導購分潤。此金額為零售成交價，不是出廠價。</span>
+          </div>
+
+          <div class="group-title">合約參數</div>
+          <div class="two">
+            <div class="field">
+              <label for="price">出廠價（含稅，元／包）</label>
+              <input type="number" id="price" min="0" step="1" value="90">
+            </div>
+            <div class="field">
+              <label for="vat">營業稅率</label>
+              <input type="number" id="vat" min="0" max="100" step="0.5" value="5">
+            </div>
+          </div>
+          <div class="field">
+            <label>權利金計價基礎</label>
+            <div class="seg" role="group" aria-label="計價基礎">
+              <button type="button" id="basisIncl" aria-pressed="true">含稅出廠價</button>
+              <button type="button" id="basisExcl" aria-pressed="false">未稅出廠價</button>
+            </div>
+            <span class="hint">MOU 寫「出廠價（$90 含稅／包）之 2%」，字面上以含稅價計算；如雙方改以未稅價對帳，切換此處。</span>
+          </div>
+          <div class="field">
+            <label>龍鳳授權金計算包數</label>
+            <div class="seg" role="group" aria-label="計算包數範圍">
+              <button type="button" id="scopeAll" aria-pressed="true">全部銷售包數</button>
+              <button type="button" id="scopeLf" aria-pressed="false">僅龍鳳通路</button>
+            </div>
+            <span class="hint">MOU 公式用「當期實際銷售總包數」，預設全部通路都計；若龍鳳主張只算自家通路，切換比較。</span>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="royaltyRate">龍鳳授權金率（%）</label>
+              <input type="number" id="royaltyRate" min="0" max="100" step="0.1" value="2">
+              <span class="hint">MOU 第三條</span>
+            </div>
+            <div class="field">
+              <label for="nnShare">娘娘分成比例（%）</label>
+              <input type="number" id="nnShare" min="0" max="100" step="1" value="40">
+              <span class="hint">主合約分潤原則 40%</span>
+            </div>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="nnPerPack">阿爾法自售 每包付娘娘（元）</label>
+              <input type="number" id="nnPerPack" min="0" step="0.1" value="1.5">
+              <span class="hint">附約第五條第 2 項</span>
+            </div>
+            <div class="field">
+              <label for="refRate">導購分潤率（%）</label>
+              <input type="number" id="refRate" min="0" max="100" step="0.5" value="3">
+              <span class="hint">附約第五條第 3 項</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="portrait">肖像權授權金（未稅，元）</label>
+            <input type="number" id="portrait" min="0" step="1000" value="25000">
+            <span class="hint">MOU：龍鳳於 2026/09/30 前付 25,000；主合約：第 2 項商品 25,000，阿爾法於上市前 14 日付娘娘。</span>
+          </div>
+
+          <div class="group-title">期末庫存（選填）</div>
+          <div class="field">
+            <label for="disposeCost">未售庫存 每包處理費用（元）</label>
+            <input type="number" id="disposeCost" min="0" step="1" value="0">
+            <span class="hint">MOU：合作屆滿仍有未售庫存，龍鳳與阿爾法各負擔 50% 處理費用。未售包數 = 訂購總量 − 實際銷售包數。金額依實際協議填入。</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn ghost" type="button" id="resetBtn">回復合約預設值</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="card">
+        <h2>金流總覽</h2>
+        <p class="sub">全部為未稅金額。肖像權授權金屬代收代付，另列於下表。</p>
+        <div class="card-body">
+          <div class="flow">
+            <div class="party lf">
+              <span class="role">甲方（MOU）</span>
+              <span class="name">旗山龍鳳</span>
+              <span class="amt num" id="fLf">—</span>
+              <span class="foot" id="fLfFoot">—</span>
+            </div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="party alpha">
+              <span class="role">乙方（MOU）／甲方（主合約）</span>
+              <span class="name">阿爾法 · 雞湯大叔</span>
+              <span class="amt num" id="fAlpha">—</span>
+              <span class="foot" id="fAlphaFoot">—</span>
+            </div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="party nn">
+              <span class="role">丙方（MOU）／乙方（主合約）</span>
+              <span class="name">娘娘團隊</span>
+              <span class="amt num" id="fNn">—</span>
+              <span class="foot" id="fNnFoot">—</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table aria-label="金流明細">
+              <thead>
+                <tr><th>項目</th><th>龍鳳 → 阿爾法</th><th>阿爾法 → 娘娘</th><th>阿爾法 淨額</th></tr>
+              </thead>
+              <tbody id="flowBody"></tbody>
+            </table>
+          </div>
+          <p class="hint" style="font-size:12px;color:var(--ink-faint);margin:0">「含 5% 營業稅」欄位僅供開立發票時參考。MOU 授權金公式未寫明是否外加營業稅，主合約則規定付給娘娘的金額為娘娘實收，稅費由阿爾法負擔。</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>每包拆解</h2>
+        <p class="sub">同一包煎餃，走不同通路，阿爾法留下的權利金差很多。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="每包拆解">
+              <thead>
+                <tr><th>通路</th><th>龍鳳付阿爾法</th><th>阿爾法付娘娘</th><th>阿爾法淨留</th><th>娘娘佔比</th></tr>
+              </thead>
+              <tbody id="perPackBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>銷量敏感度</h2>
+        <p class="sub">沿用目前的通路比例與計價基礎，只改變銷售包數。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="敏感度分析">
+              <thead>
+                <tr><th>銷售包數</th><th>龍鳳 → 阿爾法</th><th>阿爾法 → 娘娘</th><th>阿爾法 淨留</th><th>阿爾法留成率</th></tr>
+              </thead>
+              <tbody id="sensBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>結算時程</h2>
+        <p class="sub">龍鳳月結，娘娘季結。阿爾法先收後付，中間有一到兩季的現金時間差。</p>
+        <div class="card-body">
+          <div class="sched">
+            <div class="item">
+              <h3><span class="pill lf">龍鳳 → 阿爾法</span> 月結</h3>
+              <ol>
+                <li>龍鳳於次月 10 日前提供上月銷售報表（各通路銷量、應付授權金）。</li>
+                <li>阿爾法核對無誤後，開立全額請款憑證（統一發票），含娘娘的肖像權費用。</li>
+                <li>龍鳳於收到憑證後之次月 5 日前匯款，匯費由龍鳳負擔。</li>
+                <li>肖像權授權金 25,000 於 2026/09/30 前支付。</li>
+              </ol>
+            </div>
+            <div class="item">
+              <h3><span class="pill nn">阿爾法 → 娘娘</span> 季結</h3>
+              <ol>
+                <li>每季結算後 15 日內，提供完整銷售報表供娘娘查核。</li>
+                <li>結算後 30 日內付清分潤，金額為娘娘實收，稅費與手續費由阿爾法負擔。</li>
+                <li>肖像權授權金 25,000 於商品上市日前 14 日支付。</li>
+                <li>逾期每日按未付金額 0.5% 計違約金；娘娘可暫停履約或終止合約。</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>條款依據</h2>
+        <p class="sub">測算器每一個數字對應的合約原文。</p>
+        <div class="card-body clauses">
+          <div class="clause"><div class="src">MOU 第三條<br>產品授權金</div><div class="txt"><q>甲方提撥「雞湯大叔 X 娘娘駕到」聯名產品出廠價（$90《含稅》/包）之 2% 作為品牌授權費用，按照合作期間實際銷售包數計算授權費用。</q>計算公式：<q>當期應付權利金總額 ＝（單包產品出廠價 × 2%）× 當期實際銷售總包數。</q></div></div>
+          <div class="clause"><div class="src">MOU 第三條<br>肖像權費用</div><div class="txt"><q>在 2026 年 9 月 30 日前，甲方支付丙方單支產品肖像權授權金，一次性費用為 NT$ 25,000（未稅）。</q>依第 3 項代收代付流程，由阿爾法統一開立憑證向龍鳳請款，再轉付娘娘。</div></div>
+          <div class="clause"><div class="src">MOU 第三條<br>最低起訂量</div><div class="txt"><q>聯名產品首次訂購數量為 30,000 包。</q>合作屆滿仍有未售庫存時，<q>雙方同意各負擔 50% 之產品庫存處理費用</q>，追加訂購亦同。</div></div>
+          <div class="clause"><div class="src">附約第五條第 1 項<br>龍鳳通路分潤</div><div class="txt"><q>由龍鳳水餃（第三方品牌）銷售之本商品，甲方同意按龍鳳水餃支付予甲方之出廠價 2% 計算之金額中，按 40% 比例分配予乙方，即相當於出廠價 0.8% 作為乙方分潤。</q></div></div>
+          <div class="clause"><div class="src">附約第五條第 2 項<br>阿爾法自售分潤</div><div class="txt"><q>由甲方自行銷售之本商品，雙方同意乙方分潤以每包新臺幣 1.5 元（未稅）計算，不另依實際獲利比例調整。</q></div></div>
+          <div class="clause"><div class="src">附約第五條第 3 項<br>導購分潤</div><div class="txt"><q>就乙方導流至甲方完成之銷售訂單，甲方應按該訂單實際成交金額（未稅）3% 支付乙方作為導購分潤。</q></div></div>
+          <div class="clause"><div class="src">附約第二條<br>肖像授權費</div><div class="txt"><q>本商品經雙方確認為主合約項下第 2 項合作商品……肖像授權費為新臺幣 25,000 元整（未稅）。甲方應於本商品上市日前十四日完成支付。</q>主合約第一條第（七）項：前六項商品每項 25,000 元，第七項起每項 30,000 元。</div></div>
+          <div class="clause"><div class="src">主合約第二條<br>付款與違約金</div><div class="txt"><q>本專案商品銷售分潤以每季為結算週期……甲方應於結算後 30 日內完成分潤款項支付。</q><q>本合約之所有款項應為乙方實收金額……每逾期一日，應按未付款項金額千分之五計算違約金。</q></div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>解讀與待確認事項</h2>
+        <div class="card-body">
+          <ul class="notes" style="margin:0;padding-left:18px">
+            <li><b>含稅或未稅計價。</b>MOU 直接寫出廠價 $90 含稅再乘 2%，測算器預設照字面用 90 元。若對帳改用未稅價 85.71 元，龍鳳付款與娘娘分潤各少約 4.8%。</li>
+            <li><b>阿爾法自售包數是否計入龍鳳授權金。</b>MOU 公式用「實際銷售總包數」且龍鳳是唯一製造方，預設全部包數都計。若龍鳳認為阿爾法向其進貨的包數不算，用「僅龍鳳通路」比較差距。</li>
+            <li><b>兩份合約的比例是鎖定的。</b>附約寫「出廠價 2% 之 40%」，龍鳳授權金率若調整，娘娘的 0.8% 會跟著動；阿爾法自售的 1.5 元則是固定金額，不隨出廠價變動。</li>
+            <li><b>導購 3% 與每包 1.5 元是否重複計。</b>附約把導購分潤列為獨立一項，測算器視為在 1.5 元之外另計；導流訂單的包數仍計入阿爾法通路。</li>
+            <li><b>海瑞摃丸附約未納入。</b>《泰度打拋摃丸》附約條件不同（海瑞付出廠價 1%，娘娘取 0.4%；阿爾法自售每包 2.5 元），且沒有對應的 MOU 與出廠價，本工具不計算。</li>
+            <li><b>搭贈上限。</b>主合約規定搭贈成本以營業額 10% 為上限，超過部分阿爾法自行負擔。本附約分潤採固定金額與固定比例，搭贈不影響上述計算。</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const DEFAULTS = { ordered:30000, sold:30000, lfShare:50, refAmount:0, price:90, vat:5, basis:'incl', scope:'all', royaltyRate:2, nnShare:40, nnPerPack:1.5, refRate:3, portrait:25000, disposeCost:0 };
+  const NUM_IDS = ['ordered','sold','lfShare','refAmount','price','vat','royaltyRate','nnShare','nnPerPack','refRate','portrait','disposeCost'];
+  const STORE_KEY = 'taichill-royalty-v1';
+  let state = Object.assign({}, DEFAULTS);
+
+  try { const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (saved && typeof saved === 'object') state = Object.assign({}, DEFAULTS, saved); } catch(e){}
+
+  function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
+
+  const fmt0 = n => 'NT$ ' + (Math.round(n) || 0).toLocaleString('zh-TW');
+  const fmt2 = n => 'NT$ ' + n.toLocaleString('zh-TW', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const pct = n => (n*100).toLocaleString('zh-TW', {maximumFractionDigits:1}) + '%';
+  const packs = n => Math.round(n).toLocaleString('zh-TW') + ' 包';
+
+  function compute(s, soldOverride){
+    const sold = soldOverride == null ? s.sold : soldOverride;
+    const vat = s.vat/100;
+    const base = s.basis === 'incl' ? s.price : s.price/(1+vat);
+    const lfPacks = sold * s.lfShare/100;
+    const alphaPacks = sold - lfPacks;
+    const royaltyPerPack = base * s.royaltyRate/100;
+    const royaltyPacks = s.scope === 'all' ? sold : lfPacks;
+    const royalty = royaltyPerPack * royaltyPacks;
+    const nnLfPerPack = royaltyPerPack * s.nnShare/100;
+    const nnLf = nnLfPerPack * lfPacks;
+    const nnAlpha = s.nnPerPack * alphaPacks;
+    const nnRef = s.refAmount * s.refRate/100;
+    const nnTotal = nnLf + nnAlpha + nnRef;
+    const unsold = Math.max(0, s.ordered - sold);
+    const invAlpha = unsold * s.disposeCost * 0.5;
+    const net = royalty - nnTotal - invAlpha;
+    return { sold, vat, base, lfPacks, alphaPacks, royaltyPerPack, royaltyPacks, royalty, nnLfPerPack, nnLf, nnAlpha, nnRef, nnTotal, unsold, invAlpha, net };
+  }
+
+  function render(){
+    const s = state, r = compute(s);
+    // KPIs
+    $('kRoyalty').textContent = fmt0(r.royalty);
+    $('kRoyaltySub').textContent = fmt2(r.royaltyPerPack) + ' /包 × ' + packs(r.royaltyPacks) + (s.scope==='lf' ? '（僅龍鳳通路）' : '');
+    $('kNn').textContent = fmt0(r.nnTotal);
+    $('kNnSub').textContent = '龍鳳通路 ' + fmt0(r.nnLf) + ' ＋ 阿爾法通路 ' + fmt0(r.nnAlpha) + (r.nnRef ? ' ＋ 導購 ' + fmt0(r.nnRef) : '');
+    $('kNet').textContent = fmt0(r.net);
+    $('kNet').classList.toggle('neg', r.net < 0);
+    $('kNetSub').textContent = r.royalty > 0 ? '佔龍鳳授權金 ' + pct(r.net/r.royalty) + (r.invAlpha ? '，已扣庫存處理費 ' + fmt0(r.invAlpha) : '') : '尚無授權金收入';
+    $('kPortrait').textContent = fmt0(s.portrait);
+
+    // Flow
+    $('fLf').textContent = fmt0(r.royalty + s.portrait);
+    $('fLfFoot').textContent = '付出：授權金 ' + fmt0(r.royalty) + ' ＋ 肖像權 ' + fmt0(s.portrait);
+    $('fAlpha').textContent = fmt0(r.net);
+    $('fAlphaFoot').textContent = '淨留（收 ' + fmt0(r.royalty + s.portrait) + '，付 ' + fmt0(r.nnTotal + s.portrait) + (r.invAlpha ? '，庫存費 ' + fmt0(r.invAlpha) : '') + '）';
+    $('fNn').textContent = fmt0(r.nnTotal + s.portrait);
+    $('fNnFoot').textContent = '收到：分潤 ' + fmt0(r.nnTotal) + ' ＋ 肖像權 ' + fmt0(s.portrait);
+
+    // Flow table
+    const rows = [];
+    const row = (label, sub, a, b, c) => rows.push(
+      '<tr><td>' + label + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</td>' +
+      '<td class="num">' + (a==null ? '—' : fmt0(a)) + '</td>' +
+      '<td class="num">' + (b==null ? '—' : fmt0(b)) + '</td>' +
+      '<td class="num' + (c<0 ? ' neg' : '') + '">' + (c==null ? '—' : fmt0(c)) + '</td></tr>');
+    row('產品授權金 · 龍鳳通路', fmt2(r.royaltyPerPack) + ' /包 → 娘娘 ' + fmt2(r.nnLfPerPack) + ' /包 × ' + packs(r.lfPacks), r.royaltyPerPack * r.lfPacks, r.nnLf, r.royaltyPerPack * r.lfPacks - r.nnLf);
+    row('產品授權金 · 阿爾法通路', (s.scope==='all' ? fmt2(r.royaltyPerPack) + ' /包' : '不計授權金') + ' → 娘娘 ' + fmt2(s.nnPerPack) + ' /包 × ' + packs(r.alphaPacks), s.scope==='all' ? r.royaltyPerPack * r.alphaPacks : 0, r.nnAlpha, (s.scope==='all' ? r.royaltyPerPack * r.alphaPacks : 0) - r.nnAlpha);
+    row('導購分潤', '導流訂單成交金額 ' + fmt0(s.refAmount) + ' × ' + s.refRate + '%', 0, r.nnRef, -r.nnRef);
+    row('肖像權授權金', '代收代付，一次性', s.portrait, s.portrait, 0);
+    if (r.invAlpha) row('庫存處理費用 · 阿爾法負擔 50%', packs(r.unsold) + ' × ' + fmt0(s.disposeCost) + ' × 50%', null, null, -r.invAlpha);
+    rows.push('<tr class="total"><td>合計（未稅）</td><td class="num">' + fmt0(r.royalty + s.portrait) + '</td><td class="num">' + fmt0(r.nnTotal + s.portrait) + '</td><td class="num' + (r.net<0?' neg':'') + '">' + fmt0(r.net) + '</td></tr>');
+    rows.push('<tr><td><span class="sub">含 ' + s.vat + '% 營業稅</span></td><td class="num"><span class="sub">' + fmt0((r.royalty + s.portrait)*(1+r.vat)) + '</span></td><td class="num"><span class="sub">' + fmt0((r.nnTotal + s.portrait)*(1+r.vat)) + '</span></td><td></td></tr>');
+    $('flowBody').innerHTML = rows.join('');
+
+    // Per pack
+    const lfIn = r.royaltyPerPack, lfOut = r.nnLfPerPack;
+    const alIn = s.scope==='all' ? r.royaltyPerPack : 0, alOut = s.nnPerPack;
+    const pp = [
+      ['<span class="pill lf">龍鳳通路</span> 全聯、美廉社、大全聯、康達盛通', lfIn, lfOut],
+      ['<span class="pill alpha">阿爾法通路</span> 門店、momo、PChome、百貨等', alIn, alOut],
+    ].map(([l,a,b]) => '<tr><td>' + l + '</td><td class="num">' + fmt2(a) + '</td><td class="num">' + fmt2(b) + '</td><td class="num' + (a-b<0?' neg':'') + '">' + fmt2(a-b) + '</td><td class="num">' + (a>0 ? pct(b/a) : '—') + '</td></tr>');
+    $('perPackBody').innerHTML = pp.join('');
+
+    // Sensitivity
+    const levels = [10000, 15000, 20000, 30000, 45000, 60000, 90000];
+    if (!levels.includes(s.sold)) { levels.push(s.sold); levels.sort((a,b)=>a-b); }
+    $('sensBody').innerHTML = levels.map(n => {
+      const x = compute(s, n);
+      const cur = n === s.sold;
+      return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '><td class="num">' + packs(n) + (cur ? ' <span class="sub">目前情境</span>' : '') + '</td><td class="num">' + fmt0(x.royalty) + '</td><td class="num">' + fmt0(x.nnTotal) + '</td><td class="num' + (x.net<0?' neg':'') + '">' + fmt0(x.net) + '</td><td class="num">' + (x.royalty>0 ? pct(x.net/x.royalty) : '—') + '</td></tr>';
+    }).join('');
+
+    // Controls reflect state
+    $('lfShareOut').textContent = s.lfShare + '%';
+    $('basisIncl').setAttribute('aria-pressed', s.basis==='incl');
+    $('basisExcl').setAttribute('aria-pressed', s.basis==='excl');
+    $('scopeAll').setAttribute('aria-pressed', s.scope==='all');
+    $('scopeLf').setAttribute('aria-pressed', s.scope==='lf');
+  }
+
+  function syncInputs(){ NUM_IDS.forEach(id => { $(id).value = state[id]; }); }
+
+  NUM_IDS.forEach(id => $(id).addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    state[id] = isNaN(v) ? 0 : v;
+    save(); render();
+  }));
+  $('basisIncl').addEventListener('click', () => { state.basis='incl'; save(); render(); });
+  $('basisExcl').addEventListener('click', () => { state.basis='excl'; save(); render(); });
+  $('scopeAll').addEventListener('click', () => { state.scope='all'; save(); render(); });
+  $('scopeLf').addEventListener('click', () => { state.scope='lf'; save(); render(); });
+  document.querySelectorAll('[data-sold]').forEach(b => b.addEventListener('click', () => { state.sold = parseFloat(b.dataset.sold); syncInputs(); save(); render(); }));
+  $('resetBtn').addEventListener('click', () => { state = Object.assign({}, DEFAULTS); syncInputs(); save(); render(); });
+
+  // Theme toggle
+  const root = document.documentElement;
+  try { const t = localStorage.getItem(STORE_KEY + ':theme'); if (t) root.setAttribute('data-theme', t); } catch(e){}
+  $('themeToggle').addEventListener('click', () => {
+    const dark = root.getAttribute('data-theme') === 'dark' || (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem(STORE_KEY + ':theme', next); } catch(e){}
+  });
+
+  syncInputs(); render();
+})();
+</script>
