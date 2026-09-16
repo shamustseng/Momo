@@ -55,7 +55,7 @@
 | 來源 | 做法 |
 | --- | --- |
 | momo | 搜尋結果頁內有 JSON-LD 商品清單（名稱、價格、圖片、連結），直接讀；沒有的話退回解析 HTML，再缺的欄位開商品頁用 `og:` / `product:price` 標籤補齊 |
-| Alpha Plus 官網 | 依序嘗試 `/products.json`（實測 404）→ `sitemap.xml`（實測可用：`/sitemap.xml` → `/zh-TW/sitemap.xml`）→ 逐頁爬 `/products/` 連結，再從商品頁的 JSON-LD 取名稱與價格 |
+| Alpha Plus 官網 | 依序嘗試 `sitemap.xml`（實測可用：`/sitemap.xml` → `/zh-TW/sitemap.xml`）→ 逐頁爬 `/products/` 連結，再從商品頁的 JSON-LD 取名稱與價格；第一次沒讀到的商品頁會隔一下再補抓一次（官網沒有 `/products.json`，不再嘗試） |
 
 官網那邊之所以準備三種方式，是因為不確定 CYBERBIZ 有沒有開放商品 API；哪一種先成功就用哪一種，
 介面上的來源卡片會顯示實際用到的方式與警告訊息。

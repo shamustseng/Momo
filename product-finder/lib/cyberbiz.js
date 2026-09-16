@@ -1,14 +1,13 @@
 'use strict';
 
-const { fetchText, mapLimit } = require('./http');
+const { fetchText, mapLimit, sleep } = require('./http');
 const H = require('./html');
 
 /**
  * Alpha Plus 官網（CYBERBIZ 平台）。
- * 官網不保證有公開 API，所以依序試三種方式，哪個先成功就用哪個：
- *   1. /products.json  —— 部分店家會開放，最快也最完整
- *   2. sitemap.xml     —— SEO 用途，幾乎一定存在，能拿到全部商品網址
- *   3. 逐頁爬連結      —— 從首頁與分類頁撈 /products/ 連結
+ * 官網沒有公開 API（/products.json 回 404），所以依序試兩種方式，哪個先成功就用哪個：
+ *   1. sitemap.xml  —— SEO 用途，幾乎一定存在，能拿到全部商品網址
+ *   2. 逐頁爬連結   —— 從首頁與分類頁撈 /products/ 連結
  * 拿到網址後一律讀商品頁的 JSON-LD / og: 標籤取名稱與價格。
  */
 async function scrape(sourceConfig, net, log = () => {}) {
@@ -16,13 +15,6 @@ async function scrape(sourceConfig, net, log = () => {}) {
   const locale = sourceConfig.locale || '';
   const maxProducts = Math.max(1, sourceConfig.maxProducts || 400);
   const warnings = [];
-
-  const viaJson = await tryProductsJson(origin, net, log);
-  if (viaJson.products.length) {
-    log(`官網：/products.json 取得 ${viaJson.products.length} 筆`);
-    return { products: viaJson.products.slice(0, maxProducts), warnings, strategy: 'products.json' };
-  }
-  if (viaJson.warning) warnings.push(viaJson.warning);
 
   let urls = await urlsFromSitemap(origin, net, log);
   let strategy = 'sitemap';
@@ -38,79 +30,46 @@ async function scrape(sourceConfig, net, log = () => {}) {
 
   urls = urls.slice(0, maxProducts);
   log(`官網：讀取 ${urls.length} 個商品頁`);
-  const results = await mapLimit(urls, net.concurrency, net.delayMs, async (url) => {
+  const fetchProduct = async (url) => {
     const res = await fetchText(url, { timeoutMs: net.timeoutMs, retries: net.retries, referer: origin + '/' });
     if (!res.ok) return null;
-    return parseProductHtml(res.body, res.url || url);
-  });
+    const item = parseProductHtml(res.body, res.url || url);
+    return item.name ? item : null;
+  };
+
+  const byUrl = new Map();
+  const first = await mapLimit(urls, net.concurrency, net.delayMs, fetchProduct);
+  urls.forEach((url, i) => byUrl.set(url, first[i]));
+
+  // 官網偶爾會有一兩頁暫時讀不到（連線抖動、被限流），隔一下再逐頁補抓一次，
+  // 不要因為一次抖動就讓清單少一筆
+  const missing = urls.filter((url) => !byUrl.get(url));
+  if (missing.length) {
+    log(`官網：${missing.length} 個商品頁第一次沒讀到，稍後補抓`);
+    await sleep(Math.max(net.delayMs * 3, 1000));
+    for (const url of missing) byUrl.set(url, await fetchProduct(url));
+  }
 
   const products = [];
   const seen = new Set();
-  for (const item of results) {
-    if (!item || !item.name) continue;
+  const failed = [];
+  for (const url of urls) {
+    const item = byUrl.get(url);
+    if (!item) { failed.push(url); continue; }
     if (seen.has(item.id)) continue;
     seen.add(item.id);
     products.push(item);
   }
-  const failed = urls.length - products.length;
-  if (failed > 0) warnings.push(`有 ${failed} 個商品頁讀取或解析失敗，已略過。`);
+  if (failed.length) {
+    warnings.push(`有 ${failed.length} 個商品頁補抓後仍讀不到，已略過：${failed.map(slugOf).join('、')}`);
+  }
 
   return { products, warnings, strategy };
 }
 
-async function tryProductsJson(origin, net, log) {
-  const products = [];
-  for (let page = 1; page <= 10; page++) {
-    const url = `${origin}/products.json?limit=250&page=${page}`;
-    log(`官網：嘗試 ${url}`);
-    const res = await fetchText(url, {
-      timeoutMs: net.timeoutMs,
-      retries: 0,
-      accept: 'application/json,text/plain,*/*',
-    });
-    if (!res.ok) return { products, warning: page === 1 ? `/products.json 不可用（${res.error}）。` : null };
-    let data;
-    try {
-      data = JSON.parse(res.body);
-    } catch {
-      return { products, warning: page === 1 ? '/products.json 回傳的不是 JSON。' : null };
-    }
-    const list = Array.isArray(data) ? data : data.products || data.data || [];
-    if (!Array.isArray(list) || list.length === 0) break;
-    for (const raw of list) products.push(fromJson(raw, origin));
-    if (list.length < 250) break;
-  }
-  return { products: products.filter((p) => p && p.name), warning: null };
-}
-
-function fromJson(raw, origin) {
-  if (!raw || typeof raw !== 'object') return null;
-  const handle = raw.handle || raw.slug || raw.id;
-  const variants = Array.isArray(raw.variants) ? raw.variants : [];
-  const price =
-    H.toPrice(raw.price) ??
-    H.toPrice(raw.min_price) ??
-    H.toPrice(variants.length ? variants[0].price : null);
-  const images = Array.isArray(raw.images) ? raw.images : [];
-  const image =
-    (typeof raw.image === 'string' ? raw.image : raw.image && raw.image.src) ||
-    (images.length ? images[0].src || images[0] : '') ||
-    '';
-  const available = variants.length
-    ? variants.some((v) => v.available !== false && v.inventory_quantity !== 0)
-    : raw.available !== false;
-  return {
-    id: `alphaplus:${raw.id || handle}`,
-    source: 'alphaplus',
-    sku: String(raw.id || handle || ''),
-    name: H.decode(raw.title || raw.name || ''),
-    price,
-    currency: 'TWD',
-    url: `${origin}/products/${handle}`,
-    image: typeof image === 'string' ? image : '',
-    status: available ? '' : '售完或未開賣',
-    keywords: [],
-  };
+function slugOf(url) {
+  const raw = normalizeProductUrl(url).split('/products/')[1] || url;
+  try { return decodeURIComponent(raw); } catch { return raw; }
 }
 
 async function urlsFromSitemap(origin, net, log) {
@@ -220,9 +179,7 @@ function parseProductHtml(html, url) {
     (product && Array.isArray(product.image) ? product.image[0] : '') ||
     '';
 
-  const rawSlug = normalizeProductUrl(url).split('/products/')[1] || url;
-  let slug = rawSlug;
-  try { slug = decodeURIComponent(rawSlug); } catch { /* 保留原樣 */ }
+  const slug = slugOf(url);
   const idMatch = slug.match(/^\d+/);
 
   return {

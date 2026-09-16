@@ -84,31 +84,8 @@ test('momo：搜尋頁失敗時回報警告而不是整個壞掉', async () => {
   assert.ok(warnings.some((w) => w.includes('讀取失敗')), '要留下可讀的錯誤訊息');
 });
 
-test('官網：優先使用 products.json', async () => {
-  stubFetch([
-    ['/products.json', (url) => url.includes('page=1')
-      ? { body: JSON.stringify({ products: [
-          { id: 101, handle: '101-chicken-soup', title: '蛤蜊雞湯 460g', price: 199,
-            images: [{ src: 'https://cdn/x.jpg' }], variants: [{ price: 199, available: true }] },
-          { id: 102, handle: '102-sold-out', title: '限量禮盒', price: 990,
-            variants: [{ price: 990, available: false }] },
-        ] }) }
-      : { body: JSON.stringify({ products: [] }) }],
-  ]);
-
-  const { products, strategy } = await cyberbiz.scrape(
-    { origin: 'https://alphaplus.cyberbiz.co', maxProducts: 100 }, NET
-  );
-  assert.strictEqual(strategy, 'products.json');
-  assert.strictEqual(products.length, 2);
-  assert.strictEqual(products[0].url, 'https://alphaplus.cyberbiz.co/products/101-chicken-soup');
-  assert.strictEqual(products[0].price, 199);
-  assert.strictEqual(products[1].status, '售完或未開賣');
-});
-
-test('官網：products.json 不可用時改走 sitemap 與商品頁', async () => {
-  stubFetch([
-    ['/products.json', () => ({ status: 404, body: '' })],
+test('官網：走 sitemap 與商品頁，不再嘗試 products.json', async () => {
+  const calls = stubFetch([
     ['/sitemap.xml', () => ({ body: `<?xml version="1.0"?><sitemapindex>
         <sitemap><loc>https://alphaplus.cyberbiz.co/sitemap-products.xml</loc></sitemap>
       </sitemapindex>` })],
@@ -125,7 +102,7 @@ test('官網：products.json 不可用時改走 sitemap 與商品頁', async () 
         <meta property="og:price:amount" content="248">` })],
   ]);
 
-  const { products, strategy } = await cyberbiz.scrape(
+  const { products, strategy, warnings } = await cyberbiz.scrape(
     { origin: 'https://alphaplus.cyberbiz.co', locale: 'zh-TW', maxProducts: 100 }, NET
   );
   assert.strictEqual(strategy, 'sitemap');
@@ -133,11 +110,36 @@ test('官網：products.json 不可用時改走 sitemap 與商品頁', async () 
   const byName = Object.fromEntries(products.map((p) => [p.name, p]));
   assert.strictEqual(byName['青花椒辣醬 240g'].price, 330);
   assert.strictEqual(byName['東京雞白湯拉麵'].price, 248, '沒有 JSON-LD 時要退回 og: 標籤');
+  assert.deepStrictEqual(warnings, [], '全部讀到就不該有任何警告');
+  assert.ok(!calls.some((u) => u.includes('products.json')), '官網沒有 products.json，不該再去打');
+});
+
+test('官網：第一次沒讀到的商品頁會補抓一次，仍失敗才列出警告', async () => {
+  let flakyHits = 0;
+  stubFetch([
+    ['/sitemap.xml', () => ({ body: `<urlset>
+        <url><loc>https://alphaplus.cyberbiz.co/zh-TW/products/ok-item</loc></url>
+        <url><loc>https://alphaplus.cyberbiz.co/zh-TW/products/flaky-item</loc></url>
+        <url><loc>https://alphaplus.cyberbiz.co/zh-TW/products/%E6%B0%B8%E9%81%A0%E5%A3%9E%E6%8E%89</loc></url>
+      </urlset>` })],
+    ['/products/ok-item', () => ({ body: '<meta property="og:title" content="正常商品"><meta property="product:price:amount" content="100">' })],
+    ['/products/flaky-item', () => (++flakyHits === 1
+      ? { status: 503, body: '' }
+      : { body: '<meta property="og:title" content="抖動商品"><meta property="product:price:amount" content="200">' })],
+    ['/products/%E6%B0%B8%E9%81%A0%E5%A3%9E%E6%8E%89', () => ({ status: 500, body: '' })],
+  ]);
+
+  const { products, warnings } = await cyberbiz.scrape(
+    { origin: 'https://alphaplus.cyberbiz.co', locale: 'zh-TW', maxProducts: 100 }, NET
+  );
+  assert.deepStrictEqual(products.map((p) => p.name).sort(), ['抖動商品', '正常商品'], '補抓成功的商品要留下');
+  assert.strictEqual(flakyHits, 2, '第一次失敗的頁面要再試一次');
+  assert.strictEqual(warnings.length, 1);
+  assert.ok(warnings[0].includes('1 個商品頁') && warnings[0].includes('永遠壞掉'), '警告要點名是哪一頁讀不到');
 });
 
 test('官網：sitemap 也失敗時改爬分類頁連結', async () => {
   stubFetch([
-    ['/products.json', () => ({ status: 404, body: '' })],
     ['sitemap', () => ({ status: 404, body: '' })],
     ['/categories/7', () => ({ body: '<a href="/products/301-gift">禮盒</a>' })],
     ['/products/301-gift', () => ({ body: '<meta property="og:title" content="中秋禮盒"><meta property="product:price:amount" content="880">' })],
