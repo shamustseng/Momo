@@ -329,7 +329,7 @@
           <option value="multi">每張出貨單一個工作表</option>
         </select>
       </div>
-      <div class="field"><label for="setNotifyName">回報訊息收件人稱呼</label><input type="text" id="setNotifyName" placeholder="例：湯先生"></div>
+      <div class="field"><label for="setNotifyName">希塔出貨訊息 @ 對象（留空自動：週四 @王傳斌，其餘 @湯恩齊 Keith）</label><input type="text" id="setNotifyName" placeholder="留空自動依出貨日星期"></div>
     </div>
     <div class="grid two" style="margin-top:12px">
       <div class="field"><label>出貨單相關工作表（依 Lance 回饋預設不產生，需要時再勾）</label>
@@ -372,7 +372,7 @@
       <summary>打單資料參數（Channel 預設值／客戶代號）</summary>
       <div class="grid three" style="margin-top:8px">
         <div class="field"><label for="setChannel">Channel 預設值（檔名或 PDF 判不出通路時使用）</label><input type="text" id="setChannel"></div>
-        <div class="hint" style="align-self:end">客戶代號依表E：MOMO＝27365925、官網(cyberbiz)＝54688786、美聯社型錄＝60458619。檔名規則：(通路)(月日)_(出貨方式)_(溫層)，例 MOMO0904_宅配_常溫；超商不分溫層，例 MOMO0904_711。</div>
+        <div class="hint" style="align-self:end">客戶代號依表E：MOMO＝27365925、官網(cyberbiz)＝54688786、美聯社型錄＝60458619。檔名規則：(通路)(月日)_(出貨方式)_(溫層)_(倉別)，例 MOMO0904_宅配_常溫_愛上；超商不分溫層，例 MOMO0904_711。</div>
       </div>
     </details>
     <details style="margin-top:12px">
@@ -386,7 +386,7 @@
       <div class="field" style="margin-top:8px"><textarea id="setNoticeText"></textarea></div>
     </details>
     <details style="margin-top:8px" open>
-      <summary>回報訊息預覽（可直接複製貼到 Lark／LINE）</summary>
+      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；只列希塔倉品項）</summary>
       <div class="btn-row" style="margin:8px 0"><button class="btn sm" id="btnCopyMsg" type="button">複製訊息</button><span class="hint" id="msgHint"></span></div>
       <div class="msgbox" id="msgBox"></div>
     </details>
@@ -425,7 +425,7 @@ const PLATFORMS = {
   },
   cyberbiz: {
     key:'cyberbiz', name:'Cyberbiz', eyebrow:'Cyberbiz Shipping Order Generator', lsPrefix:'cbShip.',
-    channel:'CYBERBIZ', nsCustomer:'54688786 順立智慧股份有限公司(Cyberbiz)', nsTerms:'半月結15天', orderRefPrefix:'官網', ifreshHome:'Cyberbiz-宅配', ifreshCvs:'Cyberbiz-超商取貨', ordererPrefix:'CB-', msgPlatform:'Cyberbiz 官網',
+    channel:'CYBERBIZ', nsCustomer:'54688786 順立智慧股份有限公司(Cyberbiz)', nsTerms:'半月結15天', orderRefPrefix:'官網', ifreshHome:'Cyberbiz-宅配', ifreshCvs:'Cyberbiz-超商取貨', ordererPrefix:'CB-', msgPlatform:'cyberbiz',
     defaultPassword:'', pwLabel:'檔案密碼（Excel／PDF／Word 有密碼保護時自動用它解鎖；沒有可留空）', pwPlaceholder:'沒有密碼可留空',
     importTitle:'1. 匯入 Cyberbiz 訂單資料', dropTitle:'把 Cyberbiz 後台「訂單管理 → 匯出」的檔案拖到這裡（可一次多個），或點擊選擇',
     dropHint:'Cyberbiz 匯出的 Excel／CSV（每列一個商品，或一格多個品項都可以）、Word 表格、PDF 表格、zip 都能讀；欄名會自動對應，有密碼的檔案自動解鎖。',
@@ -1309,20 +1309,18 @@ function updateExportBar(sel){
 /* ==================== 回報訊息 ==================== */
 function buildMessage(sel){
   if(!sel.length) return '';
-  const name = $('#setNotifyName').value.trim();
-  const groups = new Map();
-  sel.forEach(s=>{ const k = s.warehouse || ''; if(!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
-  const blocks = [];
-  groups.forEach((ships, wh)=>{
-    const agg = new Map();
-    ships.forEach(s=>s.lines.forEach(l=>{ const n = l.shortName || l.name; agg.set(n, (agg.get(n)||0) + (l.units||l.qty||0)); }));
-    const lines = [`${name?name+' ':''}您好，以下是${P.msgPlatform}要出貨的訂單，再麻煩您協助${wh?`（${wh}）`:''}`, 'SO________（NS 銷售訂單號）'];
-    agg.forEach((q,n)=>lines.push(`${n}*${q}`));
-    const tracks = ships.map(s=>s.trackNo).filter(Boolean);
-    lines.push(`共 ${ships.length} 張出貨單${tracks.length?`，宅配單號：${tracks.join('、')}`:''}`);
-    blocks.push(lines.join('\n'));
-  });
-  return blocks.join('\n\n');
+  // 表F：週四 @王傳斌，其餘 @湯恩齊 Keith；可在「回報訊息 @ 對象」覆寫
+  const cfgDate = ($('#setDate').value || todayISO()).replace(/-/g,'/');
+  const m = cfgDate.match(/^(\d{4})\/(\d{2})\/(\d{2})/); const wd = m ? new Date(+m[1], +m[2]-1, +m[3]).getDay() : -1;
+  const mention = $('#setNotifyName').value.trim() || (wd===4 ? '@王傳斌' : '@湯恩齊 Keith');
+  // 只列希塔倉出貨的品項（愛上倉走愛上出貨系統）；若沒有任何倉別資訊則全部列出
+  const anyWh = sel.some(s=>s.lines.some(l=>l.warehouse));
+  const agg = new Map();
+  sel.forEach(s=>s.lines.forEach(l=>{ if(anyWh && !/希塔/.test(l.warehouse||'')) return; const n = l.shortName || l.name; agg.set(n, (agg.get(n)||0) + (l.units||l.qty||0)); }));
+  if(!agg.size) return '';
+  const lines = [mention, `您好，以下是${P.msgPlatform}要出貨的訂單，再麻煩您協助`];
+  agg.forEach((q,n)=>lines.push(`${n}*${q}`));
+  return lines.join('\n');
 }
 function renderMessage(sel){ $('#msgBox').textContent = buildMessage(sel || selectedShipments()); }
 
@@ -1371,7 +1369,8 @@ function exportFileName(sel, cfg){
   const methods = [...new Set(sel.map(s=>s.isCvs ? (s.cvsType||'超商') : '宅配'))];
   const temps = [...new Set(sel.filter(s=>!s.isCvs).map(s=>s.tempC||'常溫'))];
   const allCvs = sel.every(s=>s.isCvs);
-  return `${chans.join('+')}${mmdd}_${methods.join('+')}${allCvs ? '' : '_'+temps.join('+')}.xlsx`;
+  const whs = [...new Set(sel.filter(s=>!s.isCvs).flatMap(s=>s.lines.filter(l=>!l.isGift).map(l=>l.warehouse)).filter(Boolean).map(w=>w.replace(/倉$/,'')))];
+  return `${chans.join('+')}${mmdd}_${methods.join('+')}${allCvs ? '' : '_'+temps.join('+') + (whs.length ? '_'+whs.join('+') : '')}.xlsx`;
 }
 function pageSetup(){ return { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0, horizontalCentered:true, margins:{ left:0.5, right:0.5, top:0.6, bottom:0.6, header:0.3, footer:0.3 } }; }
 function sheetName(s){ return s.replace(/[\\\/\?\*\[\]:]/g,'_').slice(0,31) || '出貨單'; }
@@ -1467,39 +1466,41 @@ function buildPickSheet(wb, sel, cfg){
 /* 新零售銷售報表：欄位依 SOP 截圖 A–U，轉換規則依 Lance「ai訂單轉換」對照表 */
 function buildRetailSheet(wb, sel, cfg){
   const ws = wb.addWorksheet('新零售銷售報表', { views:[{ state:'frozen', ySplit:1 }] });
-  // 欄位 A–V 對齊報表；來源與公式依 Lance「ai訂單轉換」v2 ＋ 優化回饋（是否出貨留空、平台訂單號完整、M/P/R 取整數、V 商品成本總含稅、V 之後不輸出）
-  const cols = ['出貨倉別','是否出貨','倉庫訂單編號/託運單號','NS打單與交貨','月份','Brand','Channel','order_create_date','平台訂單號','銷售訂單','品項','數量','售價/單價','售價/單價(未稅)','總金額(含稅)','總金額(未稅)','進價(未稅)','總進價收入(未稅)','總進價收入(含稅)','商品成本(未稅)','商品成本(總未稅)','商品成本(總含稅)'];
-  headerRow(ws, 1, cols, [10,8,20,10,8,10,10,12,28,12,26,6,12,12,12,12,10,12,12,12,12,12]);
+  // 欄位 A–W 對齊報表；來源與公式依 Lance「ai訂單轉換」v4（momo／cyberbiz 各一份）：K 料號＝表C NS 品號，其後欄位右移一欄
+  const cols = ['出貨倉別','客戶代號','倉庫訂單編號/託運單號','NS打單與交貨','月份','Brand','Channel','order_create_date','平台訂單號','銷售訂單','料號','品項','數量','售價/單價','售價/單價(未稅)','總金額(含稅)','總金額(未稅)','進價(未稅)','總進價收入(未稅)','總進價收入(含稅)','商品成本(未稅)','商品成本(總未稅)','商品成本(總含稅)'];
+  headerRow(ws, 1, cols, [10,10,20,10,8,10,10,12,28,10,13,26,6,12,12,12,12,10,12,12,12,12,12]);
+  const MON = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   let r = 2;
   sel.forEach(s=>{
-    const d = s.invoiceDate || s.orderDate || s.printDate || cfg.date;                 // H：order_create_date = 發票日期
+    const d = P.key==='cyberbiz' ? (s.orderDate || s.invoiceDate || cfg.date) : (s.invoiceDate || s.orderDate || s.printDate || cfg.date);   // H：momo 用發票日期；cyberbiz 用訂單明細的訂單日期
     const dm = d.match(/^(\d{4})\/(\d{2})\/(\d{2})/);
-    const dateVal = dm ? new Date(Date.UTC(+dm[1], +dm[2]-1, +dm[3])) : d;             // ExcelJS 以 UTC 寫日期，用 Date.UTC 避免差一天
-    const month = dm ? +(dm[1]+dm[2]) : '';                                            // E：月份 = 發票日期 20xx/yy → 20xxyy
-    const channel = s.channel || cfg.channel;                                          // G：Channel = PDF 上的通路名，沒有 PDF 時用平台預設
+    const dateText = dm ? `${+dm[3]}-${MON[+dm[2]-1]}` : d;                             // H：格式「16-SEP」
+    const month = dm ? +(dm[1]+dm[2]) : '';                                            // E：月份 = 日期 20xx/yy → 20xxyy
+    const channel = s.channel || cfg.channel;                                          // G：Channel = 檔名／PDF 上的通路，判不出用預設
     s.lines.forEach(l=>{
       const zeroPrice = l.isGift || l.unitPrice===0 || l.lineTotal===0;                // F：1M=0 → 填「贈品」；A：贈品不寫倉別、不上底色
-      const orderRef = (l.orderRefs && l.orderRefs.length ? l.orderRefs : [l.orderRef || s.orderNo]).join('、');   // I：平台訂單號完整（含 -001-001-001）
-      const vals = [zeroPrice ? '' : (l.warehouse||''), customerCode(channel), s.trackNo||'', '', month, zeroPrice ? '贈品' : (l.brand||''), channel, dateVal, orderRef, '',
-        l.shortName || l.name,                                    // K：品項 = 簡稱
-        l.units,                                                  // L：數量 = 1L × 入數
-        { formula:`IF(L${r}=0,0,ROUND(O${r}/L${r},1))` },         // M：售價/單價 = 1M ÷ (1L×入)，0.1 位
-        { formula:`ROUND(M${r}/1.05,3)` },                        // N：售價/單價(未稅)，0.001 位
-        l.lineTotal==null ? null : Math.round(l.lineTotal),       // O：總金額(含稅) = 1M，個位數
-        { formula:`ROUND(O${r}/1.05,0)` },                        // P：總金額(未稅) = 1M × 未稅，個位數
-        { formula:`IF(L${r}=0,0,ROUND(S${r}/L${r}/1.05,3))` },    // Q：進價(未稅) = 1Q ÷ (1L×入) × 未稅，0.001 位
-        { formula:`ROUND(S${r}/1.05,2)` },                        // R：總進價收入(未稅) = 1Q × 未稅，0.01 位
-        l.costTotal==null ? null : Math.round(l.costTotal),       // S：總進價收入(含稅) = 1Q，個位數
-        l.unitCost===''?null:l.unitCost,                          // T：商品成本(未稅)，來自表B
-        { formula:`T${r}*L${r}` },                                // U：商品成本(總未稅) = T × 3L
-        { formula:`U${r}*1.05` }];                                // V：商品成本(總含稅) = U × 含稅
-      const row = bodyRow(ws, r, vals, { wrap:[11], center:[1,2,4,5,7,12], numFmt:{8:'yyyy/mm/dd',13:'0.0',14:'0.000',15:'0',16:'0',17:'0.000',18:'0.00',19:'0',20:'0.00',21:'0.00',22:'0.00'} });
+      const orderRef = (l.orderRefs && l.orderRefs.length ? l.orderRefs : [l.orderRef || s.orderNo]).join('、');   // I：平台訂單號必須完整
+      const vals = [zeroPrice ? '' : (l.warehouse||''), customerCode(channel), s.trackNo||'', '', month, zeroPrice ? '贈品' : (l.brand||''), channel, dateText, orderRef, '',
+        l.nsCode||'',                                             // K：料號（表C NS 品號）
+        l.shortName || l.name,                                    // L：品項 = 簡稱
+        l.units,                                                  // M：數量 = 1M × 入
+        { formula:`IF(M${r}=0,0,ROUND(P${r}/M${r},1))` },         // N：售價/單價 = 1N ÷ (1L×入)，0.1 位
+        { formula:`ROUND(N${r}/1.05,3)` },                        // O：售價/單價(未稅)，0.001 位
+        l.lineTotal==null ? null : Math.round(l.lineTotal),       // P：總金額(含稅) = 1N，個位數
+        { formula:`ROUND(P${r}/1.05,0)` },                        // Q：總金額(未稅) = 1N × 未稅，個位數
+        l.costTotal==null ? null : { formula:`IF(M${r}=0,0,ROUND(T${r}/M${r}/1.05,3))` },   // R：進價(未稅) = 1R ÷ 2M × 未稅，0.001 位
+        l.costTotal==null ? null : { formula:`ROUND(T${r}/1.05,2)` },                       // S：總進價收入(未稅) = 1R × 未稅，0.01 位
+        l.costTotal==null ? null : Math.round(l.costTotal),       // T：總進價收入(含稅) = 1R，個位數
+        l.unitCost===''?null:l.unitCost,                          // U：商品成本(未稅)，來自表B
+        { formula:`U${r}*M${r}` },                                // V：商品成本(總未稅) = U × 數量
+        { formula:`V${r}*1.05` }];                                // W：商品成本(總含稅) = V × 含稅
+      const row = bodyRow(ws, r, vals, { wrap:[12], center:[1,2,4,5,7,8,11,13], numFmt:{14:'0.0',15:'0.000',16:'0',17:'0',18:'0.000',19:'0.00',20:'0',21:'0.00',22:'0.00',23:'0.00'} });
       if(!zeroPrice){ const wh = l.warehouse||''; const fill = /愛上/.test(wh) ? 'FFFF9999' : /希塔/.test(wh) ? 'FF9DC3E6' : null; if(fill) row.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:fill} }; }
-      if(!l.matched) row.getCell(11).font = f({ color:{argb:'FFC4362F'} });
+      if(!l.matched) row.getCell(12).font = f({ color:{argb:'FFC4362F'} });
       r++;
     });
   });
-  ws.autoFilter = { from:'A1', to:`V${r-1}` };
+  ws.autoFilter = { from:'A1', to:`W${r-1}` };
 }
 /* 愛上出貨建單資料（表F） */
 function buildIfreshSheet(wb, sel, cfg){
@@ -1529,7 +1530,7 @@ function buildIfreshSheet(wb, sel, cfg){
       orderRef = `${orderNo14}-${chTag}-宅配`;
       if(hasFrozen) custNotes.push('送達前請先致電');
       if(hasFragile) custNotes.push('易碎物品請小心輕放');
-      custNotes.push('請使用第三方支配單');
+      innerNotes.push('請使用第三方支配單');
       if(hasFragile) innerNotes.push('請貼易碎品於外箱');
       if(hasDamage) innerNotes.push('出貨前請務必檢查商品是否有破損');
     }
@@ -1542,13 +1543,13 @@ function buildIfreshSheet(wb, sel, cfg){
     });
   });
   ws.autoFilter = { from:'A1', to:`P${r-1}` };
-  ws.getCell(`A${r+1}`).value = '依表F：宅配平台＝通路-cat（無宅配單號則只寫通路）、超商＝通路7-11超取／全家超取；廠商原始訂編＝訂單編號(前14碼)-Channel-宅配／711／全家；訂購人只寫姓名（SCM 清單遮罩時取宅配單 PDF 姓名）；超商收件人為大智通電子商務組／日翊物流及其電話地址；客戶備註：冷凍商品「送達前請先致電」、易碎品（青花椒辣醬、茶油剝皮辣椒）「易碎物品請小心輕放」、「請使用第三方支配單」；內部備註：易碎品貼標、蛤蜊雞湯／打拋摃丸出貨前檢查破損；超商件在週二、四加註 40 件集運提醒。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
+  ws.getCell(`A${r+1}`).value = '依表F：宅配平台＝通路-cat（無宅配單號則只寫通路）、超商＝通路7-11超取／全家超取；廠商原始訂編＝訂單編號(前14碼)-Channel-宅配／711／全家；訂購人只寫姓名（SCM 清單遮罩時取宅配單 PDF 姓名）；超商收件人為大智通電子商務組／日翊物流及其電話地址；客戶備註：冷凍商品「送達前請先致電」、易碎品（青花椒辣醬、茶油剝皮辣椒）「易碎物品請小心輕放」；內部備註：「請使用第三方支配單」、易碎品貼標、蛤蜊雞湯／打拋摃丸出貨前檢查破損；超商件在週二、四加註 40 件集運提醒。'; ws.getCell(`A${r+1}`).font = f({ italic:true, color:{argb:'FF888888'} });
 }
 function buildMessageSheet(wb, sel, cfg){
   const ws = wb.addWorksheet('回報訊息');
   ws.columns = [{width:110}];
   const msg = buildMessage(sel);
-  ws.getCell('A1').value = '複製下方文字貼到 Lark／LINE 群組（SO 號碼請在 NS 建單後補上）'; ws.getCell('A1').font = f({bold:true});
+  ws.getCell('A1').value = '希塔出貨：複製下方文字貼到 Lark 群組（表F 格式）'; ws.getCell('A1').font = f({bold:true});
   ws.getCell('A2').value = msg; ws.getCell('A2').font = f({size:11}); ws.getCell('A2').alignment = { wrapText:true, vertical:'top' }; ws.getRow(2).height = Math.min(400, 15*(msg.split('\n').length+1));
 }
 function buildRawSheet(wb, sel, cfg){
@@ -1618,6 +1619,7 @@ $('#headerRow').addEventListener('change', e=>{ const src=tableSource(); if(!src
 ['#search','#skipExported','#onlyProblem'].forEach(s=>$(s).addEventListener('input', applyFilters));
 $('#setSort').addEventListener('change', applyFilters);
 $('#setNotifyName').addEventListener('input', ()=>{ LS.set('notifyName', $('#setNotifyName').value); renderMessage(); });
+$('#setDate').addEventListener('change', ()=>renderMessage());
 $('#btnCopyMsg').addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText($('#msgBox').textContent); $('#msgHint').textContent='已複製'; setTimeout(()=>$('#msgHint').textContent='', 2000); }catch(e){ $('#msgHint').textContent='無法自動複製，請手動選取文字'; } });
 $('#btnAllOn').addEventListener('click', ()=>{ state.excluded.clear(); applyFilters(); });
 $('#btnAllOff').addEventListener('click', ()=>{ state.shipments.filter(passesFilter).forEach(s=>state.excluded.add(s.key)); applyFilters(); });
