@@ -649,7 +649,7 @@ const PLATFORMS = {
     channel:'CYBERBIZ', nsCustomer:'54688786 順立智慧股份有限公司(Cyberbiz)', nsTerms:'半月結15天', orderRefPrefix:'官網', ifreshHome:'Cyberbiz-宅配', ifreshCvs:'Cyberbiz-超商取貨', ordererPrefix:'CB-', msgPlatform:'cyberbiz',
     defaultPassword:'', pwLabel:'檔案密碼（Excel／PDF／Word 有密碼保護時自動用它解鎖；沒有可留空）', pwPlaceholder:'沒有密碼可留空',
     importTitle:'1. 匯入 Cyberbiz 訂單資料', dropTitle:'把 Cyberbiz 後台「訂單管理 → 匯出」的檔案拖到這裡（可一次多個），或點擊選擇',
-    dropHint:'Cyberbiz 匯出的 Excel／CSV（每列一個商品，或一格多個品項都可以）、Word 表格、PDF 表格、zip 都能讀；欄名會自動對應，有密碼的檔案自動解鎖。',
+    dropHint:'Cyberbiz 後台下載的「訂單明細」「出貨明細」「揀貨訂單」PDF 與黑貓快速到店託運單會自動辨識並依訂單編號合併；Excel／CSV 匯出檔、Word 表格、zip 也能讀，有密碼的檔案自動解鎖。',
     samples:{ xlsx:['cyberbiz訂單匯出範例.xlsx'], pdf:[] },
     filePrefix:'cyberbiz出貨單', noticeOn:false, priceMode:'auto', summaryTitle:'Cyberbiz 出貨總表',
   },
@@ -977,13 +977,14 @@ async function ingestPdf(u8, name){
   for(let p=1; p<=doc.numPages; p++){
     const page = await doc.getPage(p); const vp = page.getViewport({ scale:1 });
     const tc = await page.getTextContent();
-    const items = tc.items.filter(i=>i.str && i.str.trim()).map(i=>({ s:i.str.trim(), x:i.transform[4], y:vp.height - i.transform[5], w:i.width }));
+    const clean = str => String(str||'').replace(/[\u0000-\u001f\u007f\ufeff]/g,'').trim();   // pdf.js 有時夾帶 NUL 等控制字元
+    const items = tc.items.filter(i=>i.str && clean(i.str)).map(i=>({ s:clean(i.str), x:i.transform[4], y:vp.height - i.transform[5], w:i.width }));
     pages.push({ w:vp.width, h:vp.height, items });
   }
   try{ doc.destroy(); }catch(e){}
   const suffix = unlocked ? '，已用密碼解鎖' : '';
   const momo = parseMomoPdf(pages);
-  if(momo.packing.length || momo.labels.length || momo.totals.length) return { name, kind:'momo', momo, desc: momoDesc(momo) + suffix };
+  if(hasDocs(momo)) return { name, kind:'momo', momo, desc: momoDesc(momo) + suffix };
   const rows = pdfPagesToRows(pages);
   if(rows.length >= 2){
     const src = { name, kind:'table', sheets:{ 'PDF 表格': rows }, sheetName:'PDF 表格', rows };
@@ -1014,13 +1015,17 @@ function pdfPagesToRows(pages){
   }
   return rows;
 }
-const momoDesc = m => [m.packing.length && `裝箱明細 ${m.packing.length} 張`, m.labels.length && `宅配單 ${m.labels.length} 張`, m.totals.length && `取貨總表 ${m.totals.length} 筆`].filter(Boolean).join('、');
+const CB_KIND_NAME = { order:'Cyberbiz 訂單明細', fulfill:'Cyberbiz 出貨明細', picking:'Cyberbiz 揀貨訂單', label:'黑貓託運單' };
+const momoDesc = m => [m.packing.length && `裝箱明細 ${m.packing.length} 張`, m.labels.length && `宅配單 ${m.labels.length} 張`, m.totals.length && `取貨總表 ${m.totals.length} 筆`, ...(m.cb||[]).map(d=>`${CB_KIND_NAME[d.kind]} ${d.orderNo||''}`)].filter(Boolean).join('、');
+const hasDocs = m => m.packing.length || m.labels.length || m.totals.length || (m.cb && m.cb.length);
 
 /* ---- momo 文件解析（座標版） ---- */
 function parseMomoPdf(pages){
-  const out = { packing:[], labels:[], totals:[] };
+  const out = { packing:[], labels:[], totals:[], cb:[] };
   for(const pg of pages){
     const text = pg.items.map(i=>i.s).join('\n');
+    const cb = parseCyberbizPage(pg, text);
+    if(cb){ out.cb.push(cb); continue; }
     if(/裝箱明細/.test(text) && /訂單編號/.test(text) && /序號/.test(text)) out.packing.push(...parsePackingPage(pg));
     else if(/到廠取貨總表/.test(text) || (/宅配單號/.test(text) && /件數/.test(text) && /代收款/.test(text) && /\bNO\b/.test(text))) out.totals.push(...parseTotalsPage(pg));
     else if(/貨件聯|收執聯|宅配單號|客戶單號/.test(text)) out.labels.push(...parseLabelPage(pg));
@@ -1127,6 +1132,84 @@ function parseTotalsPage(pg){
   });
   return rows;
 }
+
+/* ---- Cyberbiz 文件解析：訂單明細（orders_print_details）、出貨明細（fulfillments_details）、揀貨訂單（picking_lists）、黑貓快速到店託運單（ezcat） ---- */
+function parseCyberbizPage(pg, text){
+  const kind = /訂單明細/.test(text) && /訂單編號\s*[:：]?\s*#/.test(text) && /單價/.test(text) ? 'order'
+             : /出貨明細/.test(text) && /配送資訊/.test(text) ? 'fulfill'
+             : /揀貨訂單/.test(text) && /揀貨細項/.test(text) ? 'picking'
+             : /(快速到店|宅急便配送聯)/.test(text) && /託運單號:/.test(text) && /配送編號:/.test(text) ? 'label' : null;
+  if(!kind) return null;
+  const items = pg.items;
+  const lines = groupLines(items, 3);
+  // 依 x 間距拼接同一列的字塊：緊鄰（<2.5pt）不加空格，否則加一個空格；最後去掉中文與括號旁的空格
+  const joinItems = arr => { let out=''; let prev=null; for(const it of [...arr].sort((a,b)=>a.x-b.x)){ if(prev){ out += (it.x - (prev.x+prev.w) < 2.5) ? '' : ' '; } out += it.s; prev = it; } return out.replace(/\s+(?=[\u3000-\u9fff（）()【】，、：:])|(?<=[\u3000-\u9fff（）()【】，、：:])\s+/g,'').replace(/\s{2,}/g,' ').trim(); };
+  const lineText = L => joinItems(L.items);
+  const joined = lines.map(lineText).join('\n');
+  const grab = re => { const m = joined.match(re); return m ? m[1].trim() : ''; };
+  const doc = { kind, channel:'CYBERBIZ', orderNo: grab(/訂單編號\s*[:：]?\s*(#\d+)/), lines:[] };
+  if(kind==='label'){
+    doc.trackNo = grab(/託運單號\s*[:：]?\s*(\d{10,14})/); doc.deliveryNo = grab(/配送編號\s*[:：]?\s*([A-Z0-9]{8,14})/);
+    doc.temp = /溫層\s*[:：]?\s*冷凍|冷凍/.test(joined) ? '冷凍' : /冷藏/.test(joined) ? '冷藏' : '常溫';
+    doc.storeName = grab(/收件門市\s*[:：]?\s*(\S+)/); doc.address = grab(/收件地址\s*[:：]?\s*(\S+)/);
+    return doc;
+  }
+  // 日期
+  doc.orderDate = normDate(grab(/(?:訂單日期|訂購日期)\s*[:：]?\s*(\d{4}-\d{2}-\d{2})/));
+  doc.shipDate = normDate(grab(/出貨日期\s*[:：]?\s*(\d{4}-\d{2}-\d{2})/));
+  // 配送／訂購資訊（key 在左、value 在右，同一列或下一列）
+  const kv = (key) => {
+    for(let i=0;i<lines.length;i++){
+      const L = lines[i]; const k = L.items.find(it=>it.s.replace(/\s/g,'')===key);
+      if(!k) continue;
+      const same = joinItems(L.items.filter(it=>it.x > k.x + k.w + 2)).replace(/^[:：]\s*/,'');
+      if(same) return same;
+      const next = lines[i+1]; if(next && next.items.every(it=>it.x > k.x + 40)) return lineText(next).trim();
+      return '';
+    }
+    return '';
+  };
+  // 出貨明細與訂單明細都有「配送資訊」區；訂單明細另有「訂購人資訊」區（聯絡電話出現兩次，取配送資訊那一個）
+  const shipIdx = lines.findIndex(L=>/^配送資訊/.test(lineText(L)));
+  const kvFrom = (key, fromIdx) => { for(let i=Math.max(0,fromIdx);i<lines.length;i++){ const L=lines[i]; const k=L.items.find(it=>it.s.replace(/\s/g,'')===key); if(!k) continue; const same=joinItems(L.items.filter(it=>it.x>k.x+k.w+2)).replace(/^[:：]\s*/,''); if(same) return same; const next=lines[i+1]; return next && next.items.every(it=>it.x>k.x+40) ? lineText(next).trim() : ''; } return ''; };
+  doc.receiver = kvFrom('收件人', shipIdx); doc.phone = kvFrom('聯絡電話', shipIdx); doc.address = kvFrom('收件地址', shipIdx);
+  const store = kvFrom('超商門市資訊', shipIdx); const sm = store.match(/^(\S+)\s+(\S+?)\s*\((\d+)\)/) || store.match(/^(\S+)\s+(.+)$/);
+  if(sm){ doc.cvsBrand = sm[1]; doc.storeName = sm[2]; doc.storeId = sm[3]||''; }
+  doc.carrier = kvFrom('配送方式', shipIdx); doc.payment = kvFrom('付款方式', shipIdx);
+  const track = kvFrom('託運單號', shipIdx); doc.trackNo = (track.match(/(\d{10,14})/)||[])[1] || '';
+  doc.buyer = kv('訂購人'); doc.invoice = (kv('發票號碼').match(/([A-Z]{2}\d{8})/)||[])[1] || '';
+  doc.temp = /冷凍/.test(doc.carrier||'') ? '冷凍' : /冷藏/.test(doc.carrier||'') ? '冷藏' : '';
+  // 商品明細：表頭「商品名稱」列到「小計／總商品數／配送資訊」之間
+  const hdr = lines.find(L=>L.items.some(it=>/^(商品名稱|品名)$/.test(it.s)) && L.items.some(it=>/^數量$/.test(it.s)));
+  if(hdr){
+    const col = name => { const it = hdr.items.find(i=>i.s===name); return it ? it.x : null; };
+    const nameX = col('商品名稱') ?? col('品名') ?? 18, qtyX = col('數量'), priceX = col('單價'), subX = col('小計');
+    const endIdx = lines.findIndex((L,i)=>L.y>hdr.y && /^(小計|總商品數|配送資訊|揀貨人員|出貨人員)/.test(lineText(L)) && !L.items.some(it=>it.x<nameX+5 && /【/.test(it.s)));
+    const body = items.filter(it=>it.y>hdr.y+4 && (endIdx<0 || it.y<lines[endIdx].y-2) && !/^(SKU|\/)$/.test(it.s));
+    const anchorX = subX ?? qtyX; const anchors = body.filter(it=>Math.abs(it.x - anchorX) < 40 && /^(NT\$)?[\d,]+$/.test(it.s)).sort((a,b)=>a.y-b.y);
+    const rows = anchors.map(a=>({ y:a.y, parts:[], qty:'', price:'', sub:'' }));
+    if(!rows.length) rows.push({ y:hdr.y+20, parts:[], qty:'', price:'', sub:'' });
+    body.forEach(it=>{
+      const row = rows.reduce((best,r)=>Math.abs(r.y-it.y) < Math.abs(best.y-it.y) ? r : best, rows[0]);
+      if(qtyX!=null && Math.abs(it.x-qtyX) < 30 && /^\d+$/.test(it.s)) row.qty = it.s;
+      else if(priceX!=null && Math.abs(it.x-priceX) < 30 && /NT\$|^\d/.test(it.s)) row.price = it.s;
+      else if(subX!=null && Math.abs(it.x-subX) < 30 && /NT\$|^\d/.test(it.s)) row.sub = it.s;
+      else if(it.x < (priceX ?? qtyX) - 20) row.parts.push(it);
+    });
+    rows.forEach(row=>{
+      // 依列（y）分組後各自拼接，再依 y 順序接起來；Cyberbiz 顯示格式為「商品名稱 - 規格 / 選項」
+      const byLine = groupLines(row.parts, 3).map(L=>joinItems(L.items));
+      let raw = byLine.join(' ').replace(/(\d)\s+(\d)/g,'$1$2').replace(/\s*\/\s*$/,'').trim();   // 換行處被拆開的數字（約1／0顆）接回
+      let spec = ''; const dash = raw.search(/\)?\s*-\s/); if(dash > 0){ spec = raw.slice(dash).replace(/^\)?\s*-\s*/,'').trim(); raw = raw.slice(0, dash + (raw[dash]===')' ? 1 : 0)).trim(); }
+      spec = spec.replace(/\s*\/\s*/g,' / ').replace(/\s{2,}/g,' ').trim();
+      const name = raw.replace(/\s{2,}/g,' ').trim();
+      if(!name) return;
+      doc.lines.push({ name, spec, qty: num(row.qty)||1, lineTotal: row.sub ? num(row.sub) : null, unitPrice: row.price ? num(row.price) : null, sku:'' });
+    });
+  }
+  return doc;
+}
+
 /* 純文字版（Word 內文）：只抓得到基本欄位 */
 function parseMomoLines(lines){
   const out = { packing:[], labels:[], totals:[] };
@@ -1253,6 +1336,27 @@ function momoRecords(){
   });
   labels.forEach(l=>{ if(used.has(l.trackNo) || (l.shipNo && seen.has(l.shipNo))) return; seen.add(l.shipNo||l.trackNo); used.add(l.trackNo); const tot = totByTrack.get(l.trackNo)||{}; recs.push({ source:'momo 宅配單', orderNo:l.orderNo, shipNo:l.shipNo, trackNo:l.trackNo, carrier:'第三方-宅急便', deadline:'', receiver:l.receiver||tot.receiver||'', phone:l.phone||'', address:l.address||'', sku:l.contentSku||'', name: l.contentSku ? `商品 ${l.contentSku}（缺列印明細，請補上）` : '（缺列印明細，請補上）', barcode:'', vendorCode:'', qty: 1, cod:num(tot.cod), invoice:l.invoice||'', invoiceDate:l.invoiceDate||'', note:'', dims:(tot.dims||[]).join('；')||l.dims||'', temp:l.temp||'', pieces:tot.pieces||l.pieces||'', shipDate:l.shipDate||'', channel:l.channel||'', missingLines:true }); });
   totals.forEach(t=>{ if(used.has(t.trackNo)) return; used.add(t.trackNo); recs.push({ source:'momo 總表', orderNo:t.orderNo, shipNo:'', trackNo:t.trackNo, carrier:'第三方-宅急便', receiver:t.receiver, phone:'', address:'', sku:'', name:'（缺列印明細，請補上）', qty:1, cod:num(t.cod), dims:t.dims.join('；'), pieces:t.pieces, missingLines:true }); });
+  recs.push(...cyberbizRecords());
+  return recs;
+}
+/* Cyberbiz：同一訂單的訂單明細／出貨明細／揀貨訂單／託運單合併成一張出貨單。品項以訂單明細為主（有小計），其次出貨明細、揀貨訂單 */
+function cyberbizRecords(){
+  const docs = []; state.sources.filter(s=>s.kind==='momo' && s.momo.cb).forEach(s=>docs.push(...s.momo.cb));
+  if(!docs.length) return [];
+  const byOrder = new Map(); const labels = docs.filter(d=>d.kind==='label');
+  docs.filter(d=>d.kind!=='label').forEach(d=>{ const k = d.orderNo || 'noorder'; if(!byOrder.has(k)) byOrder.set(k, []); byOrder.get(k).push(d); });
+  const recs = []; const usedLabels = new Set();
+  byOrder.forEach((group, orderNo)=>{
+    const pick = kind => group.find(d=>d.kind===kind);
+    const order = pick('order'), fulfill = pick('fulfill'), picking = pick('picking');
+    const meta = {}; [order, fulfill, picking].forEach(d=>{ if(!d) return; for(const k of ['orderDate','shipDate','receiver','phone','address','storeName','storeId','cvsBrand','carrier','payment','trackNo','buyer','invoice','temp']) if(!meta[k] && d[k]) meta[k]=String(d[k]).trim(); });
+    const lab = labels.find(l=>l.trackNo && l.trackNo===meta.trackNo) || (labels.length===1 && byOrder.size===1 ? labels[0] : null);
+    if(lab){ usedLabels.add(lab); if(!meta.trackNo) meta.trackNo = lab.trackNo; if(!meta.temp) meta.temp = lab.temp; meta.deliveryNo = lab.deliveryNo; }
+    const src = order || fulfill || picking; const kinds = group.map(d=>CB_KIND_NAME[d.kind]).concat(lab ? [CB_KIND_NAME.label] : []).join('＋');
+    if(meta.address && meta.storeName && !meta.address.includes(meta.storeName)) meta.address = `${meta.storeName}${meta.storeId?`（${meta.storeId}）`:''} ${meta.address}`;
+    src.lines.forEach(l=>recs.push({ source: kinds, orderNo, shipNo:'', trackNo: meta.trackNo||'', carrier: meta.carrier||'', deadline:'', orderDate: meta.orderDate||'', shipDate: meta.shipDate||'', status:'', payStatus: meta.payment||'', receiver: meta.receiver||'', buyer: meta.buyer||'', phone: meta.phone||'', address: meta.address||'', storeName: meta.storeName||'', storeId: meta.storeId||'', sku:l.sku||'', name:l.name, spec:l.spec||'', barcode:'', vendorCode:'', qty:l.qty, cod:0, invoice: meta.invoice||'', invoiceDate:'', note:'', dims:'', temp: meta.temp||'', pieces:'', channel:'CYBERBIZ', priceRaw: l.lineTotal!=null ? l.lineTotal : (l.unitPrice!=null ? l.unitPrice*l.qty : null), costRaw:null, orderRef: orderNo, deliveryNo: meta.deliveryNo||'' }));
+  });
+  labels.filter(l=>!usedLabels.has(l)).forEach(l=>recs.push({ source:CB_KIND_NAME.label, orderNo:'', trackNo:l.trackNo, carrier:'黑貓快速到店', receiver:'', address:l.address||'', storeName:l.storeName||'', name:'（缺訂單明細，請補上）', qty:1, temp:l.temp||'', channel:'CYBERBIZ', missingLines:true }));
   return recs;
 }
 
@@ -1292,7 +1396,7 @@ function rebuildAll(){
   const priceModeSet = $('#setPriceMode').value; // auto／total（該列合計）／unit（每一平台品項單價）
   const costModeSet = $('#setCostMode').value;    // auto（同售價基準）／unit（每報表單位，Lance 字面 1Q×3L）／item（每平台品項）／total（該列合計）
   recs.forEach(r=>{
-    const priceMode = priceModeSet==='auto' ? (r.priceIsUnit ? 'unit' : 'total') : priceModeSet;
+    const priceMode = r.channel==='CYBERBIZ' && /Cyberbiz/.test(r.source||'') ? 'total' : (priceModeSet==='auto' ? (r.priceIsUnit ? 'unit' : 'total') : priceModeSet);
     const costMode = costModeSet==='auto' ? (priceMode==='unit' ? 'item' : 'total') : costModeSet;
     const m = lookupMaster(r);
     const pr = lookupProduct(r.name);          // 內建表B／表C
@@ -1337,7 +1441,8 @@ function rebuildAll(){
     g.wasExported = exported.has(g.key);
     const cvsText = `${g.carrier||''} ${g.storeName||''} ${g.note||''}`;
     g.cvsType = /7-?11|統一超商|seven/i.test(cvsText) ? '711' : /全家|family/i.test(cvsText) ? '全家' : '';
-    g.isCvs = !!g.cvsType || /超商|超取|萊爾富|OK/i.test(g.carrier||'') || !!(g.storeName || g.storeId);
+    g.isCvs = /黑貓|宅急便|快速到店/.test(g.carrier||'') ? false : (!!g.cvsType || /超商|超取|萊爾富|OK/i.test(g.carrier||'') || !!(g.storeName || g.storeId));
+    if(!g.isCvs) g.cvsType = '';
     g.tempC = g.lines.some(l=>/冷凍/.test(l.temp||'')) ? '冷凍' : g.lines.some(l=>/冷藏/.test(l.temp||'')) ? '冷藏' : '常溫';   // 溫層依表C 商品判斷
     if(!g.address && (g.storeName || g.storeId)) g.address = `${g.storeName||''}${g.storeId?`（${g.storeId}）`:''}`;
     else if(g.address && g.storeName && !g.address.includes(g.storeName)) g.address = `${g.storeName}${g.storeId?`（${g.storeId}）`:''} ${g.address}`;
