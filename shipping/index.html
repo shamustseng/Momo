@@ -386,7 +386,7 @@
       <div class="field" style="margin-top:8px"><textarea id="setNoticeText"></textarea></div>
     </details>
     <details style="margin-top:8px" open>
-      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；只列希塔倉品項）</summary>
+      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；含希塔倉商品的出貨單逐列列出，包含贈品）</summary>
       <div class="btn-row" style="margin:8px 0"><button class="btn sm" id="btnCopyMsg" type="button">複製訊息</button><span class="hint" id="msgHint"></span></div>
       <div class="msgbox" id="msgBox"></div>
     </details>
@@ -1418,13 +1418,12 @@ function buildMessage(sel){
   const cfgDate = ($('#setDate').value || todayISO()).replace(/-/g,'/');
   const m = cfgDate.match(/^(\d{4})\/(\d{2})\/(\d{2})/); const wd = m ? new Date(+m[1], +m[2]-1, +m[3]).getDay() : -1;
   const mention = $('#setNotifyName').value.trim() || (wd===4 ? '@王傳斌' : '@湯恩齊 Keith');
-  // 只列希塔倉出貨的品項（愛上倉走愛上出貨系統）；若沒有任何倉別資訊則全部列出
+  // 希塔出貨：列出含希塔倉商品的每一張出貨單裡「每一排」的 商品*數量（不合併、包含贈品）；若完全沒有倉別資訊則全部列出
   const anyWh = sel.some(s=>s.lines.some(l=>l.warehouse));
-  const agg = new Map();
-  sel.forEach(s=>s.lines.forEach(l=>{ if(anyWh && !/希塔/.test(l.warehouse||'')) return; const n = l.shortName || l.name; agg.set(n, (agg.get(n)||0) + (l.units||l.qty||0)); }));
-  if(!agg.size) return '';
-  const lines = [mention, `您好，以下是${P.msgPlatform}要出貨的訂單，再麻煩您協助`];
-  agg.forEach((q,n)=>lines.push(`${n}*${q}`));
+  const ships = anyWh ? sel.filter(s=>s.lines.some(l=>!l.isGift && /希塔/.test(l.warehouse||''))) : sel;
+  const rows = []; ships.forEach(s=>s.lines.forEach(l=>rows.push(`${l.shortName || l.name}*${l.units || l.qty || 0}`)));
+  if(!rows.length) return '';
+  const lines = [mention, `您好，以下是${P.msgPlatform}要出貨的訂單，再麻煩您協助`, ...rows];
   return lines.join('\n');
 }
 function renderMessage(sel){ $('#msgBox').textContent = buildMessage(sel || selectedShipments()); }
