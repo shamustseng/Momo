@@ -1598,7 +1598,8 @@ function buildRetailSheet(wb, sel, cfg){
         l.unitCost===''?null:l.unitCost,                          // U：商品成本(未稅)，來自表B
         { formula:`U${r}*M${r}` },                                // V：商品成本(總未稅) = U × 數量
         { formula:`V${r}*1.05` }];                                // W：商品成本(總含稅) = V × 含稅
-      const row = bodyRow(ws, r, vals, { wrap:[12], center:[1,2,4,5,7,8,11,13], numFmt:{14:'0.0',15:'0.000',16:'0',17:'0',18:'0.000',19:'0.00',20:'0',21:'0.00',22:'0.00',23:'0.00'} });
+      // 金額欄位以 General 格式顯示：公式已四捨五入到指定位數，小數尾數為 0 時自動不顯示（210 而非 210.0）
+      const row = bodyRow(ws, r, vals, { wrap:[12], center:[1,2,4,5,7,8,11,13], numFmt:{14:'General',15:'General',16:'0',17:'0',18:'General',19:'General',20:'0',21:'General',22:'General',23:'General'} });
       if(!zeroPrice){ const wh = l.warehouse||''; const fill = /愛上/.test(wh) ? 'FFFF9999' : /希塔/.test(wh) ? 'FF9DC3E6' : null; if(fill) row.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:fill} }; }
       if(!l.matched) row.getCell(12).font = f({ color:{argb:'FFC4362F'} });
       r++;
