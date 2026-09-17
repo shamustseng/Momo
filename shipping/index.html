@@ -386,7 +386,7 @@
       <div class="field" style="margin-top:8px"><textarea id="setNoticeText"></textarea></div>
     </details>
     <details style="margin-top:8px" open>
-      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；含希塔倉商品的出貨單逐列列出，包含贈品）</summary>
+      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；每一個訂單逐列列出商品*數量，包含贈品、不合併）</summary>
       <div class="btn-row" style="margin:8px 0"><button class="btn sm" id="btnCopyMsg" type="button">複製訊息</button><span class="hint" id="msgHint"></span></div>
       <div class="msgbox" id="msgBox"></div>
     </details>
@@ -1418,10 +1418,8 @@ function buildMessage(sel){
   const cfgDate = ($('#setDate').value || todayISO()).replace(/-/g,'/');
   const m = cfgDate.match(/^(\d{4})\/(\d{2})\/(\d{2})/); const wd = m ? new Date(+m[1], +m[2]-1, +m[3]).getDay() : -1;
   const mention = $('#setNotifyName').value.trim() || (wd===4 ? '@王傳斌' : '@湯恩齊 Keith');
-  // 希塔出貨：列出含希塔倉商品的每一張出貨單裡「每一排」的 商品*數量（不合併、包含贈品）；若完全沒有倉別資訊則全部列出
-  const anyWh = sel.some(s=>s.lines.some(l=>l.warehouse));
-  const ships = anyWh ? sel.filter(s=>s.lines.some(l=>!l.isGift && /希塔/.test(l.warehouse||''))) : sel;
-  const rows = []; ships.forEach(s=>s.lines.forEach(l=>rows.push(`${l.shortName || l.name}*${l.units || l.qty || 0}`)));
+  // 希塔出貨（Lance）：每一個訂單的每一排都寫成 商品*數量，包含贈品，全部分開不合併
+  const rows = []; sel.forEach(s=>s.lines.forEach(l=>rows.push(`${l.shortName || l.name}*${l.units || l.qty || 0}`)));
   if(!rows.length) return '';
   const lines = [mention, `您好，以下是${P.msgPlatform}要出貨的訂單，再麻煩您協助`, ...rows];
   return lines.join('\n');
@@ -1595,9 +1593,9 @@ function buildRetailSheet(wb, sel, cfg){
         l.costTotal==null ? null : { formula:`IF(M${r}=0,0,ROUND(T${r}/M${r}/1.05,3))` },   // R：進價(未稅) = 1R ÷ 2M × 未稅，0.001 位
         l.costTotal==null ? null : { formula:`ROUND(T${r}/1.05,2)` },                       // S：總進價收入(未稅) = 1R × 未稅，0.01 位
         l.costTotal==null ? null : Math.round(l.costTotal),       // T：總進價收入(含稅) = 1R，個位數
-        l.unitCost===''?null:l.unitCost,                          // U：商品成本(未稅)，來自表B
-        { formula:`U${r}*M${r}` },                                // V：商品成本(總未稅) = U × 數量
-        { formula:`V${r}*1.05` }];                                // W：商品成本(總含稅) = V × 含稅
+        l.unitCost===''?null:Math.round(l.unitCost*100)/100,      // U：商品成本(未稅)，來自表B，0.01 位
+        { formula:`ROUND(U${r}*M${r},2)` },                       // V：商品成本(總未稅) = U × 數量，0.01 位
+        { formula:`ROUND(V${r}*1.05,4)` }];                       // W：商品成本(總含稅) = V × 含稅，0.0001 位
       // 金額欄位以 General 格式顯示：公式已四捨五入到指定位數，小數尾數為 0 時自動不顯示（210 而非 210.0）
       const row = bodyRow(ws, r, vals, { wrap:[12], center:[1,2,4,5,7,8,11,13], numFmt:{14:'General',15:'General',16:'0',17:'0',18:'General',19:'General',20:'0',21:'General',22:'General',23:'General'} });
       if(!zeroPrice){ const wh = l.warehouse||''; const fill = /愛上/.test(wh) ? 'FFFF9999' : /希塔/.test(wh) ? 'FF9DC3E6' : null; if(fill) row.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:fill} }; }
