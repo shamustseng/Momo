@@ -120,7 +120,12 @@ function imageFromChunk(chunk) {
   return m[1].startsWith('//') ? `https:${m[1]}` : m[1];
 }
 
-/** 從商品頁補齊名稱與價格 —— meta 標籤比列表頁的 class 名稱穩定得多。 */
+/**
+ * 從商品頁取名稱、價格與圖片。
+ * momo 商品頁的頭條價格不一定是「促銷價」：有限時活動時頭條會變成「限時折後價」，
+ * 促銷價被畫掉排在下面，而 meta 標籤、JSON-LD 與搜尋結果頁給的都是頭條那個數字。
+ * 我們要的是促銷價，所以另外從頁面把「促銷價」那一欄挑出來（promoPrice）。
+ */
 function parseDetailHtml(html) {
   const nodes = H.jsonLd(html);
   const product = H.findType(nodes, 'product');
@@ -136,7 +141,28 @@ function parseDetailHtml(html) {
 
   const image = H.meta(html, 'og:image') || (product && firstImage(product.image)) || '';
 
-  return { name, price, image };
+  return { name, price, promoPrice: promoPriceFromDetail(html), image };
+}
+
+/**
+ * 商品頁裡「促銷價」的數字。兩種寫法都認：
+ *  - 頁面資料（RSC payload，引號會被跳脫）：\"formName\":\"促銷價\",...\"formContent\":\"1,087元\"
+ *    或 \"priceName\":\"促銷價\",\"priceValue\":\"330\"
+ *  - 畫面 HTML：<span>促銷價</span><span class="font-price ..."><div><span class="hidden">$</span><span>330</span>
+ */
+function promoPriceFromDetail(html) {
+  const patterns = [
+    /\\?"(?:formName|priceName)\\?"\s*:\s*\\?"促銷價\\?"[^{}[\]]{0,80}?\\?"(?:formContent|priceValue)\\?"\s*:\s*\\?"([\d,]+)/,
+    /促銷價<\/span>\s*<span[^>]*font-price[^>]*>(?:\s*<div[^>]*>)?(?:\s*<span[^>]*>\$<\/span>)?\s*<span[^>]*>([\d,]+)<\/span>/,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      const price = H.toPrice(m[1]);
+      if (price !== null && price > 0) return price;
+    }
+  }
+  return null;
 }
 
 function firstImage(value) {
@@ -190,32 +216,38 @@ async function scrape(sourceConfig, net, log = () => {}) {
     if (seen === 0) warnings.push(`「${keyword}」沒有搜到任何商品，請確認關鍵字或 momo 是否改版。`);
   }
 
-  // 名稱或價格缺漏的，逐一開商品頁補齊
+  // momo 的關鍵字搜尋是模糊比對（「雞湯桑」會撈到別家的「桑拿雞蒸鍋」），
+  // 所以只留名稱裡真的有我們品牌字樣的商品
+  const mustMatch = (sourceConfig.mustMatch || []).map((t) => String(t).toLowerCase()).filter(Boolean);
+  const isOurs = (name) => !mustMatch.length || mustMatch.some((t) => name.toLowerCase().includes(t));
+
+  // 每一筆都開商品頁：搜尋結果頁給的是頭條價（有限時活動時是「限時折後價」），
+  // 我們要的是「促銷價」，只有商品頁才分得出來。還沒有名稱的也一起抓，抓完再判斷是不是本集團商品。
   const all = [...byCode.values()];
-  const needsDetail = all.filter((item) => !item.name || item.price === null);
-  if (needsDetail.length) {
-    log(`momo：補抓 ${needsDetail.length} 筆商品頁明細`);
-    await mapLimit(needsDetail, net.concurrency, net.delayMs, async (item) => {
+  const candidates = all.filter((item) => !item.name || isOurs(item.name));
+  let detailFailed = 0;
+  if (candidates.length) {
+    log(`momo：讀取 ${candidates.length} 筆商品頁，取「促銷價」`);
+    await mapLimit(candidates, net.concurrency, net.delayMs, async (item) => {
       const res = await fetchText(detailUrl(item.code), {
         timeoutMs: net.timeoutMs,
         retries: net.retries,
         referer: `${ORIGIN}/`,
       });
       if (!res.ok) {
-        item.status = res.status === 404 ? '已下架或不存在' : `明細讀取失敗（${res.error}）`;
+        if (!item.name) item.status = res.status === 404 ? '已下架或不存在' : `明細讀取失敗（${res.error}）`;
+        else detailFailed++;
         return;
       }
       const detail = parseDetailHtml(res.body);
       if (!item.name && detail.name) item.name = detail.name;
-      if (item.price === null && detail.price !== null) item.price = detail.price;
+      if (detail.promoPrice !== null) item.price = detail.promoPrice;
+      else if (item.price === null && detail.price !== null) item.price = detail.price;
       if (!item.image && detail.image) item.image = detail.image;
     });
   }
+  if (detailFailed > 0) warnings.push(`有 ${detailFailed} 筆商品頁讀不到，價格沿用搜尋結果頁顯示價（可能是限時折後價）。`);
 
-  // momo 的關鍵字搜尋是模糊比對（「雞湯桑」會撈到別家的「桑拿雞蒸鍋」），
-  // 所以只留名稱裡真的有我們品牌字樣的商品
-  const mustMatch = (sourceConfig.mustMatch || []).map((t) => String(t).toLowerCase()).filter(Boolean);
-  const isOurs = (name) => !mustMatch.length || mustMatch.some((t) => name.toLowerCase().includes(t));
   const offBrand = all.filter((item) => item.name && !isOurs(item.name));
   if (offBrand.length) {
     log(`momo：略過 ${offBrand.length} 筆非本集團商品（${offBrand.slice(0, 2).map((i) => i.name.slice(0, 18)).join('、')}…）`);
@@ -242,4 +274,4 @@ async function scrape(sourceConfig, net, log = () => {}) {
   return { products, warnings };
 }
 
-module.exports = { scrape, parseSearchHtml, parseDetailHtml, detailUrl, SEARCH };
+module.exports = { scrape, parseSearchHtml, parseDetailHtml, promoPriceFromDetail, detailUrl, SEARCH };

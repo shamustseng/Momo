@@ -77,6 +77,32 @@ test('momo：列表缺欄位時自動補抓商品頁', async () => {
   assert.strictEqual(products[0].image, 'https://i.momoshop.com.tw/v.jpg');
 });
 
+test('momo：價格取商品頁的「促銷價」，不是頭條的「限時折後價」', async () => {
+  const rendered = `
+    <meta property="og:title" content="茶油剝皮辣椒240g - momo購物網">
+    <meta name="product:price:amount" content="280">
+    <div data-testid="price-main-container">
+      <span class="text-[13px]">限時折後價</span><span class="font-price font-bold"><div><span class="hidden">$</span><span class="text-[30px]">280</span></div></span>
+      <span class="text-[13px]">市售價</span><span class="font-price line-through"><div><span class="hidden">$</span><span class="text-[15px]">490</span></div></span>
+      <span class="text-[13px]">促銷價</span><span class="font-price line-through"><div><span class="hidden">$</span><span class="text-[15px]">330</span></div></span>
+    </div>`;
+  const payload = `<meta property="og:title" content="泰鮮雙享組 - momo購物網"><meta name="product:price:amount" content="888">
+    <script>self.__next_f.push([1,"{\\"formData\\":[{\\"formName\\":\\"促銷價\\",\\"formType\\":\\"1\\",\\"formContent\\":\\"1,087元\\"},{\\"formName\\":\\"市售價\\",\\"formType\\":\\"2\\",\\"formContent\\":\\"1,237\\"}]}"])</script>`;
+  stubFetch([
+    ['searchShop.jsp', () => ({ body: `<ul>${momoListItem('15356778', '【雞湯大叔】茶油剝皮辣椒240g', '280')}${momoListItem('15633823', '【雞湯大叔】泰鮮雙享組', '888')}${momoListItem('15250521', '【雞湯大叔】青花椒辣醬240g', '330')}</ul>` })],
+    ['i_code=15356778', () => ({ body: rendered })],
+    ['i_code=15633823', () => ({ body: payload })],
+    ['i_code=15250521', () => ({ body: '<meta property="og:title" content="青花椒辣醬240g"><meta name="product:price:amount" content="330">' })],
+  ]);
+
+  const { products, warnings } = await momo.scrape({ keywords: ['雞湯大叔'], maxPagesPerKeyword: 1 }, NET);
+  const byCode = Object.fromEntries(products.map((p) => [p.sku, p.price]));
+  assert.strictEqual(byCode['15356778'], 330, '有限時折後價時要取被畫掉的促銷價，不是頭條的 280');
+  assert.strictEqual(byCode['15633823'], 1087, '頁面資料裡的促銷價（含千分位）也要認得');
+  assert.strictEqual(byCode['15250521'], 330, '頁面沒有促銷價欄位時退回 meta 價格');
+  assert.deepStrictEqual(warnings, []);
+});
+
 test('momo：搜尋頁失敗時回報警告而不是整個壞掉', async () => {
   stubFetch([['searchShop.jsp', () => ({ status: 503, body: '' })]]);
   const { products, warnings } = await momo.scrape({ keywords: ['雞湯大叔'], maxPagesPerKeyword: 2 }, NET);

@@ -117,7 +117,7 @@ const MARKUP = `
 
   <footer class="foot">
     <p id="generated"></p>
-    <p>資料由程式抓取 momo 搜尋結果與 Alpha Plus 官網商品頁；價格與上架狀態以各站台當下顯示為準。</p>
+    <p>資料由程式抓取 momo 與 Alpha Plus 官網商品頁；momo 價格取商品頁的「促銷價」（不是限時折後價），上架狀態以各站台當下顯示為準。</p>
   </footer>
 </main>
 <div class="toast" id="toast" hidden></div>
