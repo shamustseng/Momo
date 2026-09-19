@@ -1,4 +1,4 @@
-<title>泰Chill 煎餃權利金測算器</title>
+<title>龍鳳聯名權利金測算器</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -9,6 +9,7 @@
     --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
     --lf:#B8322B; --lf-soft:#F8E2DF; --lf-ink:#6E1B16;
     --nn:#7A4BB5; --nn-soft:#ECE3F7; --nn-ink:#3F2466;
+    --lw:#B5730A; --lw-soft:#F6E8D2; --lw-ink:#6B4507;
     --good:#2F9E44; --bad:#C4362F;
     --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
     --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
@@ -21,6 +22,7 @@
       --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
       --lf:#D8574F; --lf-soft:#3E1F1C; --lf-ink:#F5C6C1;
       --nn:#A47BE0; --nn-soft:#2E2340; --nn-ink:#DCCBF5;
+      --lw:#C98A2E; --lw-soft:#3A2D16; --lw-ink:#F0D19C;
       --good:#4CAF6B; --bad:#E2665F;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
     }
@@ -31,10 +33,12 @@
     --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
     --lf:#D8574F; --lf-soft:#3E1F1C; --lf-ink:#F5C6C1;
     --nn:#A47BE0; --nn-soft:#2E2340; --nn-ink:#DCCBF5;
+    --lw:#C98A2E; --lw-soft:#3A2D16; --lw-ink:#F0D19C;
     --good:#4CAF6B; --bad:#E2665F;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
   }
   *,*::before,*::after{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
   html,body{ margin:0; padding:0; }
   body{ background:var(--bg); color:var(--ink); font-family:var(--font-ui); font-size:14.5px; line-height:1.7; -webkit-font-smoothing:antialiased; }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
@@ -57,7 +61,7 @@
 
   .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; }
   .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); border-top:3px solid var(--border); }
-  .kpi.lf{ border-top-color:var(--lf); } .kpi.nn{ border-top-color:var(--nn); } .kpi.alpha{ border-top-color:var(--accent); }
+  .kpi.lf{ border-top-color:var(--lf); } .kpi.nn{ border-top-color:var(--nn); } .kpi.alpha{ border-top-color:var(--accent); } .kpi.lw{ border-top-color:var(--lw); }
   .kpi .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:700; }
   .kpi .value{ font-size:25px; font-weight:700; margin-top:6px; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
   .kpi .value small{ font-size:12px; font-weight:600; color:var(--ink-faint); }
@@ -96,6 +100,7 @@
   .party.lf{ background:var(--lf-soft); border-color:transparent; color:var(--lf-ink); }
   .party.alpha{ background:var(--accent-soft); border-color:transparent; color:var(--accent-ink); }
   .party.nn{ background:var(--nn-soft); border-color:transparent; color:var(--nn-ink); }
+  .party.lw{ background:var(--lw-soft); border-color:transparent; color:var(--lw-ink); }
   .party .role{ font-size:11px; letter-spacing:.07em; text-transform:uppercase; font-weight:700; opacity:.75; }
   .party .name{ font-weight:800; font-size:15px; }
   .party .amt{ font-size:20px; font-weight:800; margin-top:4px; }
@@ -111,7 +116,14 @@
   tr.total td{ font-weight:800; border-top:2px solid var(--ink); border-bottom:0; }
   td .sub{ display:block; font-size:11.5px; color:var(--ink-faint); font-family:var(--font-ui); white-space:normal; }
   .pill{ display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; }
-  .pill.lf{ background:var(--lf-soft); color:var(--lf-ink); } .pill.nn{ background:var(--nn-soft); color:var(--nn-ink); } .pill.alpha{ background:var(--accent-soft); color:var(--accent-ink); }
+  .pill.lf{ background:var(--lf-soft); color:var(--lf-ink); } .pill.nn{ background:var(--nn-soft); color:var(--nn-ink); } .pill.alpha{ background:var(--accent-soft); color:var(--accent-ink); } .pill.lw{ background:var(--lw-soft); color:var(--lw-ink); }
+  .prod-switch{ display:flex; gap:6px; flex-wrap:wrap; }
+  .prod-switch button{ border:1px solid var(--border); background:var(--surface); color:var(--ink-muted); border-radius:999px; padding:8px 16px; font-size:13.5px; font-weight:700; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; gap:0; line-height:1.35; }
+  .prod-switch button small{ font-size:11px; font-weight:600; color:var(--ink-faint); }
+  .prod-switch button[aria-pressed="true"]{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .prod-switch button[aria-pressed="true"] small{ color:var(--bg); opacity:.7; }
+  .prod{ display:flex; flex-direction:column; gap:22px; }
+  .status{ display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; padding:2px 9px; border-radius:999px; background:var(--surface-3); color:var(--ink-muted); vertical-align:middle; margin-left:6px; }
   .neg{ color:var(--bad); }
 
   .clauses{ display:flex; flex-direction:column; gap:14px; }
@@ -133,14 +145,20 @@
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <span class="eyebrow">雞湯大叔 × 龍鳳 × 娘娘駕到</span>
-      <h1>泰Chill 打拋豬煎餃 權利金測算器</h1>
+      <span class="eyebrow">雞湯大叔 × 旗山龍鳳 聯名系列</span>
+      <h1>龍鳳聯名權利金測算器</h1>
     </div>
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="切換深淺色主題" title="切換主題">◐</button>
   </div>
 </header>
 
 <main class="page">
+  <nav class="prod-switch" aria-label="選擇商品">
+    <button type="button" id="swJiaozi" aria-pressed="true">泰Chill 打拋豬煎餃<small>已簽約 · 分潤對象：娘娘團隊</small></button>
+    <button type="button" id="swDanjiao" aria-pressed="false">麻辣香菜蛋餃<small>洽談中 · 分潤對象：撈王總公司</small></button>
+  </nav>
+
+<div class="prod" id="prodJiaozi">
   <section class="hero">
     <h2 style="font-size:22px">龍鳳付阿爾法多少，阿爾法再付娘娘多少</h2>
     <p>依三份合約重建兩段金流：龍鳳（旗山龍鳳食品）按出廠價 2% 付產品授權金給阿爾法（希塔食品／雞湯大叔）；阿爾法再依商品附約分潤給娘娘團隊（開什麼國際玩笑有限公司）。調整左側假設，右側即時重算。</p>
@@ -402,6 +420,233 @@
       </section>
     </div>
   </div>
+</div>
+
+<div class="prod" id="prodDanjiao" hidden>
+  <section class="hero">
+    <h2 style="font-size:22px">麻辣香菜蛋餃：龍鳳付阿爾法多少，阿爾法再分撈王多少 <span class="status">洽談中</span></h2>
+    <p>尚未簽約，依目前談定的條件建模：龍鳳出貨價暫定每盒 65 元、製造成本 32 元、目標 20,000 盒；阿爾法抽 5% 權利金，其中 25% 分潤給撈王總公司。所有參數都可改。</p>
+    <div class="source">尚無合約文字，數字全部為洽談假設。結算週期、含稅與否、庫存分攤等條件比照煎餃 MOU 只是預設，簽約後請依合約修正。</div>
+  </section>
+
+  <section class="kpi-grid" aria-label="重點數字">
+    <div class="kpi lf">
+      <div class="label">龍鳳 → 阿爾法 權利金</div>
+      <div class="value num" id="dRoyalty">—</div>
+      <div class="delta" id="dRoyaltySub">—</div>
+    </div>
+    <div class="kpi lw">
+      <div class="label">阿爾法 → 撈王總公司 分潤</div>
+      <div class="value num" id="dLw">—</div>
+      <div class="delta" id="dLwSub">—</div>
+    </div>
+    <div class="kpi alpha">
+      <div class="label">阿爾法 淨留權利金</div>
+      <div class="value num" id="dNet">—</div>
+      <div class="delta" id="dNetSub">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">龍鳳 每盒毛利（扣權利金後）</div>
+      <div class="value num" id="dLfMargin">—</div>
+      <div class="delta" id="dLfMarginSub">—</div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <div class="column">
+      <section class="card">
+        <h2>假設設定</h2>
+        <p class="sub">預設值為目前洽談中的條件。</p>
+        <div class="card-body">
+          <div class="group-title">銷售情境</div>
+          <div class="field">
+            <label for="dTarget">目標訂購盒數</label>
+            <input type="number" id="dTarget" min="0" step="1000" value="20000">
+          </div>
+          <div class="field">
+            <label for="dSold">實際銷售盒數</label>
+            <input type="number" id="dSold" min="0" step="1000" value="20000">
+            <div class="btn-row">
+              <button class="btn" type="button" data-dsold="10000">售出一半</button>
+              <button class="btn" type="button" data-dsold="20000">目標售罄</button>
+              <button class="btn" type="button" data-dsold="40000">追加一倍</button>
+            </div>
+          </div>
+
+          <div class="group-title">價格與成本</div>
+          <div class="two">
+            <div class="field">
+              <label for="dPrice">出貨價（元／盒）</label>
+              <input type="number" id="dPrice" min="0" step="1" value="65">
+              <span class="hint">暫定 65</span>
+            </div>
+            <div class="field">
+              <label for="dCost">製造成本（元／盒）</label>
+              <input type="number" id="dCost" min="0" step="1" value="32">
+              <span class="hint">龍鳳端成本</span>
+            </div>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="dVat">營業稅率（%）</label>
+              <input type="number" id="dVat" min="0" max="100" step="0.5" value="5">
+            </div>
+            <div class="field">
+              <label>權利金計價基礎</label>
+              <div class="seg" role="group" aria-label="計價基礎">
+                <button type="button" id="dBasisIncl" aria-pressed="true">直接計</button>
+                <button type="button" id="dBasisExcl" aria-pressed="false">換算未稅</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="group-title">分潤條件</div>
+          <div class="two">
+            <div class="field">
+              <label for="dRate">阿爾法權利金率（%）</label>
+              <input type="number" id="dRate" min="0" max="100" step="0.5" value="5">
+              <span class="hint">按出貨價 × 銷售盒數</span>
+            </div>
+            <div class="field">
+              <label for="dLwShare">撈王分潤比例（%）</label>
+              <input type="number" id="dLwShare" min="0" max="100" step="1" value="25">
+            </div>
+          </div>
+          <div class="field">
+            <label>撈王分潤計算基礎</label>
+            <div class="seg" role="group" aria-label="撈王分潤基礎">
+              <button type="button" id="dLwRoyalty" aria-pressed="true">阿爾法權利金的 25%</button>
+              <button type="button" id="dLwPrice" aria-pressed="false">出貨價的 25%</button>
+            </div>
+            <span class="hint">預設解讀：撈王分走阿爾法 5% 權利金中的四分之一（每盒 0.81 元）。若撈王要求按出貨價抽 25%，阿爾法會倒貼，切換此處看差距。</span>
+          </div>
+
+          <div class="group-title">期末庫存（選填）</div>
+          <div class="field">
+            <label for="dDispose">未售庫存 每盒處理費用（元）</label>
+            <input type="number" id="dDispose" min="0" step="1" value="0">
+            <span class="hint">比照煎餃 MOU 假設龍鳳與阿爾法各負擔 50%。未售盒數 = 目標訂購盒數 − 實際銷售盒數。蛋餃尚未談定此條件。</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn ghost" type="button" id="dReset">回復洽談預設值</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="card">
+        <h2>金流總覽</h2>
+        <p class="sub">金額依所選計價基礎，未另加營業稅。</p>
+        <div class="card-body">
+          <div class="flow">
+            <div class="party lf">
+              <span class="role">製造與出貨</span>
+              <span class="name">旗山龍鳳</span>
+              <span class="amt num" id="dfLf">—</span>
+              <span class="foot" id="dfLfFoot">—</span>
+            </div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="party alpha">
+              <span class="role">品牌授權</span>
+              <span class="name">阿爾法 · 雞湯大叔</span>
+              <span class="amt num" id="dfAlpha">—</span>
+              <span class="foot" id="dfAlphaFoot">—</span>
+            </div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="party lw">
+              <span class="role">聯名品牌</span>
+              <span class="name">撈王總公司</span>
+              <span class="amt num" id="dfLw">—</span>
+              <span class="foot" id="dfLwFoot">—</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table aria-label="金流明細">
+              <thead><tr><th>項目</th><th>龍鳳 → 阿爾法</th><th>阿爾法 → 撈王</th><th>阿爾法 淨額</th></tr></thead>
+              <tbody id="dFlowBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>每盒拆解</h2>
+        <p class="sub">從龍鳳的 65 元出貨價往下拆，看權利金佔龍鳳毛利多少。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="每盒拆解">
+              <thead><tr><th>項目</th><th>每盒（元）</th><th>佔出貨價</th><th>佔龍鳳毛利</th></tr></thead>
+              <tbody id="dPerBoxBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>龍鳳視角：整批損益</h2>
+        <p class="sub">龍鳳看這筆生意時，權利金是從毛利裡扣的。談判時可以用這張表說明 5% 對龍鳳的實際影響。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="龍鳳損益">
+              <thead><tr><th>項目</th><th>金額</th><th>佔營收</th></tr></thead>
+              <tbody id="dLfPnlBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>敏感度</h2>
+        <p class="sub">左表改銷量，右表改出貨價（若最終售價不是 65）。</p>
+        <div class="card-body">
+          <div class="sched">
+            <div class="table-wrap">
+              <table aria-label="銷量敏感度">
+                <thead><tr><th>銷售盒數</th><th>龍鳳付</th><th>撈王得</th><th>阿爾法淨留</th></tr></thead>
+                <tbody id="dSensQty"></tbody>
+              </table>
+            </div>
+            <div class="table-wrap">
+              <table aria-label="價格敏感度">
+                <thead><tr><th>出貨價</th><th>龍鳳付</th><th>撈王得</th><th>阿爾法淨留</th></tr></thead>
+                <tbody id="dSensPrice"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>與煎餃案比較</h2>
+        <p class="sub">同樣是龍鳳製造，兩支商品阿爾法每單位留下的權利金。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="商品比較">
+              <thead><tr><th>商品 · 通路</th><th>龍鳳付阿爾法</th><th>阿爾法付合作方</th><th>阿爾法淨留</th><th>合作方佔比</th></tr></thead>
+              <tbody id="dCompareBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>解讀與待確認事項</h2>
+        <div class="card-body">
+          <ul class="notes" style="margin:0;padding-left:18px">
+            <li><b>5% 的基礎。</b>假設是龍鳳出貨價 65 元的 5%，每盒 3.25 元，與煎餃 MOU「出廠價 × 比率 × 銷售包數」同一邏輯。若改按零售價或龍鳳毛利計算，金額不同。</li>
+            <li><b>25% 的基礎。</b>假設撈王分的是阿爾法權利金的 25%，每盒 0.81 元。若撈王主張按出貨價的 25%（每盒 16.25 元），遠超過阿爾法收到的 3.25 元，這個條件不能接。</li>
+            <li><b>65 元含稅與否。</b>煎餃 MOU 的 90 元寫明含稅，蛋餃的 65 元尚未寫明。預設直接以 65 計；換算未稅後，權利金與撈王分潤各少約 4.8%。</li>
+            <li><b>成本 32 元是龍鳳的數字。</b>本頁的龍鳳毛利只用於談判參考，阿爾法的收入不受成本影響。</li>
+            <li><b>撈王是否另收一次性授權金。</b>煎餃案娘娘有 25,000 元肖像權費用，撈王案尚未提到，本頁未列。</li>
+            <li><b>結算週期。</b>假設比照煎餃 MOU 月結；阿爾法與撈王之間的結算週期尚未談定。</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <script>
@@ -495,6 +740,9 @@
       return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '><td class="num">' + packs(n) + (cur ? ' <span class="sub">目前情境</span>' : '') + '</td><td class="num">' + fmt0(x.royalty) + '</td><td class="num">' + fmt0(x.nnTotal) + '</td><td class="num' + (x.net<0?' neg':'') + '">' + fmt0(x.net) + '</td><td class="num">' + (x.royalty>0 ? pct(x.net/x.royalty) : '—') + '</td></tr>';
     }).join('');
 
+    window.__jiaozi = { lfIn, lfOut, alIn, alOut };
+    if (window.__renderDanjiao) window.__renderDanjiao();
+
     // Controls reflect state
     $('lfShareOut').textContent = s.lfShare + '%';
     $('basisIncl').setAttribute('aria-pressed', s.basis==='incl');
@@ -528,5 +776,132 @@
   });
 
   syncInputs(); render();
+})();
+</script>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const D = { target:20000, sold:20000, price:65, cost:32, vat:5, basis:'incl', rate:5, lwShare:25, lwBasis:'royalty', dispose:0 };
+  const IDS = { dTarget:'target', dSold:'sold', dPrice:'price', dCost:'cost', dVat:'vat', dRate:'rate', dLwShare:'lwShare', dDispose:'dispose' };
+  const KEY = 'danjiao-royalty-v1';
+  let s = Object.assign({}, D);
+  try { const v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (v && typeof v === 'object') s = Object.assign({}, D, v); } catch(e){}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} };
+  const fmt0 = n => 'NT$ ' + (Math.round(n) || 0).toLocaleString('zh-TW');
+  const fmt2 = n => 'NT$ ' + n.toLocaleString('zh-TW', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const pct = n => (n*100).toLocaleString('zh-TW', {maximumFractionDigits:1}) + '%';
+  const boxes = n => Math.round(n).toLocaleString('zh-TW') + ' 盒';
+  const cell = (v, cls) => '<td class="num' + (cls ? ' ' + cls : '') + '">' + v + '</td>';
+
+  function compute(st, soldO, priceO){
+    const sold = soldO == null ? st.sold : soldO;
+    const price = priceO == null ? st.price : priceO;
+    const base = st.basis === 'incl' ? price : price/(1+st.vat/100);
+    const royaltyPer = base * st.rate/100;
+    const lwPer = st.lwBasis === 'royalty' ? royaltyPer * st.lwShare/100 : base * st.lwShare/100;
+    const royalty = royaltyPer * sold, lw = lwPer * sold;
+    const unsold = Math.max(0, st.target - sold);
+    const inv = unsold * st.dispose * 0.5;
+    const net = royalty - lw - inv;
+    const gmPer = base - st.cost;
+    const rev = base * sold, cogs = st.cost * sold, gm = rev - cogs, gmAfter = gm - royalty;
+    return { sold, base, royaltyPer, lwPer, royalty, lw, unsold, inv, net, gmPer, rev, cogs, gm, gmAfter };
+  }
+
+  function render(){
+    const r = compute(s);
+    $('dRoyalty').textContent = fmt0(r.royalty);
+    $('dRoyaltySub').textContent = fmt2(r.royaltyPer) + ' /盒 × ' + boxes(r.sold);
+    $('dLw').textContent = fmt0(r.lw);
+    $('dLwSub').textContent = fmt2(r.lwPer) + ' /盒，佔權利金 ' + (r.royalty > 0 ? pct(r.lw/r.royalty) : '—');
+    $('dNet').textContent = fmt0(r.net);
+    $('dNet').classList.toggle('neg', r.net < 0);
+    $('dNetSub').textContent = fmt2(r.royaltyPer - r.lwPer) + ' /盒' + (r.inv ? '，已扣庫存處理費 ' + fmt0(r.inv) : '');
+    $('dLfMargin').textContent = fmt2(r.gmPer - r.royaltyPer);
+    $('dLfMarginSub').textContent = '毛利 ' + fmt2(r.gmPer) + ' − 權利金 ' + fmt2(r.royaltyPer) + '，權利金佔毛利 ' + (r.gmPer > 0 ? pct(r.royaltyPer/r.gmPer) : '—');
+
+    $('dfLf').textContent = fmt0(r.royalty);
+    $('dfLfFoot').textContent = '付出權利金：' + fmt2(r.royaltyPer) + ' /盒 × ' + boxes(r.sold);
+    $('dfAlpha').textContent = fmt0(r.net);
+    $('dfAlphaFoot').textContent = '淨留（收 ' + fmt0(r.royalty) + '，付撈王 ' + fmt0(r.lw) + (r.inv ? '，庫存費 ' + fmt0(r.inv) : '') + '）';
+    $('dfLw').textContent = fmt0(r.lw);
+    $('dfLwFoot').textContent = '收到：' + fmt2(r.lwPer) + ' /盒 × ' + boxes(r.sold);
+
+    const rows = [];
+    rows.push('<tr><td>權利金<span class="sub">' + fmt2(r.base) + ' × ' + s.rate + '% = ' + fmt2(r.royaltyPer) + ' /盒</span></td>' + cell(fmt0(r.royalty)) + cell(fmt0(r.lw)) + cell(fmt0(r.royalty - r.lw)) + '</tr>');
+    if (r.inv) rows.push('<tr><td>庫存處理費用 · 阿爾法負擔 50%<span class="sub">' + boxes(r.unsold) + ' × ' + fmt0(s.dispose) + ' × 50%</span></td><td>—</td><td>—</td>' + cell(fmt0(-r.inv), 'neg') + '</tr>');
+    rows.push('<tr class="total"><td>合計</td>' + cell(fmt0(r.royalty)) + cell(fmt0(r.lw)) + cell(fmt0(r.net), r.net < 0 ? 'neg' : '') + '</tr>');
+    $('dFlowBody').innerHTML = rows.join('');
+
+    const pb = [
+      ['龍鳳出貨價' + (s.basis==='excl' ? '（換算未稅）' : ''), r.base, 1, null],
+      ['龍鳳製造成本', -s.cost, -s.cost/r.base, null],
+      ['龍鳳毛利（扣權利金前）', r.gmPer, r.gmPer/r.base, 1],
+      ['<span class="pill lf">付阿爾法</span> 權利金 ' + s.rate + '%', -r.royaltyPer, -r.royaltyPer/r.base, -r.royaltyPer/r.gmPer],
+      ['龍鳳毛利（扣權利金後）', r.gmPer - r.royaltyPer, (r.gmPer - r.royaltyPer)/r.base, (r.gmPer - r.royaltyPer)/r.gmPer],
+      ['<span class="pill lw">付撈王</span> 阿爾法權利金中分出', -r.lwPer, -r.lwPer/r.base, null],
+      ['<span class="pill alpha">阿爾法淨留</span>', r.royaltyPer - r.lwPer, (r.royaltyPer - r.lwPer)/r.base, null],
+    ];
+    $('dPerBoxBody').innerHTML = pb.map(([l,v,a,b]) => '<tr><td>' + l + '</td>' + cell(fmt2(v), v < 0 ? 'neg' : '') + cell(r.base > 0 ? pct(a) : '—') + cell(b == null ? '—' : pct(b)) + '</tr>').join('');
+
+    const pnl = [
+      ['營收（' + boxes(r.sold) + '）', r.rev, 1],
+      ['製造成本', -r.cogs, -r.cogs/r.rev],
+      ['毛利', r.gm, r.gm/r.rev],
+      ['權利金付阿爾法', -r.royalty, -r.royalty/r.rev],
+      ['毛利（扣權利金後）', r.gmAfter, r.gmAfter/r.rev],
+    ];
+    $('dLfPnlBody').innerHTML = pnl.map(([l,v,a],i) => '<tr' + (i===4 ? ' class="total"' : '') + '><td>' + l + '</td>' + cell(fmt0(v), v < 0 ? 'neg' : '') + cell(r.rev > 0 ? pct(a) : '—') + '</tr>').join('');
+
+    const qtys = [10000, 15000, 20000, 30000, 40000, 60000];
+    if (!qtys.includes(s.sold)) { qtys.push(s.sold); qtys.sort((a,b)=>a-b); }
+    $('dSensQty').innerHTML = qtys.map(n => { const x = compute(s, n); const cur = n === s.sold;
+      return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '>' + cell(boxes(n)) + cell(fmt0(x.royalty)) + cell(fmt0(x.lw)) + cell(fmt0(x.net), x.net<0?'neg':'') + '</tr>'; }).join('');
+    const prices = [55, 60, 65, 70, 75];
+    if (!prices.includes(s.price)) { prices.push(s.price); prices.sort((a,b)=>a-b); }
+    $('dSensPrice').innerHTML = prices.map(p => { const x = compute(s, null, p); const cur = p === s.price;
+      return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '>' + cell(fmt0(p)) + cell(fmt0(x.royalty)) + cell(fmt0(x.lw)) + cell(fmt0(x.net), x.net<0?'neg':'') + '</tr>'; }).join('');
+
+    const j = window.__jiaozi || { lfIn:1.8, lfOut:0.72, alIn:1.8, alOut:1.5 };
+    const cmp = [
+      ['泰Chill 煎餃 · 龍鳳通路 <span class="pill nn">娘娘</span>', j.lfIn, j.lfOut],
+      ['泰Chill 煎餃 · 阿爾法通路 <span class="pill nn">娘娘</span>', j.alIn, j.alOut],
+      ['麻辣香菜蛋餃 · 全通路 <span class="pill lw">撈王</span>', r.royaltyPer, r.lwPer],
+    ];
+    $('dCompareBody').innerHTML = cmp.map(([l,a,b]) => '<tr><td>' + l + '</td>' + cell(fmt2(a)) + cell(fmt2(b)) + cell(fmt2(a-b), a-b<0?'neg':'') + cell(a>0 ? pct(b/a) : '—') + '</tr>').join('');
+
+    $('dBasisIncl').setAttribute('aria-pressed', s.basis==='incl');
+    $('dBasisExcl').setAttribute('aria-pressed', s.basis==='excl');
+    $('dLwRoyalty').setAttribute('aria-pressed', s.lwBasis==='royalty');
+    $('dLwPrice').setAttribute('aria-pressed', s.lwBasis==='price');
+  }
+  window.__renderDanjiao = render;
+
+  const sync = () => Object.entries(IDS).forEach(([id,k]) => { $(id).value = s[k]; });
+  Object.entries(IDS).forEach(([id,k]) => $(id).addEventListener('input', e => { const v = parseFloat(e.target.value); s[k] = isNaN(v) ? 0 : v; save(); render(); }));
+  $('dBasisIncl').addEventListener('click', () => { s.basis='incl'; save(); render(); });
+  $('dBasisExcl').addEventListener('click', () => { s.basis='excl'; save(); render(); });
+  $('dLwRoyalty').addEventListener('click', () => { s.lwBasis='royalty'; save(); render(); });
+  $('dLwPrice').addEventListener('click', () => { s.lwBasis='price'; save(); render(); });
+  document.querySelectorAll('[data-dsold]').forEach(b => b.addEventListener('click', () => { s.sold = parseFloat(b.dataset.dsold); sync(); save(); render(); }));
+  $('dReset').addEventListener('click', () => { s = Object.assign({}, D); sync(); save(); render(); });
+
+  // Product switch
+  const PKEY = 'lf-royalty-product';
+  function show(which){
+    $('prodJiaozi').hidden = which !== 'jiaozi';
+    $('prodDanjiao').hidden = which !== 'danjiao';
+    $('swJiaozi').setAttribute('aria-pressed', which === 'jiaozi');
+    $('swDanjiao').setAttribute('aria-pressed', which === 'danjiao');
+    try { localStorage.setItem(PKEY, which); } catch(e){}
+  }
+  $('swJiaozi').addEventListener('click', () => show('jiaozi'));
+  $('swDanjiao').addEventListener('click', () => show('danjiao'));
+  let initial = 'jiaozi';
+  try { initial = localStorage.getItem(PKEY) || 'jiaozi'; } catch(e){}
+  show(initial);
+
+  sync(); render();
 })();
 </script>
