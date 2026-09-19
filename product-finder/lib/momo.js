@@ -124,7 +124,7 @@ function imageFromChunk(chunk) {
  * 從商品頁取名稱、價格與圖片。
  * momo 商品頁的頭條價格不一定是「促銷價」：有限時活動時頭條會變成「限時折後價」，
  * 促銷價被畫掉排在下面，而 meta 標籤、JSON-LD 與搜尋結果頁給的都是頭條那個數字。
- * 我們要的是促銷價，所以另外從頁面把「促銷價」那一欄挑出來（promoPrice）。
+ * 我們對帳用的是促銷價，所以另外把頁面上三種標價一起挑出來（prices）。
  */
 function parseDetailHtml(html) {
   const nodes = H.jsonLd(html);
@@ -141,28 +141,32 @@ function parseDetailHtml(html) {
 
   const image = H.meta(html, 'og:image') || (product && firstImage(product.image)) || '';
 
-  return { name, price, promoPrice: promoPriceFromDetail(html), image };
+  return { name, price, prices: priceTableFromDetail(html), image };
 }
 
+const PRICE_LABELS = { 市售價: 'list', 促銷價: 'promo', 限時折後價: 'flash' };
+
 /**
- * 商品頁裡「促銷價」的數字。兩種寫法都認：
+ * 商品頁上三種標價：市售價（list）、促銷價（promo）、限時折後價（flash，只有限時活動時才有）。
+ * 兩種寫法都認，同一個標籤以先出現的為準：
  *  - 頁面資料（RSC payload，引號會被跳脫）：\"formName\":\"促銷價\",...\"formContent\":\"1,087元\"
- *    或 \"priceName\":\"促銷價\",\"priceValue\":\"330\"
+ *    或 \"priceName\":\"市售價\",\"priceValue\":\"490\"
  *  - 畫面 HTML：<span>促銷價</span><span class="font-price ..."><div><span class="hidden">$</span><span>330</span>
  */
-function promoPriceFromDetail(html) {
+function priceTableFromDetail(html) {
+  const prices = { list: null, promo: null, flash: null };
   const patterns = [
-    /\\?"(?:formName|priceName)\\?"\s*:\s*\\?"促銷價\\?"[^{}[\]]{0,80}?\\?"(?:formContent|priceValue)\\?"\s*:\s*\\?"([\d,]+)/,
-    /促銷價<\/span>\s*<span[^>]*font-price[^>]*>(?:\s*<div[^>]*>)?(?:\s*<span[^>]*>\$<\/span>)?\s*<span[^>]*>([\d,]+)<\/span>/,
+    /\\?"(?:formName|priceName)\\?"\s*:\s*\\?"(市售價|促銷價|限時折後價)\\?"[^{}[\]]{0,80}?\\?"(?:formContent|priceValue)\\?"\s*:\s*\\?"([\d,]+)/g,
+    /(市售價|促銷價|限時折後價)<\/span>\s*<span[^>]*font-price[^>]*>(?:\s*<div[^>]*>)?(?:\s*<span[^>]*>\$<\/span>)?\s*<span[^>]*>([\d,]+)<\/span>/g,
   ];
   for (const re of patterns) {
-    const m = html.match(re);
-    if (m) {
-      const price = H.toPrice(m[1]);
-      if (price !== null && price > 0) return price;
+    for (const m of html.matchAll(re)) {
+      const key = PRICE_LABELS[m[1]];
+      const price = H.toPrice(m[2]);
+      if (prices[key] === null && price !== null && price > 0) prices[key] = price;
     }
   }
-  return null;
+  return prices;
 }
 
 function firstImage(value) {
@@ -241,7 +245,8 @@ async function scrape(sourceConfig, net, log = () => {}) {
       }
       const detail = parseDetailHtml(res.body);
       if (!item.name && detail.name) item.name = detail.name;
-      if (detail.promoPrice !== null) item.price = detail.promoPrice;
+      item.prices = detail.prices;
+      if (detail.prices.promo !== null) item.price = detail.prices.promo;
       else if (item.price === null && detail.price !== null) item.price = detail.price;
       if (!item.image && detail.image) item.image = detail.image;
     });
@@ -261,6 +266,8 @@ async function scrape(sourceConfig, net, log = () => {}) {
       sku: item.code,
       name: item.name,
       price: item.price,
+      // 三種標價一起帶出去；沒開到商品頁的只知道搜尋頁的頭條價，三欄都留空
+      prices: item.prices || { list: null, promo: null, flash: null },
       currency: 'TWD',
       url: detailUrl(item.code),
       image: item.image || '',
@@ -274,4 +281,4 @@ async function scrape(sourceConfig, net, log = () => {}) {
   return { products, warnings };
 }
 
-module.exports = { scrape, parseSearchHtml, parseDetailHtml, promoPriceFromDetail, detailUrl, SEARCH };
+module.exports = { scrape, parseSearchHtml, parseDetailHtml, priceTableFromDetail, detailUrl, SEARCH };

@@ -131,6 +131,11 @@ button,input,select,textarea{ font:inherit; color:inherit; }
 .card .sub{ grid-column:1; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; color:var(--ink-faint); }
 .card .price{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; white-space:nowrap; }
 .card .price.none{ color:var(--ink-faint); font-size:12.5px; font-weight:600; }
+.card .prices{ display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+.card .prices .label{ font-family:var(--font-ui); font-size:11px; font-weight:600; color:var(--ink-faint); margin-right:5px; }
+.card .price.list{ color:var(--ink-faint); font-size:12.5px; font-weight:600; text-decoration:line-through; }
+.card .price.list .label{ text-decoration:none; display:inline-block; }
+.card .price.flash{ color:var(--momo); font-size:13px; }
 .card .row-actions{ display:flex; gap:6px; }
 .pill{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--surface-3); color:var(--ink-muted); }
 .pill.momo{ background:var(--momo-soft); color:var(--momo-ink); }

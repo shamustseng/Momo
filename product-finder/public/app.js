@@ -142,6 +142,40 @@ function renderResults(products) {
   }
 }
 
+/**
+ * 價格區塊。momo 商品頁有三種標價：促銷價是我們對帳用的主價；市售價畫掉當參考；
+ * 限時折後價只有限時活動時才有，是消費者當下實際看到的價格，另外標出來。
+ * 官網只有一個售價，就照舊顯示一個。
+ */
+function priceBlock(product) {
+  const pr = product.prices || {};
+  const rows = [
+    ['promo', '促銷價', pr.promo],
+    ['list', '市售價', pr.list],
+    ['flash', '限時折後價', pr.flash],
+  ].filter(([, , v]) => v !== null && v !== undefined);
+  if (!rows.length) {
+    const price = fmtPrice(product.price);
+    return el('span', price ? 'price' : 'price none', price || '價格未取得');
+  }
+  const box = el('div', 'prices');
+  for (const [kind, label, value] of rows) {
+    const line = el('span', `price ${kind}`);
+    line.append(el('span', 'label', label), document.createTextNode(fmtPrice(value)));
+    box.append(line);
+  }
+  return box;
+}
+
+function priceText(p) {
+  const pr = p.prices || {};
+  const parts = [];
+  if (pr.promo != null) parts.push(`促銷價 ${fmtPrice(pr.promo)}`);
+  if (pr.list != null) parts.push(`市售價 ${fmtPrice(pr.list)}`);
+  if (pr.flash != null) parts.push(`限時折後價 ${fmtPrice(pr.flash)}`);
+  return parts.length ? parts.join('｜') : (fmtPrice(p.price) || '價格未取得');
+}
+
 function productCard(product) {
   const card = el('div', 'card');
 
@@ -151,8 +185,7 @@ function productCard(product) {
   link.rel = 'noopener noreferrer';
   card.append(link);
 
-  const price = fmtPrice(product.price);
-  card.append(el('span', price ? 'price' : 'price none', price || '價格未取得'));
+  card.append(priceBlock(product));
 
   const actions = el('div', 'row-actions');
   const copy = el('button', 'btn btn-quiet', '複製連結');
@@ -277,9 +310,8 @@ function copyList(linksOnly) {
   const text = products
     .map((p) => {
       if (linksOnly) return p.url;
-      const price = fmtPrice(p.price) || '價格未取得';
       const status = p.status ? `｜${p.status}` : '';
-      return `${p.name}｜${price}${status}｜${p.url}`;
+      return `${p.name}｜${priceText(p)}${status}｜${p.url}`;
     })
     .join('\n');
   copyText(text, `已複製 ${products.length} 筆`);

@@ -96,11 +96,29 @@ test('momo：價格取商品頁的「促銷價」，不是頭條的「限時折�
   ]);
 
   const { products, warnings } = await momo.scrape({ keywords: ['雞湯大叔'], maxPagesPerKeyword: 1 }, NET);
-  const byCode = Object.fromEntries(products.map((p) => [p.sku, p.price]));
-  assert.strictEqual(byCode['15356778'], 330, '有限時折後價時要取被畫掉的促銷價，不是頭條的 280');
-  assert.strictEqual(byCode['15633823'], 1087, '頁面資料裡的促銷價（含千分位）也要認得');
-  assert.strictEqual(byCode['15250521'], 330, '頁面沒有促銷價欄位時退回 meta 價格');
+  const byCode = Object.fromEntries(products.map((p) => [p.sku, p]));
+  assert.strictEqual(byCode['15356778'].price, 330, '有限時折後價時要取被畫掉的促銷價，不是頭條的 280');
+  assert.deepStrictEqual(byCode['15356778'].prices, { list: 490, promo: 330, flash: 280 }, '三種標價都要帶出來');
+  assert.strictEqual(byCode['15633823'].price, 1087, '頁面資料裡的促銷價（含千分位）也要認得');
+  assert.deepStrictEqual(byCode['15633823'].prices, { list: 1237, promo: 1087, flash: null }, '沒有限時活動時限時折後價留空');
+  assert.strictEqual(byCode['15250521'].price, 330, '頁面沒有促銷價欄位時退回 meta 價格');
+  assert.deepStrictEqual(byCode['15250521'].prices, { list: null, promo: null, flash: null });
   assert.deepStrictEqual(warnings, []);
+});
+
+test('匯出：momo 三種標價分欄輸出，官網只有一個售價', () => {
+  const products = [
+    { source: 'momo', sku: '15356778', name: '茶油剝皮辣椒', price: 330, prices: { list: 490, promo: 330, flash: 280 }, url: 'https://a', status: '', keywords: [] },
+    { source: 'alphaplus', sku: '', name: '氣泡飲', price: 415, url: 'https://b', status: '', keywords: [] },
+  ];
+  const csv = toCsv(products);
+  const lines = csv.trim().split('\r\n');
+  assert.ok(lines[0].includes('售價／促銷價(TWD),市售價(TWD),限時折後價(TWD)'));
+  assert.ok(lines[1].includes(',330,490,280,'), 'momo 三欄都要有值');
+  assert.ok(lines[2].includes(',415,,,'), '官網只有售價，另外兩欄留空');
+  const md = toMarkdown(products, {});
+  assert.ok(md.includes('促銷價 $330｜市售價 $490｜限時折後價 $280'), 'Markdown 要把三種價格都列出');
+  assert.ok(md.includes('氣泡飲｜$415｜'), '官網維持單一價格');
 });
 
 test('momo：搜尋頁失敗時回報警告而不是整個壞掉', async () => {

@@ -28,6 +28,7 @@ function preparePayload(data) {
       error: s.error || null,
       products: (s.products || []).map((p) => ({
         source: key, sku: p.sku || '', name: p.name, price: p.price ?? null,
+        prices: p.prices || null,
         url: p.url, status: p.status || '', keywords: p.keywords || [],
       })),
     };
@@ -117,7 +118,7 @@ const MARKUP = `
 
   <footer class="foot">
     <p id="generated"></p>
-    <p>資料由程式抓取 momo 與 Alpha Plus 官網商品頁；momo 價格取商品頁的「促銷價」（不是限時折後價），上架狀態以各站台當下顯示為準。</p>
+    <p>資料由程式抓取 momo 與 Alpha Plus 官網商品頁；momo 商品列出商品頁上的促銷價、市售價與限時折後價（有限時活動時才有），排序與對帳以促銷價為準；上架狀態以各站台當下顯示為準。</p>
   </footer>
 </main>
 <div class="toast" id="toast" hidden></div>
@@ -180,12 +181,33 @@ function visible() {
   return list;
 }
 
+// momo 有三種標價：促銷價是對帳用的主價；市售價畫掉當參考；限時折後價只有限時活動時才有，另外標出。
+const PRICE_ROWS = [['promo', '促銷價'], ['list', '市售價'], ['flash', '限時折後價']];
+function priceRows(p) {
+  const pr = p.prices || {};
+  return PRICE_ROWS.filter(([k]) => pr[k] !== null && pr[k] !== undefined).map(([k, label]) => [k, label, pr[k]]);
+}
+function priceBlock(p) {
+  const rows = priceRows(p);
+  if (!rows.length) { const price = fmtPrice(p.price); return el('span', price ? 'price' : 'price none', price || '價格未取得'); }
+  const box = el('div', 'prices');
+  for (const [kind, label, value] of rows) {
+    const line = el('span', 'price ' + kind);
+    line.append(el('span', 'label', label), document.createTextNode(fmtPrice(value)));
+    box.append(line);
+  }
+  return box;
+}
+function priceText(p) {
+  const rows = priceRows(p);
+  return rows.length ? rows.map(([, label, v]) => label + ' ' + fmtPrice(v)).join('｜') : (fmtPrice(p.price) || '價格未取得');
+}
+
 function card(p) {
   const c = el('div', 'card');
   const a = el('a', 'name', p.name); a.href = p.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
   c.append(a);
-  const price = fmtPrice(p.price);
-  c.append(el('span', price ? 'price' : 'price none', price || '價格未取得'));
+  c.append(priceBlock(p));
   const actions = el('div', 'row-actions');
   const copy = el('button', 'btn btn-quiet', '複製連結');
   copy.addEventListener('click', () => copyText(p.url, '已複製連結'));
@@ -368,8 +390,11 @@ function showCopyPanel(text, hint) {
 }
 function csvCell(v) { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function buildCsv(list) {
-  const rows = [['來源', '商品名稱', '售價(TWD)', '商品連結', 'momo 品號', '狀態', '對應關鍵字']];
-  for (const p of list) rows.push([LABELS[p.source], p.name, p.price ?? '', p.url, p.source === 'momo' ? p.sku : '', p.status || '上架中', p.keywords.join(' / ')]);
+  const rows = [['來源', '商品名稱', '售價／促銷價(TWD)', '市售價(TWD)', '限時折後價(TWD)', '商品連結', 'momo 品號', '狀態', '對應關鍵字']];
+  for (const p of list) {
+    const pr = p.prices || {};
+    rows.push([LABELS[p.source], p.name, p.price ?? '', pr.list ?? '', pr.flash ?? '', p.url, p.source === 'momo' ? p.sku : '', p.status || '上架中', p.keywords.join(' / ')]);
+  }
   return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 function buildMarkdown(list) {
@@ -387,7 +412,7 @@ function buildMarkdown(list) {
     for (const p of items) {
       const sku = p.source === 'momo' && p.sku ? '｜momo 品號 ' + p.sku : '';
       const status = p.status ? '｜' + p.status : '';
-      out.push('- ' + p.name + '｜' + (fmtPrice(p.price) || '價格未取得') + sku + status + '｜' + p.url);
+      out.push('- ' + p.name + '｜' + priceText(p) + sku + status + '｜' + p.url);
     }
     out.push('');
   }
@@ -430,7 +455,7 @@ function exportAction(kind) {
   const list = visible();
   if (!list.length) return toast('目前沒有可輸出的商品');
   if (kind === 'links') return copyText(list.map((p) => p.url).join('\n'), '已複製 ' + list.length + ' 個連結');
-  if (kind === 'clip') return copyText(list.map((p) => p.name + '｜' + (fmtPrice(p.price) || '價格未取得') + (p.status ? '｜' + p.status : '') + '｜' + p.url).join('\n'), '已複製 ' + list.length + ' 筆');
+  if (kind === 'clip') return copyText(list.map((p) => p.name + '｜' + priceText(p) + (p.status ? '｜' + p.status : '') + '｜' + p.url).join('\n'), '已複製 ' + list.length + ' 筆');
   if (kind === 'md') return saveFile(stampName('md'), buildMarkdown(list), 'text/markdown;charset=utf-8');
   return saveFile(stampName('csv'), buildCsv(list), 'text/csv;charset=utf-8');
 }
