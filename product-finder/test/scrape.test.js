@@ -182,6 +182,49 @@ test('官網：第一次沒讀到的商品頁會補抓一次，仍失敗才列�
   assert.ok(warnings[0].includes('1 個商品頁') && warnings[0].includes('永遠壞掉'), '警告要點名是哪一頁讀不到');
 });
 
+test('官網：sitemap 過期時，店面頁面上的新品也要一起收進來，同商品兩種網址只算一筆', async () => {
+  const detail = (name, price) => ({ body: `<meta property="og:title" content="${name}"><meta property="product:price:amount" content="${price}">` });
+  stubFetch([
+    ['/sitemap.xml', () => ({ body: `<urlset>
+        <url><loc>https://alphaplus.cyberbiz.co/zh-TW/products/old-a</loc></url>
+        <url><loc>https://alphaplus.cyberbiz.co/zh-TW/products/%E8%80%81%E5%95%86%E5%93%81b</loc></url>
+      </urlset>` })],
+    ['/collections/all?page=1', () => ({ body: '<a href="/zh-TW/products/new-c?from=list">C</a><a href="/products/old-a">A</a>' })],
+    ['/collections/all?page=2', () => ({ body: '<a href="/products/old-a">A</a>' })],  // 沒新商品，翻頁應在此停止
+    ['/collections/all?page=3', () => { throw new Error('第 2 頁已經沒有新商品，不該再翻第 3 頁'); }],
+    ['/collections/all', () => ({ body: '<a href="/zh-TW/products/new-c">C</a>' })],
+    ['/products/old-a', () => detail('舊商品 A', 100)],
+    ['/products/%E8%80%81%E5%95%86%E5%93%81b', () => detail('老商品 B', 200)],
+    ['/products/new-c', () => detail('新品 C', 300)],
+    // 首頁：舊商品用沒有語系前綴、未編碼的網址，另外多一個 sitemap 沒有的新品（放最後，避免搶先比對到商品頁網址）
+    ['alphaplus.cyberbiz.co/zh-TW/', () => ({ body: '<a href="/products/old-a">A</a><a href="/products/老商品b">B</a><a href="/collections/all">全部</a>' })],
+    ['alphaplus.cyberbiz.co/', () => ({ body: '<a href="/products/old-a">A</a><a href="/collections/all">全部</a>' })],
+  ]);
+
+  const { products, strategy, warnings } = await cyberbiz.scrape(
+    { origin: 'https://alphaplus.cyberbiz.co', locale: 'zh-TW', maxProducts: 100 }, NET
+  );
+  assert.strictEqual(strategy, 'sitemap+crawl');
+  assert.deepStrictEqual(products.map((p) => p.name).sort(), ['新品 C', '老商品 B', '舊商品 A'], 'sitemap 沒有的新品要補進來，重複網址只留一筆');
+  assert.ok(products.every((p) => p.url.startsWith('https://alphaplus.cyberbiz.co/zh-TW/products/')), '網址統一成帶語系的寫法');
+  assert.deepStrictEqual(warnings, []);
+});
+
+test('官網：滿額贈品頁不當成有售價的商品', () => {
+  const gift = cyberbiz.parseProductHtml(
+    '<meta property="og:title" content="(贈品) 9/19-10/20單筆訂單金額滿$499贈品牌木漿棉乙個"><meta property="product:price:amount" content="99999">',
+    'https://alphaplus.cyberbiz.co/zh-TW/products/%E6%9C%A8%E6%BC%BF%E6%A3%89%E8%B4%88%E5%93%81'
+  );
+  assert.strictEqual(gift.price, null, '99999 是佈告價，不是售價');
+  assert.ok(gift.status.includes('贈品'));
+  const normal = cyberbiz.parseProductHtml(
+    '<meta property="og:title" content="雞湯大叔廚師娃娃"><meta property="product:price:amount" content="129">',
+    'https://alphaplus.cyberbiz.co/zh-TW/products/doll'
+  );
+  assert.strictEqual(normal.price, 129);
+  assert.strictEqual(normal.status, '');
+});
+
 test('官網：sitemap 也失敗時改爬分類頁連結', async () => {
   stubFetch([
     ['sitemap', () => ({ status: 404, body: '' })],

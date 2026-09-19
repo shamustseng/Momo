@@ -5,10 +5,10 @@ const H = require('./html');
 
 /**
  * Alpha Plus 官網（CYBERBIZ 平台）。
- * 官網沒有公開 API（/products.json 回 404），所以依序試兩種方式，哪個先成功就用哪個：
- *   1. sitemap.xml  —— SEO 用途，幾乎一定存在，能拿到全部商品網址
- *   2. 逐頁爬連結   —— 從首頁與分類頁撈 /products/ 連結
- * 拿到網址後一律讀商品頁的 JSON-LD / og: 標籤取名稱與價格。
+ * 官網沒有公開 API（/products.json 回 404），商品網址從兩個地方一起收，合併去重：
+ *   1. sitemap.xml  —— SEO 用途，但實測會過期：新上架的商品可能好幾天都不在裡面
+ *   2. 逐頁爬連結   —— 首頁與 /collections 分類頁（含分頁）上的 /products/ 連結，才是店面現在真的有的
+ * 兩邊都要看，只信 sitemap 會漏掉新品。拿到網址後一律讀商品頁的 JSON-LD / og: 標籤取名稱與價格。
  */
 async function scrape(sourceConfig, net, log = () => {}) {
   const origin = (sourceConfig.origin || 'https://alphaplus.cyberbiz.co').replace(/\/+$/, '');
@@ -16,15 +16,13 @@ async function scrape(sourceConfig, net, log = () => {}) {
   const maxProducts = Math.max(1, sourceConfig.maxProducts || 400);
   const warnings = [];
 
-  let urls = await urlsFromSitemap(origin, net, log);
-  let strategy = 'sitemap';
+  const fromSitemap = await urlsFromSitemap(origin, net, log);
+  const fromCrawl = await urlsFromCrawl(origin, locale, net, log);
+  let urls = mergeProductUrls([...fromSitemap, ...fromCrawl], origin, locale);
+  log(`官網：sitemap ${fromSitemap.length} 筆、店面頁面 ${fromCrawl.length} 筆，合併去重後 ${urls.length} 筆`);
+  const strategy = fromSitemap.length && fromCrawl.length ? 'sitemap+crawl' : fromCrawl.length ? 'crawl' : 'sitemap';
   if (!urls.length) {
-    warnings.push('sitemap.xml 沒有取得商品網址，改用逐頁爬連結。');
-    urls = await urlsFromCrawl(origin, locale, net, log);
-    strategy = 'crawl';
-  }
-  if (!urls.length) {
-    warnings.push('三種方式都沒抓到官網商品，請確認網址或網站是否改版。');
+    warnings.push('sitemap 與店面頁面都沒抓到官網商品，請確認網址或網站是否改版。');
     return { products: [], warnings, strategy: 'none' };
   }
 
@@ -101,13 +99,13 @@ async function urlsFromSitemap(origin, net, log) {
   return [...productUrls];
 }
 
+/**
+ * 從店面頁面收商品連結：首頁、「全部商品」分類頁，再加上首頁列出的各分類頁。
+ * 分類頁有分頁（?page=N），一頁一頁翻到沒有新商品為止。
+ */
 async function urlsFromCrawl(origin, locale, net, log) {
-  const seeds = [
-    `${origin}/`,
-    locale ? `${origin}/${locale}` : null,
-    `${origin}/categories`,
-    `${origin}/products`,
-  ].filter(Boolean);
+  const prefix = locale ? `${origin}/${locale}` : origin;
+  const seeds = [...new Set([`${origin}/`, `${prefix}/`, `${origin}/collections/all`, `${prefix}/collections/all`])];
 
   const productUrls = new Set();
   const categoryUrls = new Set();
@@ -123,15 +121,38 @@ async function urlsFromCrawl(origin, locale, net, log) {
   }
 
   const categories = [...categoryUrls].slice(0, 30);
+  const MAX_PAGES = 10;
   await mapLimit(categories, net.concurrency, net.delayMs, async (url) => {
-    const res = await fetchText(url, { timeoutMs: net.timeoutMs, retries: 1, referer: origin + '/' });
-    if (!res.ok) return;
-    for (const link of extractLinks(res.body, origin)) {
-      if (isProductUrl(link, origin)) productUrls.add(normalizeProductUrl(link));
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const res = await fetchText(`${url}?page=${page}`, { timeoutMs: net.timeoutMs, retries: 1, referer: origin + '/' });
+      if (!res.ok) return;
+      let fresh = 0;
+      for (const link of extractLinks(res.body, origin)) {
+        if (!isProductUrl(link, origin)) continue;
+        const normalized = normalizeProductUrl(link);
+        if (!productUrls.has(normalized)) fresh++;
+        productUrls.add(normalized);
+      }
+      if (fresh === 0) return; // 這一頁沒有新商品，後面的分頁不用再翻
+      if (net.delayMs > 0) await sleep(net.delayMs);
     }
   });
 
   return [...productUrls];
+}
+
+/**
+ * 同一個商品在頁面上會以 /products/xxx 與 /zh-TW/products/xxx 兩種網址出現，
+ * 而且中文 slug 有時已編碼、有時沒有；統一成一種寫法再去重，才不會同一頁讀兩次。
+ */
+function mergeProductUrls(urls, origin, locale) {
+  const prefix = locale ? `${origin}/${locale}` : origin;
+  const bySlug = new Map();
+  for (const url of urls) {
+    const slug = slugOf(url);
+    if (slug && !bySlug.has(slug)) bySlug.set(slug, `${prefix}/products/${encodeURIComponent(slug)}`);
+  }
+  return [...bySlug.values()];
 }
 
 function extractLinks(html, origin) {
@@ -172,6 +193,8 @@ function parseProductHtml(html, url) {
 
   const availability = product ? H.availabilityFromOffers(product.offers) : '';
   const soldOut = /soldout|outofstock|discontinued/i.test(availability);
+  // 滿額贈品在官網也是一個商品頁，但掛的是 99999 之類的佈告價，不是真的售價
+  const giveaway = /^[（(]\s*贈品\s*[）)]/.test(name) || price >= 99999;
 
   const image =
     H.meta(html, 'og:image') ||
@@ -187,11 +210,11 @@ function parseProductHtml(html, url) {
     source: 'alphaplus',
     sku: idMatch ? idMatch[0] : '',
     name,
-    price,
+    price: giveaway ? null : price,
     currency: 'TWD',
     url: normalizeProductUrl(url),
     image: typeof image === 'string' ? image : '',
-    status: soldOut ? '售完或未開賣' : '',
+    status: giveaway ? '贈品（隨單附贈，不單獨販售）' : soldOut ? '售完或未開賣' : '',
     keywords: [],
   };
 }
