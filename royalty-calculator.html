@@ -425,7 +425,7 @@
 <div class="prod" id="prodDanjiao" hidden>
   <section class="hero">
     <h2 style="font-size:22px">麻辣香菜蛋餃：龍鳳付阿爾法多少，阿爾法再分撈王多少 <span class="status">洽談中</span></h2>
-    <p>尚未簽約，依目前談定的條件建模：龍鳳出貨價暫定每盒 65 元、製造成本 32 元、目標 20,000 盒；阿爾法抽 5% 權利金，撈王總公司分走其中 25%，沒有其他費用。所有參數都可改。</p>
+    <p>尚未簽約，依目前談定的條件建模：龍鳳出貨價暫定每盒 59 元（8 粒裝，100 克／盒）、製造成本 32 元、目標 20,000 盒；阿爾法抽 5% 權利金，撈王總公司分走其中 25%，沒有其他費用。所有參數都可改。</p>
     <div class="source">尚無合約文字，數字為目前談定條件。已確認：撈王不收一次性權利金、沒有未售庫存處理費、撈王分潤為阿爾法權利金的 25%。結算週期與含稅與否尚待簽約確認。</div>
   </section>
 
@@ -477,8 +477,8 @@
           <div class="two">
             <div class="field">
               <label for="dPrice">出貨價（元／盒）</label>
-              <input type="number" id="dPrice" min="0" step="1" value="65">
-              <span class="hint">暫定 65</span>
+              <input type="number" id="dPrice" min="0" step="1" value="59">
+              <span class="hint">暫定 59，8 粒裝，100 克／盒</span>
             </div>
             <div class="field">
               <label for="dCost">製造成本（元／盒）</label>
@@ -559,7 +559,7 @@
 
       <section class="card">
         <h2>每盒拆解</h2>
-        <p class="sub">從龍鳳的 65 元出貨價往下拆，看權利金佔龍鳳毛利多少。</p>
+        <p class="sub">從龍鳳的 59 元出貨價往下拆，看權利金佔龍鳳毛利多少。</p>
         <div class="card-body">
           <div class="table-wrap">
             <table aria-label="每盒拆解">
@@ -572,7 +572,7 @@
 
       <section class="card">
         <h2>敏感度</h2>
-        <p class="sub">左表改銷量，右表改出貨價（若最終售價不是 65）。</p>
+        <p class="sub">左表改銷量，右表改出貨價（若最終出貨價不是 59）。</p>
         <div class="card-body">
           <div class="sched">
             <div class="table-wrap">
@@ -608,9 +608,9 @@
         <h2>解讀與待確認事項</h2>
         <div class="card-body">
           <ul class="notes" style="margin:0;padding-left:18px">
-            <li><b>5% 的基礎。</b>假設是龍鳳出貨價 65 元的 5%，每盒 3.25 元，與煎餃 MOU「出廠價 × 比率 × 銷售包數」同一邏輯。若改按零售價或龍鳳毛利計算，金額不同。</li>
-            <li><b>撈王的 25% 已確認。</b>撈王分的是阿爾法權利金的 25%，每盒 0.81 元。撈王不收一次性權利金，也沒有未售庫存處理費，阿爾法這邊沒有其他成本。</li>
-            <li><b>65 元含稅與否。</b>煎餃 MOU 的 90 元寫明含稅，蛋餃的 65 元尚未寫明。預設直接以 65 計；換算未稅後，權利金與撈王分潤各少約 4.8%。</li>
+            <li><b>5% 的基礎。</b>假設是龍鳳出貨價 59 元的 5%，每盒 2.95 元，與煎餃 MOU「出廠價 × 比率 × 銷售包數」同一邏輯。若改按零售價或龍鳳毛利計算，金額不同。</li>
+            <li><b>撈王的 25% 已確認。</b>撈王分的是阿爾法權利金的 25%，每盒 0.74 元。撈王不收一次性權利金，也沒有未售庫存處理費，阿爾法這邊沒有其他成本。</li>
+            <li><b>59 元含稅與否。</b>煎餃 MOU 的 90 元寫明含稅，蛋餃的 59 元尚未寫明。預設直接以 59 計；換算未稅後，權利金與撈王分潤各少約 4.8%。</li>
             <li><b>成本 32 元是龍鳳的數字。</b>本頁的龍鳳毛利只用於談判參考，阿爾法的收入不受成本影響。</li>
             <li><b>結算週期。</b>龍鳳與阿爾法之間假設比照煎餃 MOU 月結；阿爾法與撈王之間的結算週期尚未談定。</li>
           </ul>
@@ -755,9 +755,9 @@
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const D = { target:20000, sold:20000, price:65, cost:32, vat:5, basis:'incl', rate:5, lwShare:25 };
+  const D = { target:20000, sold:20000, price:59, cost:32, vat:5, basis:'incl', rate:5, lwShare:25 };
   const IDS = { dTarget:'target', dSold:'sold', dPrice:'price', dCost:'cost', dVat:'vat', dRate:'rate', dLwShare:'lwShare' };
-  const KEY = 'danjiao-royalty-v2';
+  const KEY = 'danjiao-royalty-v3';
   let s = Object.assign({}, D);
   try { const v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (v && typeof v === 'object') s = Object.assign({}, D, v); } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} };
@@ -818,7 +818,7 @@
     if (!qtys.includes(s.sold)) { qtys.push(s.sold); qtys.sort((a,b)=>a-b); }
     $('dSensQty').innerHTML = qtys.map(n => { const x = compute(s, n); const cur = n === s.sold;
       return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '>' + cell(boxes(n)) + cell(fmt0(x.royalty)) + cell(fmt0(x.lw)) + cell(fmt0(x.net), x.net<0?'neg':'') + '</tr>'; }).join('');
-    const prices = [55, 60, 65, 70, 75];
+    const prices = [50, 55, 59, 65, 70];
     if (!prices.includes(s.price)) { prices.push(s.price); prices.sort((a,b)=>a-b); }
     $('dSensPrice').innerHTML = prices.map(p => { const x = compute(s, null, p); const cur = p === s.price;
       return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '>' + cell(fmt0(p)) + cell(fmt0(x.royalty)) + cell(fmt0(x.lw)) + cell(fmt0(x.net), x.net<0?'neg':'') + '</tr>'; }).join('');
