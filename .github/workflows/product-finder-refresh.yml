@@ -1,0 +1,67 @@
+name: product-finder 定時重抓
+
+# 每小時重抓 momo 與 Alpha Plus 官網的商品清單，把結果推到 product-finder-data 分支。
+# 線上頁面開啟時直接讀該分支的 data.json，不需要任何人重新發布頁面。
+# 注意：schedule 只會在預設分支上的 workflow 生效；手動 Run workflow 則任何有這個檔案的分支都可以。
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: product-finder-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 拿回上一次成功的資料：這次若整個抓失敗，才有舊資料可以沿用，而不是退回幾週前的 seed
+      - name: 取回上一次的快取
+        run: |
+          mkdir -p product-finder/data
+          if git fetch --depth 1 origin product-finder-data 2>/dev/null; then
+            git show origin/product-finder-data:cache.json > product-finder/data/cache.json && echo "已取回上一次的 cache.json" || echo "資料分支沒有 cache.json，從 seed 開始"
+          else
+            echo "還沒有 product-finder-data 分支，從 seed 開始"
+          fi
+
+      - name: 重新抓取並產出
+        id: build
+        working-directory: product-finder
+        run: |
+          set +e
+          node scripts/build-hosted.js --refresh
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          # 2 = 兩邊都抓失敗（沿用舊資料）；其他非 0 = 程式錯誤
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
+          cp data/cache.json dist/hosted/cache.json
+
+      - name: 推到 product-finder-data 分支
+        run: |
+          cd product-finder/dist/hosted
+          git init -q
+          git checkout -q -b product-finder-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "重抓 $(date -u +%Y-%m-%dT%H:%MZ)（結果碼 ${{ steps.build.outputs.exit_code }}）"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" product-finder-data
+
+      - name: 這次抓取失敗，標記工作為失敗
+        if: steps.build.outputs.exit_code == '2'
+        run: |
+          echo "::error::momo 與 Alpha Plus 官網都抓不到資料，已沿用上一次成功的清單並在頁面上顯示警告"
+          exit 1

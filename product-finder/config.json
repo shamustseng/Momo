@@ -1,0 +1,44 @@
+{
+  "port": 5173,
+  "sources": {
+    "momo": {
+      "label": "momo 購物網",
+      "enabled": true,
+      "keywords": [
+        "雞湯大叔",
+        "賴山嶼",
+        "雞湯桑",
+        "麵屋一燈",
+        "撈王"
+      ],
+      "maxPagesPerKeyword": 5,
+      "mustMatch": [
+        "雞湯大叔",
+        "BROTH MASTER",
+        "賴山嶼",
+        "雞湯桑",
+        "麵屋一燈",
+        "阿爾法餐飲",
+        "【撈王】"
+      ]
+    },
+    "alphaplus": {
+      "label": "Alpha Plus 官網",
+      "enabled": true,
+      "origin": "https://alphaplus.cyberbiz.co",
+      "locale": "zh-TW",
+      "maxProducts": 400
+    }
+  },
+  "network": {
+    "concurrency": 3,
+    "delayMs": 350,
+    "timeoutMs": 20000,
+    "retries": 2
+  },
+  "hosted": {
+    "dataUrl": "https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json",
+    "workflowUrl": "https://github.com/shamustseng/Momo/actions/workflows/product-finder-refresh.yml",
+    "intervalHours": 1
+  }
+}
