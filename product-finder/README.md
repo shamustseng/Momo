@@ -91,8 +91,21 @@ data/seed.json     初始清單（第一次使用時的預設資料）
 test/              測試
 ```
 
-## 線上版與「重新搜尋」按鈕
+## 線上版：每小時自動更新，不靠任何人
 
-`npm run hosted` 產出的三個檔案可發布成 claude.ai Artifact。線上版多一個**重新搜尋**按鈕：按下後頁面會把
-「有人要求重抓」寫進自己的新版本，負責維護的 Claude session 收到通知後重新抓取、更新頁面，所有開著的人
-自動看到新資料（通常 2–3 分鐘）。只有對該 Artifact 有編輯權的人按得動；唯讀檢視會看不到按鈕。
+`npm run hosted` 產出 `dist/hosted/` 四個檔案（index.html、app.js、styles.css、data.json），前三個發布成 claude.ai Artifact。
+
+真正讓資料保持新鮮的是 GitHub Actions（`.github/workflows/product-finder-refresh.yml`）：
+
+1. 每小時（每小時的第 7 分）跑一次 `node scripts/build-hosted.js --refresh`，把 momo 與官網重抓一遍。
+2. 把產出的 `data.json`（加上 `cache.json`）強制推到 `product-finder-data` 分支——這個分支永遠只有一個 commit，不會弄髒主分支歷史。
+3. 線上頁面開啟時直接讀 `https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json`
+   （公開 repo 有 CORS 標頭，CDN 快取 5 分鐘，頁面會加時間戳避開），所以**頁面本身不用重新發布**就會顯示最新資料。
+   讀不到時退回 index.html 內嵌的那一份（發布當時的資料）。
+4. 「重新載入」按鈕只是再讀一次 data.json；急著要現在的價格，到 GitHub 的 Actions 頁手動 **Run workflow**，1–2 分鐘後再按重新載入。
+
+失敗時怎麼提醒：
+- 兩邊都抓不到 → `data.json` 沿用上一次成功的資料、`refreshStatus: 'failed'`，頁面顯示紅色橫幅與原因；workflow 本身也會標成失敗，GitHub 會寄通知。
+- 排程整個停了（例如 workflow 被停用）→ 資料超過 3 小時沒更新，頁面顯示紅色「自動抓取可能停了」。
+
+**注意**：GitHub 的 `schedule` 只會執行**預設分支**上的 workflow。這個檔案所在的分支必須是預設分支（或合併進去），定時重抓才會啟動；手動 Run workflow 則任何分支都可以。相關網址與間隔設定在 `config.json` 的 `hosted` 區塊。

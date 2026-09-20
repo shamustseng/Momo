@@ -9,9 +9,9 @@ const STYLES = path.join(__dirname, '..', 'public', 'styles.css');
 /**
  * 把商品資料打包成不需要伺服器的網頁。兩種產物共用同一份版面與程式：
  *  - buildStaticHtml(data)：單一 HTML 檔，樣式／程式／資料全內嵌，雙擊即開。
- *  - buildHosted(data)：發布到 claude.ai 用的三個檔案（index.html、app.js、styles.css）。
- *    線上版多一個「重新搜尋」按鈕：按下去頁面會把「有人要求重抓」寫回自己的新版本，
- *    負責維護的 Claude session 收到通知後重新抓取並更新頁面。
+ *  - buildHosted(data)：發布到 claude.ai 用的檔案（index.html、app.js、styles.css、data.json）。
+ *    線上版開啟時會去讀 GitHub Actions 定時重抓、推到資料分支的 data.json，
+ *    所以頁面本身不用重新發布就能看到最新資料；多一個「重新載入」按鈕手動再讀一次。
  */
 
 function preparePayload(data) {
@@ -35,8 +35,7 @@ function preparePayload(data) {
   }
   return {
     generatedAt: new Date().toISOString(),
-    refreshRequestedAt: null,
-    refreshStatus: null,   // 'pending' | 'failed' | null（沒有進行中的請求）
+    refreshStatus: null,   // 'failed'：這次重抓整個失敗、沿用上次的資料；null：正常
     refreshError: null,
     sources,
   };
@@ -75,7 +74,7 @@ const MARKUP = `
       <button class="tab" data-source="alphaplus" role="tab">Alpha Plus 官網</button>
     </nav>
     <div class="actions">
-      <button class="btn" id="refresh-btn" hidden>重新搜尋</button>
+      <button class="btn" id="refresh-btn" hidden>重新載入</button>
       <div class="menu">
         <button class="btn btn-primary" id="export-btn" aria-haspopup="true" aria-expanded="false">一鍵輸出</button>
         <div class="menu-panel" id="export-menu" hidden>
@@ -118,6 +117,7 @@ const MARKUP = `
 
   <footer class="foot">
     <p id="generated"></p>
+    <p id="auto-note" hidden></p>
     <p>資料由程式抓取 momo 與 Alpha Plus 官網商品頁；momo 商品列出商品頁上的促銷價、市售價與限時折後價（有限時活動時才有），排序與對帳以促銷價為準；上架狀態以各站台當下顯示為準。</p>
   </footer>
 </main>
@@ -138,8 +138,8 @@ const MARKUP = `
 /** 頁面程式。\`MARKUP_JSON\` 與 \`HOSTED\` 兩個佔位符在打包時填入。 */
 const APP_JS = String.raw`'use strict';
 const HOSTED = __HOSTED__;
-const MARKUP = __MARKUP_JSON__;
-const DATA = JSON.parse(document.getElementById('data').textContent);
+const LIVE = __LIVE_JSON__;   // 線上版：{ dataUrl, workflowUrl, intervalHours }；單檔版：null
+let DATA = JSON.parse(document.getElementById('data').textContent);
 const LABELS = { momo: 'momo 購物網', alphaplus: 'Alpha Plus 官網' };
 const ORDER = ['momo', 'alphaplus'];
 const state = { source: 'all', q: '', sort: 'default', onlyListed: false };
@@ -254,93 +254,87 @@ function render() {
   renderRefreshState();
 }
 
-/* ---------- 重新搜尋（只有線上版會亮起來） ---------- */
+/* ---------- 資料狀態橫幅 ---------- */
 
-// 不依賴任何背景排程重試：送出後只會被處理一次，10 分鐘內沒有回應（無論是失敗還是漏接）
-// 就由頁面自己判定為逾時失敗，停在失敗狀態等使用者手動再按一次，不會無止境地一直搜
-const REFRESH_TIMEOUT_MIN = 10;
-
+/**
+ * 只有兩種情況要提醒：
+ *  - 上一次自動重抓整個失敗（refreshStatus === 'failed'），畫面上的是沿用的舊資料
+ *  - 資料太久沒更新（超過排程間隔的 3 倍），代表背景排程本身可能停了
+ * 兩種都用紅色橫幅，讓人一眼知道現在看的不是最新的。
+ */
 function renderRefreshState() {
   const banner = $('refresh-banner');
-  const at = DATA.refreshRequestedAt;
-  const btn = $('refresh-btn');
-
+  banner.classList.remove('stale');
   if (DATA.refreshStatus === 'failed') {
     banner.hidden = false;
-    banner.classList.remove('stale');
     banner.classList.add('failed');
-    $('refresh-text').textContent = '重新搜尋失敗：' + (DATA.refreshError || '發生未知錯誤') + '，請再試一次。';
-    if (!btn.hidden) btn.disabled = false;
+    $('refresh-text').textContent = '上次自動重新抓取失敗：' + (DATA.refreshError || '發生未知錯誤') + '。目前顯示的是上一次成功的資料（' + fmtTime(DATA.generatedAt, true) + '）。';
     return;
   }
-
-  if (!at) { banner.hidden = true; banner.classList.remove('failed', 'stale'); return; }
-
-  const ageMin = (Date.now() - new Date(at).getTime()) / 60000;
-  const timedOut = ageMin > REFRESH_TIMEOUT_MIN;
-  banner.hidden = false;
-  banner.classList.toggle('failed', timedOut);
-  banner.classList.remove('stale');
-  $('refresh-text').textContent = timedOut
-    ? '已於 ' + fmtTime(at) + ' 送出的重新搜尋超過 10 分鐘沒有回應，視為失敗，請再試一次。'
-    : '已於 ' + fmtTime(at) + ' 送出重新搜尋，正在抓取 momo 與官網，完成後本頁會自動更新（10 分鐘內會有結果）。';
-  if (!btn.hidden) btn.disabled = !timedOut;
-}
-
-function renderIndex(payload) {
-  const json = JSON.stringify(payload).replace(/<\//g, '<\\/');
-  return '<!doctype html>\n<html lang="zh-TW">\n<head>\n<meta charset="utf-8">\n<title>阿爾法產品清單</title>\n' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="color-scheme" content="light dark">\n' +
-    '<link rel="stylesheet" href="styles.css">\n</head>\n<body>' + MARKUP +
-    '<script id="data" type="application/json">' + json + '</' + 'script>\n<script src="app.js"></' + 'script>\n</body>\n</html>\n';
+  const intervalH = LIVE && LIVE.intervalHours ? LIVE.intervalHours : 0;
+  const ageH = (Date.now() - new Date(DATA.generatedAt).getTime()) / 3600000;
+  if (intervalH && ageH > intervalH * 3) {
+    banner.hidden = false;
+    banner.classList.add('failed');
+    $('refresh-text').textContent = '資料已超過 ' + Math.floor(ageH) + ' 小時沒有更新（正常每 ' + intervalH + ' 小時更新一次），自動抓取可能停了，請到 GitHub 檢查排程。';
+    return;
+  }
+  banner.hidden = true;
+  banner.classList.remove('failed');
 }
 
 let downloadsApi = null;
 
 /**
- * 線上版（claude.ai）才有的兩個能力：
- *  - artifact：讓頁面發布自己的新版本，用來送出「重新搜尋」請求
+ * 線上版才有的東西：
+ *  - 最新資料：由 GitHub Actions 定時重抓、推到資料分支；頁面開啟時直接讀那份 JSON，
+ *    不用等任何人重新發布這個頁面。讀不到就用內嵌的那份（發布當時的資料）。
  *  - downloads：把產生的檔案交給使用者存檔（檢視器不允許頁面自行下載，一定要走這個）
- * 單檔版沒有 window.claude，兩者都會是 null，介面自動退回原本的做法。
+ * 單檔版沒有 window.claude 也沒有 LIVE，全部退回原本的做法。
  */
 async function setupCapabilities() {
+  if (LIVE && LIVE.dataUrl) {
+    setupLiveData();
+    await loadLiveData();
+  }
   if (!HOSTED || !window.claude || typeof window.claude.use !== 'function') return;
-  const [artifact, downloads] = await Promise.all([
-    window.claude.use('artifact').catch(() => null),
-    window.claude.use('downloads').catch(() => null),
-  ]);
-  downloadsApi = downloads;
-  if (artifact) setupRefreshButton(artifact);
+  downloadsApi = await window.claude.use('downloads').catch(() => null);
 }
 
-function setupRefreshButton(artifact) {
+function setupLiveData() {
   const btn = $('refresh-btn');
   btn.hidden = false;
-  renderRefreshState();
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    btn.textContent = '送出中…';
-    try {
-      await artifact.publish(renderIndex({
-        ...DATA,
-        refreshRequestedAt: new Date().toISOString(),
-        refreshStatus: 'pending',
-        refreshError: null,
-      }));
-      // 成功後頁面會自動重新載入到新版本，不需要再做什麼
-    } catch (err) {
-      const code = err && err.code;
-      if (code === 'conflict') return; // 別人剛更新了，頁面正在重新載入
-      if (code === 'not_writer' || code === 'not_granted' || code === 'not_declared') {
-        btn.hidden = true;
-        toast('這個檢視是唯讀的，無法觸發重新搜尋。');
-        return;
-      }
-      btn.disabled = false;
-      btn.textContent = '重新搜尋';
-      toast(code === 'rate_limited' ? '送出太頻繁，請稍後再試。' : '送出失敗，請稍後再試。');
-    }
-  });
+  btn.addEventListener('click', () => loadLiveData(true));
+  const note = $('auto-note');
+  note.hidden = false;
+  note.textContent = '';
+  note.append(document.createTextNode('資料每 ' + (LIVE.intervalHours || 1) + ' 小時由 GitHub Actions 自動重新抓取，開啟本頁時會自動載入最新一份；急著要現在的價格，可以'));
+  if (LIVE.workflowUrl) {
+    const a = el('a', null, '到 GitHub 手動跑一次抓取');
+    a.href = LIVE.workflowUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    note.append(a, document.createTextNode('（約 1–2 分鐘），再按「重新載入」。'));
+  }
+}
+
+async function loadLiveData(manual) {
+  const btn = $('refresh-btn');
+  btn.disabled = true;
+  try {
+    // 加時間戳避開 CDN 快取，確保拿到剛推上去的那一份
+    const res = await fetch(LIVE.dataUrl + (LIVE.dataUrl.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const fresh = await res.json();
+    if (!fresh || !fresh.sources) throw new Error('資料格式不對');
+    const changed = fresh.generatedAt !== DATA.generatedAt;
+    DATA = fresh;
+    $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
+    render();
+    if (manual) toast(changed ? '已載入 ' + fmtTime(DATA.generatedAt) + ' 的資料' : '已經是最新的了（' + fmtTime(DATA.generatedAt) + '）');
+  } catch (err) {
+    if (manual) toast('讀不到最新資料（' + (err && err.message) + '），先顯示發布時的版本');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 /* ---------- 輸出 ---------- */
@@ -489,14 +483,12 @@ $('copy-retry').addEventListener('click', async () => {
 $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
 render();
 setupCapabilities();
-// 有請求還在等待時，每 20 秒重畫一次橫幅，逾時能自動變成「失敗」，不用使用者手動重新整理
-setInterval(() => { if (DATA.refreshRequestedAt && DATA.refreshStatus !== 'failed') renderRefreshState(); }, 20000);
 `;
 
-function appJs(hosted) {
+function appJs(hosted, live = null) {
   return APP_JS
     .replace('__HOSTED__', hosted ? 'true' : 'false')
-    .replace('__MARKUP_JSON__', JSON.stringify(MARKUP));
+    .replace('__LIVE_JSON__', JSON.stringify(live));
 }
 
 function css() {
@@ -533,10 +525,12 @@ ${appJs(false)}
 }
 
 /**
- * 發布到 claude.ai 用的檔案。index.html 不含 doctype/html/head/body 外殼
- *（發布工具會自己包），app.js 內的 renderIndex 則會產出完整文件供頁面自我更新。
+ * 發布到 claude.ai 用的檔案。index.html 不含 doctype/html/head/body 外殼（發布工具會自己包）。
+ * data.json 是同一份資料的純 JSON，給 GitHub Actions 推到資料分支、讓頁面開啟時讀最新的用；
+ * index.html 內嵌的那份只是讀不到時的備援。
+ * live = { dataUrl, workflowUrl, intervalHours }，來自 config.json 的 hosted 區塊；沒有就不啟用自動載入。
  */
-function buildHosted(data, payloadOverrides = {}) {
+function buildHosted(data, payloadOverrides = {}, live = null) {
   const payload = { ...preparePayload(data), ...payloadOverrides };
   const index = `<title>阿爾法產品清單</title>
 <link rel="stylesheet" href="styles.css">
@@ -544,7 +538,12 @@ ${MARKUP}
 ${dataScript(payload)}
 <script src="app.js"></script>
 `;
-  return { 'index.html': index, 'app.js': appJs(true), 'styles.css': css() };
+  return {
+    'index.html': index,
+    'app.js': appJs(true, live),
+    'styles.css': css(),
+    'data.json': JSON.stringify(payload) + '\n',
+  };
 }
 
 module.exports = { buildStaticHtml, buildHosted, preparePayload };

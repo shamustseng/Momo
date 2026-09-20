@@ -35,5 +35,10 @@
     "delayMs": 350,
     "timeoutMs": 20000,
     "retries": 2
+  },
+  "hosted": {
+    "dataUrl": "https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json",
+    "workflowUrl": "https://github.com/shamustseng/Momo/actions/workflows/product-finder-refresh.yml",
+    "intervalHours": 1
   }
 }

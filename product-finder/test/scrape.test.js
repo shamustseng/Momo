@@ -225,6 +225,22 @@ test('官網：滿額贈品頁不當成有售價的商品', () => {
   assert.strictEqual(normal.status, '');
 });
 
+test('線上版：產出 data.json，且頁面程式帶有資料分支網址', () => {
+  const { buildHosted } = require('../lib/static');
+  const data = { sources: { momo: { label: 'momo 購物網', updatedAt: '2026-09-20T00:00:00Z', products: [
+    { id: 'momo:1', source: 'momo', sku: '1', name: '測試', price: 100, prices: { list: 150, promo: 100, flash: null }, url: 'u', keywords: [] },
+  ] } } };
+  const live = { dataUrl: 'https://raw.githubusercontent.com/x/y/product-finder-data/data.json', workflowUrl: 'https://github.com/x/y/actions', intervalHours: 1 };
+  const files = buildHosted(data, {}, live);
+  const payload = JSON.parse(files['data.json']);
+  assert.strictEqual(payload.sources.momo.products[0].prices.promo, 100, 'data.json 要含三種標價');
+  assert.strictEqual(payload.refreshStatus, null);
+  assert.ok(files['app.js'].includes(live.dataUrl), '頁面程式要知道去哪裡讀最新資料');
+  assert.ok(files['index.html'].includes('"generatedAt"'), 'index.html 仍內嵌一份當備援');
+  const offline = buildHosted(data);
+  assert.ok(offline['app.js'].includes('const LIVE = null'), '沒有 hosted 設定時不啟用自動載入');
+});
+
 test('官網：sitemap 也失敗時改爬分類頁連結', async () => {
   stubFetch([
     ['sitemap', () => ({ status: 404, body: '' })],
