@@ -571,19 +571,6 @@
       </section>
 
       <section class="card">
-        <h2>龍鳳視角：整批損益</h2>
-        <p class="sub">龍鳳看這筆生意時，權利金是從毛利裡扣的。談判時可以用這張表說明 5% 對龍鳳的實際影響。</p>
-        <div class="card-body">
-          <div class="table-wrap">
-            <table aria-label="龍鳳損益">
-              <thead><tr><th>項目</th><th>金額</th><th>佔營收</th></tr></thead>
-              <tbody id="dLfPnlBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
         <h2>敏感度</h2>
         <p class="sub">左表改銷量，右表改出貨價（若最終售價不是 65）。</p>
         <div class="card-body">
@@ -789,8 +776,7 @@
     const royalty = royaltyPer * sold, lw = lwPer * sold;
     const net = royalty - lw;
     const gmPer = base - st.cost;
-    const rev = base * sold, cogs = st.cost * sold, gm = rev - cogs, gmAfter = gm - royalty;
-    return { sold, base, royaltyPer, lwPer, royalty, lw, net, gmPer, rev, cogs, gm, gmAfter };
+    return { sold, base, royaltyPer, lwPer, royalty, lw, net, gmPer };
   }
 
   function render(){
@@ -827,15 +813,6 @@
       ['<span class="pill alpha">阿爾法淨留</span>', r.royaltyPer - r.lwPer, (r.royaltyPer - r.lwPer)/r.base, null],
     ];
     $('dPerBoxBody').innerHTML = pb.map(([l,v,a,b]) => '<tr><td>' + l + '</td>' + cell(fmt2(v), v < 0 ? 'neg' : '') + cell(r.base > 0 ? pct(a) : '—') + cell(b == null ? '—' : pct(b)) + '</tr>').join('');
-
-    const pnl = [
-      ['營收（' + boxes(r.sold) + '）', r.rev, 1],
-      ['製造成本', -r.cogs, -r.cogs/r.rev],
-      ['毛利', r.gm, r.gm/r.rev],
-      ['權利金付阿爾法', -r.royalty, -r.royalty/r.rev],
-      ['毛利（扣權利金後）', r.gmAfter, r.gmAfter/r.rev],
-    ];
-    $('dLfPnlBody').innerHTML = pnl.map(([l,v,a],i) => '<tr' + (i===4 ? ' class="total"' : '') + '><td>' + l + '</td>' + cell(fmt0(v), v < 0 ? 'neg' : '') + cell(r.rev > 0 ? pct(a) : '—') + '</tr>').join('');
 
     const qtys = [10000, 15000, 20000, 30000, 40000, 60000];
     if (!qtys.includes(s.sold)) { qtys.push(s.sold); qtys.sort((a,b)=>a-b); }
