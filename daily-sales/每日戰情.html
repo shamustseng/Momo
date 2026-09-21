@@ -1042,13 +1042,37 @@
   }
 
   var sandboxed = (function(){ try { return window.self !== window.top; } catch (e) { return true; } })();
-  function saveFile(name, text, mime){
-    var blob = new Blob([text], { type: mime + ";charset=utf-8" });
-    var url = URL.createObjectURL(blob);
+
+  // 本機開這個檔案時，下載就是一般的瀏覽器下載；放在 claude.ai 上檢視時
+  // 瀏覽器會擋掉，改用平台提供的存檔方式（會跳一個確認）。
+  var saver = null;
+  if (window.claude && typeof window.claude.use === "function"){
+    window.claude.use("downloads").then(function(ns){ saver = ns; syncMenuNote(); },
+                                        function(){ syncMenuNote(); });
+  }
+  function syncMenuNote(){
+    var show = sandboxed && !saver;
+    $("menuNote").hidden = !show;
+    if (show) $("menuNote").textContent =
+      "你現在是在線上檢視，這個瀏覽器不讓頁面存檔。要存檔請用本機那份 HTML 檔，或改用下面兩個「複製」。";
+  }
+
+  function saveFile(name, text, mime, okMsg){
+    if (saver){
+      saver.save({ filename: name, data: text }).then(function(){ toast(okMsg); }, function(err){
+        var code = err && err.code;
+        if (code === "declined") toast("已取消，沒有存檔。");
+        else if (code === "rate_limited") toast("上一個存檔還沒處理完，等一下再按一次。");
+        else toast("存檔失敗（" + (code || "unknown") + "），請改用「複製」。");
+      });
+      return;
+    }
+    var url = URL.createObjectURL(new Blob([text], { type: mime + ";charset=utf-8" }));
     var a = document.createElement("a");
     a.href = url; a.download = name; a.rel = "noopener";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    toast(okMsg);
   }
   function copyText(text, msg){
     var done = function(){ toast(msg); };
@@ -1067,9 +1091,9 @@
   }
 
   var EXPORTS = {
-    csv:     function(){ saveFile("每日明細_" + rangeLabel() + ".csv", toCsv(), "text/csv"); toast("已下載 CSV，Excel 直接開不會亂碼。"); },
-    md:      function(){ saveFile("每日明細_" + rangeLabel() + ".md", toMarkdown(), "text/markdown"); toast("已下載 Markdown。"); },
-    html:    function(){ saveFile("零售每日戰情_" + LAST + ".html", toStandaloneHtml(), "text/html"); toast("已下載單檔網頁，寄出去對方直接點開就能看。"); },
+    csv:     function(){ saveFile("每日明細_" + rangeLabel() + ".csv", toCsv(), "text/csv", "已下載 CSV，Excel 直接開不會亂碼。"); },
+    md:      function(){ saveFile("每日明細_" + rangeLabel() + ".md", toMarkdown(), "text/markdown", "已下載 Markdown。"); },
+    html:    function(){ saveFile("零售每日戰情_" + LAST + ".html", toStandaloneHtml(), "text/html", "已下載單檔網頁，寄出去對方直接點開就能看。"); },
     clip:    function(){ copyText(toTsv(), "表格已複製，貼進 Excel 或 Google 試算表就會自動分欄。"); },
     summary: function(){ copyText(toSummary(), "戰情摘要已複製，可以直接貼進群組。"); }
   };
@@ -1089,10 +1113,7 @@
     try { EXPORTS[b.dataset.export](); }
     catch (err) { toast("輸出失敗：" + err.message); }
   });
-  if (sandboxed){
-    $("menuNote").textContent = "你現在是在線上檢視，瀏覽器會擋掉下載。要存檔請用本機那份 HTML 檔，或改用上面兩個「複製」。";
-    $("menuNote").hidden = false;
-  }
+  syncMenuNote();
 
   /* ══════════ 7. 更新資料 ══════════ */
   function ingest(file){
