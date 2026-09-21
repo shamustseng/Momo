@@ -1,0 +1,1180 @@
+<title>零售每日戰情</title>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+    --border:#DDD6C7; --border-strong:#C9C0AC;
+    --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+    --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+    --momo:#D6316B; --momo-soft:#FBE3EC;
+    --web:#2a78d6; --web-soft:#DCE9FA;
+    --good:#2F9E44; --bad:#C4362F; --warn:#B5730A; --warn-soft:#F6E8D2; --warn-ink:#6B4507;
+    --band:#EFE7D6;
+    --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+    --font-ui:"Noto Sans TC",-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-num:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+      --border:#3A3428; --border-strong:#4C452F;
+      --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+      --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+      --momo:#D9527F; --momo-soft:#3B2029;
+      --web:#3987e5; --web-soft:#182838;
+      --good:#4CAF6B; --bad:#E2665F; --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
+      --band:#2A2419;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+    --border:#3A3428; --border-strong:#4C452F;
+    --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+    --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+    --momo:#D9527F; --momo-soft:#3B2029;
+    --web:#3987e5; --web-soft:#182838;
+    --good:#4CAF6B; --bad:#E2665F; --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
+    --band:#2A2419;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+  }
+
+  *,*::before,*::after{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font-ui); font-size:15px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:1080px; margin:0 auto; padding-inline:16px; padding-block:26px 56px; }
+  h1,h2,h3{ margin:0; text-wrap:balance; font-weight:700; }
+  h1{ font-size:clamp(21px,4vw,29px); letter-spacing:-.01em; }
+  h2{ font-size:17px; letter-spacing:.01em; }
+  p{ margin:0; }
+  .num{ font-family:var(--font-num); font-variant-numeric:tabular-nums; }
+  .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint); }
+
+  /* ── 頁首 ── */
+  header.top{ display:flex; gap:18px; align-items:flex-end; justify-content:space-between;
+              flex-wrap:wrap; margin-bottom:18px; }
+  header.top .id{ display:flex; flex-direction:column; gap:5px; min-width:min(100%,280px); }
+  .sub{ color:var(--ink-muted); font-size:13px; }
+  .sub .num{ color:var(--ink); }
+  .actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .btn{
+    font:inherit; font-size:13.5px; font-weight:500; cursor:pointer;
+    background:var(--surface); color:var(--ink); border:1px solid var(--border-strong);
+    border-radius:6px; padding:8px 14px; display:inline-flex; align-items:center; gap:7px;
+  }
+  .btn:hover{ background:var(--surface-2); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-primary{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+  .btn-primary:hover{ background:var(--accent-hover); }
+  .menu{ position:relative; }
+  .menu-panel{
+    position:absolute; right:0; top:calc(100% + 6px); z-index:40; min-width:270px;
+    background:var(--surface); border:1px solid var(--border-strong); border-radius:8px;
+    box-shadow:0 8px 28px rgba(0,0,0,.16); padding:5px; display:flex; flex-direction:column;
+  }
+  .menu-panel button{
+    font:inherit; font-size:13.5px; text-align:left; background:none; border:0; color:var(--ink);
+    padding:9px 11px; border-radius:5px; cursor:pointer; display:flex; flex-direction:column; gap:1px;
+  }
+  .menu-panel button small{ font-size:11.5px; color:var(--ink-faint); }
+  .menu-panel button:hover{ background:var(--surface-2); }
+  .menu-panel button:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .menu-panel hr{ border:0; border-top:1px solid var(--border); margin:5px 8px; }
+  .menu-note{ font-size:11.5px; color:var(--warn-ink); background:var(--warn-soft);
+              border-radius:5px; padding:7px 10px; margin:4px; line-height:1.5; }
+
+  /* ── 提醒條 ── */
+  .notice{
+    display:flex; gap:10px; align-items:flex-start;
+    background:var(--warn-soft); color:var(--warn-ink);
+    border:1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    border-radius:8px; padding:12px 14px; font-size:13.5px; line-height:1.55; margin-bottom:22px;
+  }
+  .notice svg{ flex:none; margin-top:3px; }
+
+  .verdict{
+    background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--momo);
+    border-radius:4px; padding:18px 20px; box-shadow:var(--shadow); margin-bottom:24px;
+  }
+  .verdict .eyebrow{ margin-bottom:8px; display:block; }
+  .verdict p{ font-size:16px; line-height:1.7; }
+  .verdict p + p{ margin-top:10px; color:var(--ink-muted); font-size:14px; }
+
+  section{ margin-top:34px; }
+  .sechead{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .sechead .hint{ font-size:12.5px; color:var(--ink-faint); }
+
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1px;
+         background:var(--border); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .kpi{ background:var(--surface); padding:16px 18px; display:flex; flex-direction:column; gap:7px; }
+  .kpi .k-label{ font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:7px; }
+  .swatch{ width:9px; height:9px; border-radius:2px; flex:none; display:inline-block; }
+  .kpi .k-value{ font-family:var(--font-num); font-variant-numeric:tabular-nums;
+                 font-size:25px; font-weight:600; letter-spacing:-.02em; line-height:1.1; }
+  .kpi .k-foot{ font-size:12px; color:var(--ink-faint); }
+  .delta{ font-family:var(--font-num); font-weight:600; font-size:12.5px; }
+  .delta.up{ color:var(--good); } .delta.down{ color:var(--bad); } .delta.flat{ color:var(--ink-faint); }
+
+  .controls{ display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .segset{ display:flex; gap:2px; background:var(--surface-2); border:1px solid var(--border);
+           border-radius:6px; padding:2px; }
+  .segset button{ font:inherit; font-size:12.5px; font-weight:500; color:var(--ink-muted);
+                  background:none; border:0; border-radius:4px; padding:5px 11px; cursor:pointer; }
+  .segset button[aria-pressed="true"]{ background:var(--surface); color:var(--ink); font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .segset button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .seglabel{ font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); }
+
+  .chartcard{ background:var(--surface); border:1px solid var(--border); border-radius:4px;
+              padding:16px 14px 10px; box-shadow:var(--shadow); position:relative; }
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; padding:0 4px 10px; font-size:12.5px; color:var(--ink-muted); }
+  .legend span{ display:inline-flex; align-items:center; gap:7px; }
+  .legend i{ width:16px; height:3px; border-radius:2px; display:inline-block; }
+  svg.chart{ display:block; width:100%; height:auto; touch-action:pan-y; }
+  .tip{
+    position:absolute; pointer-events:none; opacity:0; transition:opacity .09s;
+    background:var(--surface); border:1px solid var(--border-strong); border-radius:6px;
+    box-shadow:0 4px 16px rgba(0,0,0,.14); padding:9px 11px; font-size:12.5px; min-width:158px; z-index:5;
+  }
+  .tip .t-date{ font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .tip .t-row{ display:flex; justify-content:space-between; gap:14px; align-items:center; }
+  .tip .t-row span:first-child{ display:inline-flex; align-items:center; gap:6px; color:var(--ink-muted); }
+  .tip .t-row b{ font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:600; }
+  .tag{ font-size:10px; font-weight:700; letter-spacing:.06em; padding:1px 5px; border-radius:3px;
+        background:var(--momo-soft); color:var(--momo); }
+
+  .tablewrap{ overflow-x:auto; border:1px solid var(--border); border-radius:4px; background:var(--surface); box-shadow:var(--shadow); }
+  table{ border-collapse:collapse; width:100%; font-size:13.5px; min-width:760px; }
+  th,td{ padding:8px 12px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--ink-muted);
+      background:var(--surface-2); position:sticky; top:0; text-transform:uppercase; }
+  th.grp{ text-align:center; border-left:1px solid var(--border); }
+  th.l,td.l{ text-align:left; }
+  td.d{ font-family:var(--font-num); font-variant-numeric:tabular-nums; }
+  td.b{ border-left:1px solid var(--border); }
+  tbody tr:hover td{ background:var(--surface-2); }
+  tr.camp td{ background:var(--band); }
+  tr.camp:hover td{ background:color-mix(in srgb, var(--band) 70%, var(--surface-3)); }
+  tr.camp td:first-child{ box-shadow:inset 3px 0 0 var(--momo); }
+  tfoot td{ font-weight:700; background:var(--surface-2); border-top:2px solid var(--border-strong); border-bottom:0; }
+  .zero{ color:var(--ink-faint); }
+  .flagdot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--warn); margin-left:6px; vertical-align:middle; }
+
+  .method,.howto{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:16px 20px; }
+  .howto{ background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent); }
+  .method h3,.howto h3{ font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:10px; }
+  .howto h3{ color:var(--accent-ink); }
+  .method ul,.howto ol{ margin:0; padding-left:18px; font-size:13px; color:var(--ink-muted); line-height:1.75; }
+  .howto ol{ color:var(--accent-ink); }
+  .method li + li,.howto li + li{ margin-top:4px; }
+  code{ font-family:var(--font-num); font-size:12px; background:var(--surface-3); padding:1px 5px; border-radius:3px; color:var(--ink); }
+  .howto code{ background:rgba(255,255,255,.55); color:var(--accent-ink); }
+  :root[data-theme="dark"] .howto code{ background:rgba(0,0,0,.3); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .howto code{ background:rgba(0,0,0,.3); } }
+  footer{ margin-top:28px; font-size:12px; color:var(--ink-faint); }
+
+  /* ── 拖檔 / 提示 ── */
+  .drop{
+    position:fixed; inset:0; z-index:90; display:none; place-items:center;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    border:3px dashed var(--accent); font-size:18px; font-weight:700; color:var(--accent-ink);
+  }
+  .drop.on{ display:grid; }
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(12px);
+    background:var(--ink); color:var(--bg); font-size:13.5px; font-weight:500;
+    padding:10px 18px; border-radius:999px; box-shadow:0 6px 24px rgba(0,0,0,.28);
+    opacity:0; pointer-events:none; transition:opacity .16s, transform .16s; z-index:100;
+    max-width:min(90vw,520px); text-align:center;
+  }
+  .toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } }
+  @media (max-width:560px){ header.top{ align-items:flex-start; } .actions{ width:100%; } .actions .btn{ flex:1; justify-content:center; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="id">
+      <span class="eyebrow">阿爾法餐飲 · 零售通路</span>
+      <h1 id="pageTitle">momo 九週年慶每日戰情</h1>
+      <p class="sub">資料到 <span class="num" id="rangeTxt">—</span> ｜ 明細 <span class="num" id="rowTxt">—</span> 筆 ｜ 來源 <span id="srcTxt">—</span></p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="loadBtn" type="button">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.6 11.6 5.4H9.1v4.3H6.9V5.4H4.4L8 1.6ZM2.4 10.4h2.2v2.2h6.8v-2.2h2.2v4.4H2.4v-4.4Z"/></svg>
+        更新資料
+      </button>
+      <div class="menu">
+        <button class="btn btn-primary" id="exportBtn" type="button" aria-haspopup="true" aria-expanded="false">
+          一鍵輸出
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path fill="currentColor" d="M1 3.2 5 7.2l4-4-1-1L5 5.2 2 2.2l-1 1Z"/></svg>
+        </button>
+        <div class="menu-panel" id="exportMenu" hidden>
+          <button type="button" data-export="csv">下載 CSV（Excel）<small>每日明細，開起來不會亂碼</small></button>
+          <button type="button" data-export="html">下載單檔網頁<small>整頁打包，寄給別的部門直接開</small></button>
+          <button type="button" data-export="md">下載 Markdown<small>貼進報告或 Notion</small></button>
+          <hr>
+          <button type="button" data-export="clip">複製表格<small>直接貼進 Excel／Google 試算表</small></button>
+          <button type="button" data-export="summary">複製戰情摘要<small>三行文字，貼進 LINE 群或信件</small></button>
+          <div class="menu-note" id="menuNote" hidden></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <input type="file" id="fileInput" accept=".xlsx,.xlsm,.csv" hidden>
+
+  <div class="notice" id="empty" hidden style="background:var(--accent-soft);color:var(--accent-ink);border-color:color-mix(in srgb, var(--accent) 35%, transparent)">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.6 11.6 5.4H9.1v4.3H6.9V5.4H4.4L8 1.6ZM2.4 10.4h2.2v2.2h6.8v-2.2h2.2v4.4H2.4v-4.4Z"/></svg>
+    <div><b>這份檔案還沒有資料。</b>按右上角 <b>更新資料</b> 選最新的《2026 零售商品進度表》，或把檔案直接拖進這個視窗，數字就會出來。讀進來之後會記在這台電腦的瀏覽器裡，下次打開不用重選。</div>
+  </div>
+
+  <div class="notice" id="notice" hidden>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.5 15 14H1L8 1.5Zm0 4.2a.85.85 0 0 0-.85.9l.2 3.1a.65.65 0 0 0 1.3 0l.2-3.1A.85.85 0 0 0 8 5.7Zm0 5.2a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z"/></svg>
+    <div id="noticeTxt"></div>
+  </div>
+
+  <div class="verdict" id="verdict">
+    <span class="eyebrow">結論</span>
+    <p id="verdictMain">—</p>
+    <p id="verdictSub">—</p>
+  </div>
+
+  <section id="secKpi">
+    <div class="sechead">
+      <h2>檔期期間 vs. 檔期前</h2>
+      <span class="hint" id="kpiHint">—</span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section id="secChart">
+    <div class="sechead">
+      <h2>每日走勢</h2>
+      <span class="hint">直條為當日數字，實線為 7 日移動平均；底色區為檔期</span>
+    </div>
+    <div class="controls">
+      <span class="seglabel">指標</span>
+      <div class="segset" id="metricSeg" role="group" aria-label="指標">
+        <button type="button" data-metric="gmv" aria-pressed="true">銷售額（含稅售價）</button>
+        <button type="button" data-metric="rev" aria-pressed="false">公司實收（未稅）</button>
+        <button type="button" data-metric="qty" aria-pressed="false">銷售件數</button>
+      </div>
+      <span class="seglabel">區間</span>
+      <div class="segset" id="rangeSeg" role="group" aria-label="區間">
+        <button type="button" data-days="30" aria-pressed="true">近 30 天</button>
+        <button type="button" data-days="60" aria-pressed="false">近 60 天</button>
+        <button type="button" data-days="0" aria-pressed="false">全部</button>
+      </div>
+    </div>
+    <div class="chartcard">
+      <div class="legend">
+        <span><i style="background:var(--momo)"></i>momo ＋ momo 寄倉</span>
+        <span><i style="background:var(--web)"></i>官網</span>
+        <span><i style="background:var(--band);height:10px;width:16px;border-radius:2px;border:1px solid var(--border-strong)"></i>檔期</span>
+      </div>
+      <svg class="chart" id="chart" viewBox="0 0 920 320" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="chartTitle"><title id="chartTitle">momo 與官網每日銷售走勢</title></svg>
+      <div class="tip" id="tip" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section id="secTable">
+    <div class="sechead">
+      <h2>每日明細</h2>
+      <div class="controls" style="margin:0">
+        <label class="seglabel" for="campInput">檔期起算</label>
+        <input type="date" id="campInput" class="btn" style="font-family:var(--font-num);padding:6px 10px">
+        <div class="segset" id="tableSeg" role="group" aria-label="表格區間">
+          <button type="button" data-from="camp" aria-pressed="true">檔期起</button>
+          <button type="button" data-from="month" aria-pressed="false">當月</button>
+          <button type="button" data-from="30" aria-pressed="false">近 30 天</button>
+          <button type="button" data-from="all" aria-pressed="false">全部</button>
+        </div>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table id="dailyTable">
+        <thead>
+          <tr>
+            <th class="l" rowspan="2">日期</th>
+            <th class="grp" colspan="4">momo ＋ momo 寄倉</th>
+            <th class="grp" colspan="4">官網</th>
+            <th class="grp" colspan="1">其他通路</th>
+          </tr>
+          <tr>
+            <th class="b">銷售額</th><th>實收</th><th>件數</th><th>訂單</th>
+            <th class="b">銷售額</th><th>實收</th><th>件數</th><th>訂單</th>
+            <th class="b">銷售額</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="howto">
+      <h3>每天要做的三件事</h3>
+      <ol>
+        <li>從《2026 零售商品進度表》下載最新檔（要含「2026 銷售紀錄」這個工作表）。</li>
+        <li>回到這一頁按 <b>更新資料</b> 選那個檔案，或直接把檔案拖到這個視窗上。數字會自己重算，也會記在這台電腦的瀏覽器裡，下次打開還在。</li>
+        <li>按 <b>一鍵輸出</b>。要給業務就 <b>下載 CSV</b>，要寄給別的部門就 <b>下載單檔網頁</b>，要貼群組就 <b>複製戰情摘要</b>。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="method">
+      <h3>口徑與注意事項</h3>
+      <ul>
+        <li><b>momo</b>＝銷售紀錄裡 <code>MOMO</code>（供應商出貨）＋ <code>MOMO寄倉</code>；<b>官網</b>＝<code>官網</code>。其餘（團購主／直播主、全家、ASO、美聯社、企業採購…）歸「其他通路」，不進兩個主指標。</li>
+        <li><b>銷售額</b>＝消費者付的含稅金額（總金額含稅欄）。<b>實收</b>＝公司真正入帳的未稅金額：momo 算<u>進價收入</u>，官網算<u>售價未稅</u>。兩者差額就是給 momo 的通路價差，所以 momo 的銷售額和實收不會一樣。</li>
+        <li><b>件數</b>不含贈品；運費另計在「其他通路」，不灌進官網銷售額。</li>
+        <li>momo 有 <span class="num" id="impTxt">0</span> 筆沒填進價，用同品項的進價率回推補值。</li>
+        <li>日期採「<code>order_create_date</code>（訂單建立日）」，不是出貨日或入帳日。</li>
+        <li>檔期起算日可以直接在上面「每日明細」那排改，換雙 11 或別的檔期不用改程式。</li>
+        <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>來源工作表「2026 銷售紀錄」 ｜ 最後更新 <span class="num" id="builtTxt">—</span></footer>
+</div>
+
+<div class="drop" id="drop">放開就開始重算</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script id="data" type="application/json">{"meta":{"source":"","rows":0,"first_date":"","last_date":"","imputed":0,"built_at":"","campaign_start":"2026-09-19"},"days":[]}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ══════════ 口徑設定 ══════════ */
+  var SHEET_NAME   = "2026 銷售紀錄";
+  var MOMO_CH      = { "MOMO":1, "MOMO寄倉":1 };
+  var WEB_CH       = { "官網":1 };
+  var NON_PRODUCT  = { "贈品":1, "運費":1 };
+  var COL = { brand:6, channel:7, date:8, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19, costEx:22 };
+  var STORE_KEY = "alpha-daily-sales-v1";
+
+  /* ══════════ 小工具 ══════════ */
+  var $ = function(id){ return document.getElementById(id); };
+  var fmtInt = function(n){ return Math.round(n || 0).toLocaleString("en-US"); };
+  var money  = function(n){ return "$" + fmtInt(n); };
+  var DOW = ["一","二","三","四","五","六","日"];
+  var md  = function(iso){ var p = iso.split("-"); return (+p[1]) + "/" + (+p[2]); };
+  var mdw = function(iso, dow){ return md(iso) + "（" + DOW[dow] + "）"; };
+  var iso = function(d){
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  };
+  var shiftDays = function(s, n){
+    var d = new Date(s + "T00:00:00"); d.setDate(d.getDate() + n); return iso(d);
+  };
+  var median = function(a){
+    if (!a.length) return 0;
+    var b = a.slice().sort(function(x,y){ return x-y; }), m = b.length >> 1;
+    return b.length % 2 ? b[m] : (b[m-1] + b[m]) / 2;
+  };
+  var toast = (function(){
+    var t = $("toast"), timer;
+    return function(msg){
+      t.textContent = msg; t.classList.add("on");
+      clearTimeout(timer); timer = setTimeout(function(){ t.classList.remove("on"); }, 3200);
+    };
+  })();
+
+  /* ══════════ 1. 讀檔：Excel ══════════
+     兩件麻煩事：
+     (1) 金額欄幾乎都是公式，而且這份檔案沒有存快取值（Google 試算表匯出的 xlsx 都這樣），
+         所以得自己算。公式很單純：N5*M5、ROUND(N5*M5,0)、596/2 這種。
+     (2) Excel 會把整欄一樣的公式存成「共用公式」，只有第一格寫得出算式，
+         其他格只留一個編號。SheetJS 不會幫忙展開，所以下面自己解 zip 讀原始 XML 補回來。 */
+
+  function colLetter(n){
+    var s = "";
+    while (n > 0){ var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - 1 - r) / 26; }
+    return s;
+  }
+  function colIndex(s){
+    var n = 0;
+    for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+    return n;
+  }
+
+  /* ── 1a. 用瀏覽器內建的解壓縮讀 xlsx 裡的檔案（xlsx 就是一個 zip） ── */
+  function unzip(buf){
+    var dv = new DataView(buf.buffer || buf, buf.byteOffset || 0, buf.byteLength);
+    var u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    var eocd = -1;
+    for (var i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--){
+      if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error("badzip");
+    var count = dv.getUint16(eocd + 10, true), off = dv.getUint32(eocd + 16, true);
+    var entries = {};
+    for (var k = 0; k < count; k++){
+      if (dv.getUint32(off, true) !== 0x02014b50) break;
+      var method = dv.getUint16(off + 10, true);
+      var csize  = dv.getUint32(off + 20, true);
+      var nlen   = dv.getUint16(off + 28, true);
+      var elen   = dv.getUint16(off + 30, true);
+      var clen   = dv.getUint16(off + 32, true);
+      var lho    = dv.getUint32(off + 42, true);
+      var name   = new TextDecoder().decode(u8.subarray(off + 46, off + 46 + nlen));
+      entries[name] = { method: method, csize: csize, lho: lho };
+      off += 46 + nlen + elen + clen;
+    }
+    return {
+      names: Object.keys(entries),
+      read: function(name){
+        var e = entries[name];
+        if (!e) return null;
+        var nlen = dv.getUint16(e.lho + 26, true), elen = dv.getUint16(e.lho + 28, true);
+        var start = e.lho + 30 + nlen + elen;
+        var raw = u8.subarray(start, start + e.csize);
+        if (e.method === 0) return Promise.resolve(new TextDecoder().decode(raw));
+        if (e.method !== 8 || typeof DecompressionStream === "undefined") return Promise.resolve(null);
+        var ds = new DecompressionStream("deflate-raw");
+        var w = ds.writable.getWriter(); w.write(raw); w.close();
+        return new Response(ds.readable).text();
+      }
+    };
+  }
+
+  /* ── 1b. 把共用公式展開成每一格自己的算式 ── */
+  function shiftFormula(text, dRow, dCol){
+    return text.replace(/(\$?)([A-Z]{1,2})(\$?)(\d+)/g, function(m, ac, L, ar, R){
+      var c = ac ? colIndex(L) : colIndex(L) + dCol;
+      var r = ar ? +R : +R + dRow;
+      if (c < 1 || r < 1) return m;
+      return ac + colLetter(c) + ar + r;
+    });
+  }
+
+  function sharedStrings(xmlText){
+    if (!xmlText) return [];
+    var doc = new DOMParser().parseFromString(xmlText, "application/xml");
+    var si = doc.getElementsByTagName("si"), out = [];
+    for (var i = 0; i < si.length; i++){
+      // 注音欄位（rPh）不是內容，要先拿掉再取字
+      var ph = si[i].getElementsByTagName("rPh");
+      for (var k = ph.length - 1; k >= 0; k--) ph[k].parentNode.removeChild(ph[k]);
+      out.push(si[i].textContent || "");
+    }
+    return out;
+  }
+
+  function sheetMaps(xmlText, strings){
+    var doc = new DOMParser().parseFromString(xmlText, "application/xml");
+    var cells = doc.getElementsByTagName("c");
+    var masters = {}, formulas = {}, text = {}, pending = [];
+    for (var i = 0; i < cells.length; i++){
+      var c = cells[i], addr = c.getAttribute("r");
+      if (!addr) continue;
+
+      // 有格式的文字（例如做成超連結的訂單編號）SheetJS 會讀成空字串，這裡自己解
+      if (c.getAttribute("t") === "s"){
+        var v = c.getElementsByTagName("v")[0];
+        if (v){
+          var str = strings[+v.textContent];
+          if (str) text[addr] = str;
+        }
+      }
+
+      var f = c.getElementsByTagName("f")[0];
+      if (!f) continue;
+      var si = f.getAttribute("si"), body = (f.textContent || "").trim();
+      if (f.getAttribute("t") === "shared"){
+        if (body){ masters[si] = { addr: addr, text: body }; formulas[addr] = body; }
+        else pending.push({ addr: addr, si: si });
+      } else if (body) formulas[addr] = body;
+    }
+    pending.forEach(function(p){
+      var m = masters[p.si]; if (!m) return;
+      var a = /^([A-Z]{1,2})(\d+)$/.exec(m.addr), b = /^([A-Z]{1,2})(\d+)$/.exec(p.addr);
+      if (!a || !b) return;
+      formulas[p.addr] = shiftFormula(m.text, +b[2] - +a[2], colIndex(b[1]) - colIndex(a[1]));
+    });
+    return { formulas: formulas, text: text };
+  }
+
+  /* ── 1c. 算式求值 ── */
+  function makeEvaluator(sheet, fmap){
+    var cache = {};
+    function val(r, c, depth){
+      var addr = colLetter(c) + r;
+      if (addr in cache) return cache[addr];
+      cache[addr] = 0;                                  // 先擋住循環參照
+      var cell = sheet[addr], out = 0;
+      var formula = fmap[addr] || (cell && cell.f) || null;
+      if (cell && typeof cell.v === "number" && cell.t === "n") out = cell.v;
+      else if (formula && (depth || 0) < 12){
+        var expr = String(formula).replace(/^=/, "").replace(/\$/g, "").replace(/ROUND\s*\(/gi, "__r(");
+        expr = expr.replace(/\b([A-Z]{1,2})(\d+)\b/g, function(_, L, R){
+          return "(" + val(+R, colIndex(L), (depth || 0) + 1) + ")";
+        });
+        if (/^[0-9+\-*/().,\s_r]*$/.test(expr)){        // 只讓四則運算和 ROUND 過關
+          try {
+            var v = new Function("__r", "return (" + expr + ");")(
+              function(x, n){ var p = Math.pow(10, n || 0); return Math.round(x * p) / p; });
+            if (typeof v === "number" && isFinite(v)) out = v;
+          } catch (e) { out = 0; }
+        }
+      }
+      cache[addr] = out;
+      return out;
+    }
+    return val;
+  }
+
+  /* ── 1d. 組起來 ── */
+  function sheetXmlPath(zip, wanted){
+    return zip.read("xl/workbook.xml").then(function(wbx){
+      if (!wbx) return null;
+      return zip.read("xl/_rels/workbook.xml.rels").then(function(relx){
+        var doc = new DOMParser().parseFromString(wbx, "application/xml");
+        var sheets = doc.getElementsByTagName("sheet"), rid = null;
+        for (var i = 0; i < sheets.length; i++){
+          if (sheets[i].getAttribute("name") === wanted){
+            rid = sheets[i].getAttribute("r:id") || sheets[i].getAttributeNS(
+              "http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+            break;
+          }
+        }
+        if (!rid || !relx) return null;
+        var rels = new DOMParser().parseFromString(relx, "application/xml").getElementsByTagName("Relationship");
+        for (var j = 0; j < rels.length; j++){
+          if (rels[j].getAttribute("Id") === rid){
+            var t = rels[j].getAttribute("Target").replace(/^\/?(xl\/)?/, "");
+            return "xl/" + t;
+          }
+        }
+        return null;
+      });
+    });
+  }
+
+  function readXlsx(buf){
+    if (typeof XLSX === "undefined") return Promise.reject(new Error("nolib"));
+    var wb = XLSX.read(buf, { type:"array", cellFormula:true, cellDates:true, sheetStubs:true });
+    var name = wb.SheetNames.indexOf(SHEET_NAME) >= 0 ? SHEET_NAME
+             : wb.SheetNames.filter(function(n){ return /銷售紀錄/.test(n); })[0];
+    if (!name) return Promise.reject(new Error("nosheet"));
+    var sh = wb.Sheets[name];
+
+    // SheetJS 不展開共用公式，所以自己去原始 XML 撈一份公式表回來補
+    var mapsP;
+    try {
+      var zip = unzip(buf);
+      mapsP = Promise.all([sheetXmlPath(zip, name).then(function(path){ return path ? zip.read(path) : null; }),
+                           zip.read("xl/sharedStrings.xml")])
+        .then(function(r){ return r[0] ? sheetMaps(r[0], sharedStrings(r[1])) : { formulas:{}, text:{} }; })
+        .catch(function(){ return { formulas:{}, text:{} }; });
+    } catch (e) { mapsP = Promise.resolve({ formulas:{}, text:{} }); }
+
+    return mapsP.then(function(maps){
+      var fmap = maps.formulas, smap = maps.text;
+      var ref = XLSX.utils.decode_range(sh["!ref"]);
+      var val = makeEvaluator(sh, fmap);
+      var text = function(r, c){
+        var addr = colLetter(c) + r, cell = sh[addr];
+        var v = cell && cell.v != null ? String(cell.v).trim() : "";
+        return v || (smap[addr] ? String(smap[addr]).trim() : "");
+      };
+      var recs = [];
+      for (var r = 2; r <= ref.e.r + 1; r++){
+        var dc = sh[colLetter(COL.date) + r];
+        if (!dc) continue;
+        var d = dc.v instanceof Date ? dc.v : (dc.t === "d" ? new Date(dc.v) : null);
+        if (!d || isNaN(d)) continue;
+        recs.push({
+          date: iso(d), brand: text(r, COL.brand), channel: text(r, COL.channel),
+          item: text(r, COL.item), so: text(r, COL.so),
+          qty: val(r, COL.qty), gross: val(r, COL.gross), grossEx: val(r, COL.grossEx),
+          netEx: val(r, COL.netEx), costEx: val(r, COL.costEx)
+        });
+      }
+      return { records: recs, sheet: name };
+    });
+  }
+
+  /* ══════════ 2. 讀檔：CSV 備援 ══════════
+     萬一 Excel 元件載不進來（沒網路），Lance 可以在 Excel 另存成 CSV 再丟進來，
+     那時候金額已經是 Excel 算好的數字，更單純。 */
+  function parseCsv(text){
+    var rows = [], row = [], cur = "", q = false;
+    text = text.replace(/^﻿/, "");
+    for (var i = 0; i < text.length; i++){
+      var ch = text[i];
+      if (q){
+        if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+        else cur += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ","){ row.push(cur); cur = ""; }
+      else if (ch === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+      else if (ch !== "\r") cur += ch;
+    }
+    if (cur !== "" || row.length){ row.push(cur); rows.push(row); }
+    return rows;
+  }
+  function num(s){
+    var v = parseFloat(String(s == null ? "" : s).replace(/[$,\s]/g, ""));
+    return isFinite(v) ? v : 0;
+  }
+  function readCsv(text){
+    var rows = parseCsv(text), recs = [];
+    for (var i = 1; i < rows.length; i++){
+      var r = rows[i]; if (!r) continue;
+      var raw = (r[COL.date - 1] || "").trim();
+      if (!raw) continue;
+      var d = new Date(raw.replace(/\//g, "-"));
+      if (isNaN(d)) continue;
+      recs.push({
+        date: iso(d), brand:(r[COL.brand-1]||"").trim(), channel:(r[COL.channel-1]||"").trim(),
+        item:(r[COL.item-1]||"").trim(), so:(r[COL.so-1]||"").trim(),
+        qty:num(r[COL.qty-1]), gross:num(r[COL.gross-1]), grossEx:num(r[COL.grossEx-1]),
+        netEx:num(r[COL.netEx-1]), costEx:num(r[COL.costEx-1])
+      });
+    }
+    return { records: recs, sheet: "CSV" };
+  }
+
+  /* ══════════ 3. 彙總 ══════════ */
+  function aggregate(recs, sourceName, sheetName){
+    // momo 少數幾筆沒填進價，用同品項的進價率補；補不到就用 momo 全體進價率。
+    var byItem = {}, all = [];
+    recs.forEach(function(x){
+      if (MOMO_CH[x.channel] && x.gross && x.netEx){
+        var rr = x.netEx / x.gross;
+        (byItem[x.item] = byItem[x.item] || []).push(rr);
+        all.push(rr);
+      }
+    });
+    var fallback = median(all), imputed = 0;
+    recs.forEach(function(x){
+      if (MOMO_CH[x.channel] && x.gross && !x.netEx && !NON_PRODUCT[x.brand]){
+        x.netEx = Math.round(x.gross * (byItem[x.item] ? median(byItem[x.item]) : fallback) * 100) / 100;
+        imputed++;
+      }
+    });
+
+    var groupOf = function(ch){ return MOMO_CH[ch] ? "momo" : (WEB_CH[ch] ? "web" : "other"); };
+    var bucket = function(){ return { gmv:0, rev:0, qty:0, cost:0, orders:{}, items:{} }; };
+    var days = {}, min = null, max = null;
+
+    recs.forEach(function(x){
+      var day = days[x.date] || (days[x.date] = { momo:bucket(), web:bucket(), other:bucket() });
+      var b = day[groupOf(x.channel)];
+      b.gmv += x.gross;
+      b.rev += MOMO_CH[x.channel] ? x.netEx : x.grossEx;   // momo 收進價、官網收售價
+      if (!NON_PRODUCT[x.brand]){
+        b.qty  += x.qty;
+        b.cost += x.costEx;
+        if (x.item) b.items[x.item] = (b.items[x.item] || 0) + x.qty;
+      }
+      if (x.so) b.orders[x.so] = 1;
+      if (!min || x.date < min) min = x.date;
+      if (!max || x.date > max) max = x.date;
+    });
+
+    var out = [], cur = min;
+    while (cur && cur <= max){
+      var day = days[cur], dow = (new Date(cur + "T00:00:00").getDay() + 6) % 7;
+      var row = { date: cur, dow: dow };
+      ["momo","web","other"].forEach(function(g){
+        var b = day && day[g];
+        row[g] = b ? {
+          gmv: Math.round(b.gmv), rev: Math.round(b.rev), qty: Math.round(b.qty),
+          gp: Math.round(b.rev - b.cost), orders: Object.keys(b.orders).length,
+          top: Object.keys(b.items).map(function(k){ return [k, b.items[k]]; })
+                 .sort(function(a,c){ return c[1]-a[1]; }).slice(0,3)
+        } : { gmv:0, rev:0, qty:0, gp:0, orders:0, top:[] };
+      });
+      out.push(row);
+      cur = shiftDays(cur, 1);
+    }
+
+    return {
+      meta: { source: sourceName, sheet: sheetName, rows: recs.length,
+              first_date: min, last_date: max, imputed: imputed, built_at: iso(new Date()) },
+      days: out
+    };
+  }
+
+  /* ══════════ 4. 狀態 ══════════ */
+  var DATA = JSON.parse($("data").textContent);
+  try {
+    var saved = localStorage.getItem(STORE_KEY);
+    if (saved){
+      var p = JSON.parse(saved);
+      if (p && p.days && p.days.length && (!DATA.days.length || p.meta.last_date >= DATA.meta.last_date)) DATA = p;
+    }
+  } catch (e) { /* 無痕視窗或封鎖儲存時就用內建資料 */ }
+
+  var CAMP = "";
+  try { CAMP = localStorage.getItem(STORE_KEY + ":camp") || ""; } catch (e) {}
+  if (!CAMP) CAMP = DATA.meta.campaign_start || "";
+
+  var metric = "gmv", rangeDays = 30, tableFrom = "camp";
+  var days, LAST, monthStart, camp, prev, prevStart, prevEnd, preMonth, nCamp;
+
+  function slice(a, b){ return days.filter(function(d){ return d.date >= a && d.date <= b; }); }
+  function sum(rows, g, k){ return rows.reduce(function(a, d){ return a + d[g][k]; }, 0); }
+  function avg(rows, g, k){ return rows.length ? sum(rows, g, k) / rows.length : 0; }
+
+  function recompute(){
+    days = DATA.days || [];
+    LAST = DATA.meta.last_date || "";
+    if (!days.length) return;                      // 還沒載資料，先別動檔期起算日
+    if (!CAMP || CAMP < DATA.meta.first_date || CAMP > LAST) CAMP = LAST.slice(0,8) + "01";
+    monthStart = CAMP.slice(0,8) + "01";
+    camp  = slice(CAMP, LAST);
+    nCamp = camp.length;
+    prevEnd = shiftDays(CAMP, -1);
+    prevStart = shiftDays(CAMP, -nCamp);
+    prev = slice(prevStart, prevEnd);
+    preMonth = slice(monthStart, prevEnd);
+    if (!preMonth.length) preMonth = prev;
+  }
+
+  /* ══════════ 5. 畫面 ══════════ */
+  function renderHead(){
+    $("rangeTxt").textContent = DATA.meta.last_date || "—";
+    $("rowTxt").textContent   = fmtInt(DATA.meta.rows);
+    $("srcTxt").textContent   = DATA.meta.source || "內建快照";
+    $("builtTxt").textContent = DATA.meta.built_at || "—";
+    $("impTxt").textContent   = DATA.meta.imputed != null ? DATA.meta.imputed : 0;
+    $("campInput").value = CAMP;
+    $("campInput").min = DATA.meta.first_date;
+    $("campInput").max = LAST;
+  }
+
+  function renderNotice(){
+    var thin  = camp.filter(function(d){ return (d.momo.orders + d.web.orders) <= 2; });
+    var blank = camp.filter(function(d){ return d.momo.orders === 0 || d.web.orders === 0; });
+    if (nCamp <= 5 || thin.length >= Math.ceil(nCamp / 2)){
+      $("noticeTxt").innerHTML =
+        "<b>先看這一條再看數字。</b>檔期起算到現在只有 <b>" + nCamp + " 天</b>，其中 <b>" + thin.length +
+        " 天</b>單日只有 2 張以內的單" + (blank.length ? "，還有 <b>" + blank.length + " 天</b>某一邊掛零" : "") +
+        "。這比較像明細還沒登錄完，不像真實需求。在資料補齊之前，下面所有「檔期 vs 檔期前」的比較都只能當作進度追蹤，不能拿來下檔期有沒有效的結論。";
+      $("notice").hidden = false;
+    } else {
+      $("notice").hidden = true;
+    }
+  }
+
+  function renderVerdict(){
+    var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
+    var cW = avg(camp,"web","gmv"),  pW = avg(preMonth,"web","gmv");
+    var dM = pM ? (cM / pM - 1) : 0, dW = pW ? (cW / pW - 1) : 0;
+    var pct = function(x){ return (x >= 0 ? "+" : "") + Math.round(x * 100) + "%"; };
+    var lifted = dM > 0.05 || dW > 0.05;
+    var thin = camp.filter(function(d){ return (d.momo.orders + d.web.orders) <= 2; }).length;
+
+    $("verdictMain").innerHTML =
+      (lifted ? "檔期<b>有把業績帶起來</b>：" : "目前<b>還看不到檔期把業績拉起來</b>：") +
+      md(CAMP) + " 起 " + nCamp + " 天，momo 日均銷售額 <b>" + money(cM) + "</b>（" + pct(dM) +
+      " vs 檔期前 " + md(monthStart) + "–" + md(prevEnd) + " 的 " + money(pM) +
+      "），官網日均 <b>" + money(cW) + "</b>（" + pct(dW) + "）。";
+
+    // 拿檔期所在月份的前一個月當長期基準，看檔期有沒有把整體水位帶回去
+    var pm = new Date(monthStart + "T00:00:00"); pm.setDate(0);
+    var lastMonth = slice(iso(new Date(pm.getFullYear(), pm.getMonth(), 1)), iso(pm));
+    var lmM = avg(lastMonth, "momo", "gmv");
+    var sub = "";
+    if (thin >= Math.ceil(nCamp / 2)){
+      sub += "但這 " + nCamp + " 天的明細看起來還沒登錄完整，所以真正該讀的是：<b>資料先補齊</b>再看。";
+    }
+    if (lmM){
+      var gap = Math.round((1 - pM / lmM) * 100);
+      sub += (sub ? "" : "另外，") + "上個月 momo 日均是 " + money(lmM) +
+             (gap > 0 ? "，檔期前這段已經掉了 " + gap + "%，檔期要做的是把這段補回來，不只是打平前一週。"
+                      : "，檔期前這段已經高過上個月 " + (-gap) + "%，比較基準本身就不低。");
+    }
+    $("verdictSub").innerHTML = sub || "檔期前後的比較基準都取自同一份銷售紀錄，口徑見下方說明。";
+  }
+
+  function renderKpis(){
+    $("kpiHint").textContent = "檔期 " + md(CAMP) + "–" + md(LAST) + "（" + nCamp + " 天） vs 檔期前 " +
+                               md(prevStart) + "–" + md(prevEnd) + "（同樣 " + nCamp + " 天）";
+    var defs = [
+      { label:"momo 日均銷售額", color:"var(--momo)",     g:"momo", k:"gmv", fmt:money },
+      { label:"官網 日均銷售額", color:"var(--web)",      g:"web",  k:"gmv", fmt:money },
+      { label:"兩通路 日均實收", color:"var(--accent)",   g:"both", k:"rev", fmt:money },
+      { label:"兩通路 日均件數", color:"var(--ink-faint)", g:"both", k:"qty",
+        fmt:function(n){ return (Math.round(n * 10) / 10) + " 件"; } }
+    ];
+    $("kpis").innerHTML = defs.map(function(d){
+      var a = function(rows){
+        return d.g === "both" ? avg(rows,"momo",d.k) + avg(rows,"web",d.k) : avg(rows, d.g, d.k);
+      };
+      var c = a(camp), p = a(prev);
+      var delta = p ? (c / p - 1) : null;
+      var cls = delta === null ? "flat" : (delta > 0.02 ? "up" : (delta < -0.02 ? "down" : "flat"));
+      var arrow = delta === null ? "—" : (delta > 0.02 ? "▲" : (delta < -0.02 ? "▼" : "→"));
+      var txt = delta === null ? "無可比基準"
+              : arrow + " " + (delta >= 0 ? "+" : "") + Math.round(delta * 100) + "%　vs 前 " + nCamp + " 天 " + d.fmt(p);
+      return '<div class="kpi">' +
+        '<span class="k-label"><i class="swatch" style="background:' + d.color + '"></i>' + d.label + '</span>' +
+        '<span class="k-value">' + d.fmt(c) + '</span>' +
+        '<span class="k-foot"><span class="delta ' + cls + '">' + txt + '</span></span></div>';
+    }).join("");
+  }
+
+  /* ── 圖 ── */
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function svgEl(name, attrs, text){
+    var n = document.createElementNS(SVGNS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function niceMax(v){
+    if (v <= 0) return 10;
+    var pow = Math.pow(10, Math.floor(Math.log10(v)));
+    var steps = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10];
+    for (var i = 0; i < steps.length; i++) if (steps[i] * pow >= v) return steps[i] * pow;
+    return 10 * pow;
+  }
+  var fmtMetric = function(v){ return metric === "qty" ? fmtInt(v) + " 件" : money(v); };
+  var chart = $("chart"), tip = $("tip"), view = [];
+
+  function draw(){
+    view = rangeDays ? days.slice(Math.max(0, days.length - rangeDays)) : days.slice();
+    while (chart.childNodes.length > 1) chart.removeChild(chart.lastChild);
+    if (!view.length) return;
+
+    // 窄螢幕換一組比較高的 viewBox，不然圖被壓扁、字小到看不清楚
+    var narrow = (chart.parentNode.clientWidth || 900) < 560;
+    var W = narrow ? 460 : 920, H = narrow ? 300 : 320;
+    var ml = narrow ? 42 : 62, mr = narrow ? 10 : 14, mt = 14, mb = 34;
+    chart.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var iw = W - ml - mr, ih = H - mt - mb, n = view.length, step = iw / n;
+    var maxV = niceMax(Math.max.apply(null, view.map(function(d){
+      return Math.max(d.momo[metric], d.web[metric]);
+    }).concat([1])) * 1.08);
+    var y  = function(v){ return mt + ih - (v / maxV) * ih; };
+    var xc = function(i){ return ml + step * (i + 0.5); };
+
+    var ci = -1;
+    for (var k = 0; k < view.length; k++) if (view[k].date >= CAMP){ ci = k; break; }
+    if (ci >= 0){
+      chart.appendChild(svgEl("rect", { x: ml + step*ci, y: mt, width: iw - step*ci, height: ih, fill: "var(--band)" }));
+      chart.appendChild(svgEl("line", { x1: ml + step*ci, x2: ml + step*ci, y1: mt, y2: mt+ih,
+                                        stroke: "var(--border-strong)", "stroke-width": 1 }));
+      chart.appendChild(svgEl("text", { x: ml + step*ci + 6, y: mt + 13, fill: "var(--ink-muted)",
+                                        "font-size": narrow ? 11.5 : 10.5, "font-weight": 700,
+                                        "letter-spacing": ".08em" }, "檔期"));
+    }
+
+    for (var t = 0; t <= 4; t++){
+      var v = maxV * t / 4, yy = y(v);
+      chart.appendChild(svgEl("line", { x1: ml, x2: W - mr, y1: yy, y2: yy, stroke: "var(--border)",
+                                        "stroke-width": t === 0 ? 1.2 : 1, "shape-rendering":"crispEdges" }));
+      chart.appendChild(svgEl("text", { x: ml - 9, y: yy + 3.5, "text-anchor":"end", fill:"var(--ink-faint)",
+                                        "font-size": narrow ? 12 : 10.5, "font-family":"var(--font-num)" },
+                              metric === "qty" ? fmtInt(v) : (v >= 1000 ? fmtInt(v/1000) + "k" : fmtInt(v))));
+    }
+
+    var bw = Math.max(1.5, Math.min(9, step/2 - 2.5));
+    view.forEach(function(d, i){
+      [["momo","var(--momo)",-1],["web","var(--web)",1]].forEach(function(s){
+        var v = d[s[0]][metric]; if (!v) return;
+        var cx = xc(i) + s[2] * (bw/2 + 1);
+        chart.appendChild(svgEl("rect", { x: cx - bw/2, y: y(v), width: bw,
+                                          height: Math.max(1.5, mt + ih - y(v)),
+                                          rx: Math.min(2, bw/2), fill: s[1], opacity: .38 }));
+      });
+    });
+
+    [["momo","var(--momo)"],["web","var(--web)"]].forEach(function(s){
+      var base = rangeDays ? days.length - view.length : 0;
+      var pts = view.map(function(d, i){
+        var win = days.slice(Math.max(0, base + i - 6), base + i + 1);
+        var m = win.reduce(function(a, x){ return a + x[s[0]][metric]; }, 0) / win.length;
+        return xc(i).toFixed(1) + "," + y(m).toFixed(1);
+      }).join(" ");
+      chart.appendChild(svgEl("polyline", { points: pts, fill:"none", stroke:s[1], "stroke-width":2,
+                                            "stroke-linejoin":"round", "stroke-linecap":"round" }));
+      chart.appendChild(svgEl("circle", { cx: xc(n-1), cy: y(view[n-1][s[0]][metric]), r: 4.5,
+                                          fill: s[1], stroke:"var(--surface)", "stroke-width":2 }));
+    });
+
+    var everyN = Math.max(1, Math.ceil(n / (narrow ? 5 : 14)));
+    view.forEach(function(d, i){
+      if (i % everyN !== 0 && i !== n - 1) return;
+      chart.appendChild(svgEl("text", { x: xc(i), y: H - 12, "text-anchor":"middle", fill:"var(--ink-faint)",
+                                        "font-size": narrow ? 12 : 10.5, "font-family":"var(--font-num)" },
+                              md(d.date)));
+    });
+
+    var cross = svgEl("line", { x1:0, x2:0, y1:mt, y2:mt+ih, stroke:"var(--ink-faint)",
+                                "stroke-width":1, "stroke-dasharray":"3 3", opacity:0 });
+    chart.appendChild(cross);
+    var hit = svgEl("rect", { x:ml, y:mt, width:iw, height:ih, fill:"transparent", style:"cursor:crosshair" });
+    chart.appendChild(hit);
+
+    function at(evt){
+      var r = chart.getBoundingClientRect();
+      var i = Math.max(0, Math.min(n - 1, Math.floor(((evt.clientX - r.left) / r.width * W - ml) / step)));
+      var d = view[i];
+      cross.setAttribute("x1", xc(i)); cross.setAttribute("x2", xc(i)); cross.setAttribute("opacity", 1);
+      tip.innerHTML =
+        '<div class="t-date">' + mdw(d.date, d.dow) + (d.date >= CAMP ? ' <span class="tag">檔期</span>' : '') + '</div>' +
+        '<div class="t-row"><span><i class="swatch" style="background:var(--momo)"></i>momo</span><b>' + fmtMetric(d.momo[metric]) + '</b></div>' +
+        '<div class="t-row"><span><i class="swatch" style="background:var(--web)"></i>官網</span><b>' + fmtMetric(d.web[metric]) + '</b></div>' +
+        (d.other.gmv ? '<div class="t-row"><span>其他通路</span><b>' + money(d.other.gmv) + '</b></div>' : '') +
+        '<div class="t-row" style="margin-top:5px;color:var(--ink-faint)"><span>訂單數</span><b>' + (d.momo.orders + d.web.orders) + '</b></div>';
+      var card = chart.parentNode.getBoundingClientRect();
+      var left = evt.clientX - card.left + 14;
+      if (left + 190 > card.width) left = evt.clientX - card.left - 190;
+      tip.style.left = Math.max(4, left) + "px";
+      tip.style.top  = Math.max(4, evt.clientY - card.top - 10) + "px";
+      tip.style.opacity = 1;
+    }
+    hit.addEventListener("mousemove", at);
+    hit.addEventListener("touchmove", function(e){ at(e.touches[0]); }, { passive:true });
+    hit.addEventListener("mouseleave", function(){ tip.style.opacity = 0; cross.setAttribute("opacity", 0); });
+  }
+
+  /* ── 表 ── */
+  function tableRows(){
+    if (tableFrom === "camp")  return slice(CAMP, LAST);
+    if (tableFrom === "month") return slice(monthStart, LAST);
+    if (tableFrom === "all")   return days.slice();
+    return days.slice(-30);
+  }
+  function renderTable(){
+    var rows = tableRows();
+    $("tbody").innerHTML = rows.map(function(d){
+      var thin = (d.momo.orders + d.web.orders) <= 2 && d.date >= CAMP;
+      var c = function(v){ return v ? '<td class="d">' + fmtInt(v) + '</td>' : '<td class="d zero">–</td>'; };
+      var cb = function(v){ return v ? '<td class="d b">' + fmtInt(v) + '</td>' : '<td class="d b zero">–</td>'; };
+      return '<tr class="' + (d.date >= CAMP ? "camp" : "") + '">' +
+        '<td class="l">' + mdw(d.date, d.dow) + (thin ? '<span class="flagdot" title="單量偏低，可能尚未登錄完整"></span>' : '') + '</td>' +
+        cb(d.momo.gmv) + c(d.momo.rev) + c(d.momo.qty) + c(d.momo.orders) +
+        cb(d.web.gmv)  + c(d.web.rev)  + c(d.web.qty)  + c(d.web.orders) +
+        cb(d.other.gmv) + '</tr>';
+    }).join("");
+    var f = function(g, k){ return fmtInt(sum(rows, g, k)); };
+    $("tfoot").innerHTML = '<tr><td class="l">合計 · ' + rows.length + ' 天</td>' +
+      '<td class="d b">' + f("momo","gmv") + '</td><td class="d">' + f("momo","rev") + '</td>' +
+      '<td class="d">' + f("momo","qty") + '</td><td class="d">' + f("momo","orders") + '</td>' +
+      '<td class="d b">' + f("web","gmv") + '</td><td class="d">' + f("web","rev") + '</td>' +
+      '<td class="d">' + f("web","qty") + '</td><td class="d">' + f("web","orders") + '</td>' +
+      '<td class="d b">' + f("other","gmv") + '</td></tr>';
+  }
+
+  var SECTIONS = ["verdict","secKpi","secChart","secTable"];
+  function renderAll(){
+    recompute();
+    var empty = !days.length;
+    $("empty").hidden = !empty;
+    SECTIONS.forEach(function(id){ $(id).hidden = empty; });
+    $("exportBtn").disabled = empty;
+    if (empty){
+      $("notice").hidden = true;
+      $("rangeTxt").textContent = "—";
+      $("rowTxt").textContent = "0";
+      $("srcTxt").textContent = "尚未載入";
+      return;
+    }
+    renderHead(); renderNotice(); renderVerdict(); renderKpis(); draw(); renderTable();
+  }
+
+  /* ══════════ 6. 一鍵輸出 ══════════ */
+  var HEADER = ["日期","星期","momo銷售額(含稅)","momo實收(未稅)","momo件數","momo訂單數",
+                "官網銷售額(含稅)","官網實收(未稅)","官網件數","官網訂單數","其他通路銷售額(含稅)","是否檔期"];
+  function exportMatrix(){
+    return tableRows().map(function(d){
+      return [d.date, DOW[d.dow], d.momo.gmv, d.momo.rev, d.momo.qty, d.momo.orders,
+              d.web.gmv, d.web.rev, d.web.qty, d.web.orders, d.other.gmv,
+              d.date >= CAMP ? "檔期" : ""];
+    });
+  }
+  function rangeLabel(){
+    var rows = tableRows();
+    return rows.length ? rows[0].date + "_" + rows[rows.length-1].date : "無資料";
+  }
+  function csvCell(v){
+    var s = v == null ? "" : String(v);
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function toCsv(){
+    return "﻿" + [HEADER].concat(exportMatrix())
+      .map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
+  }
+  function toTsv(){
+    return [HEADER].concat(exportMatrix())
+      .map(function(r){ return r.join("\t"); }).join("\n");
+  }
+  function toMarkdown(){
+    var rows = exportMatrix();
+    var head = "| " + HEADER.join(" | ") + " |";
+    var sep  = "| " + HEADER.map(function(){ return "---"; }).join(" | ") + " |";
+    var body = rows.map(function(r){ return "| " + r.join(" | ") + " |"; }).join("\n");
+    return "## 每日明細　" + rangeLabel().replace("_", " ~ ") + "\n\n" + head + "\n" + sep + "\n" + body + "\n";
+  }
+  function toSummary(){
+    var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
+    var cW = avg(camp,"web","gmv"),  pW = avg(preMonth,"web","gmv");
+    var pct = function(c, p){ return p ? ((c/p-1 >= 0 ? "+" : "") + Math.round((c/p-1)*100) + "%") : "—"; };
+    return "【零售每日戰情】" + md(CAMP) + "–" + md(LAST) + "（檔期第 " + nCamp + " 天）\n" +
+      "· momo＋寄倉：日均銷售額 " + money(cM) + "（" + pct(cM,pM) + " vs 檔期前）／期間合計 " + money(sum(camp,"momo","gmv")) + "\n" +
+      "· 官網：日均銷售額 " + money(cW) + "（" + pct(cW,pW) + " vs 檔期前）／期間合計 " + money(sum(camp,"web","gmv")) + "\n" +
+      "· 兩通路期間實收合計 " + money(sum(camp,"momo","rev") + sum(camp,"web","rev")) + "（未稅）\n" +
+      "資料到 " + LAST + "。銷售額為消費者付的含稅金額，實收為公司入帳未稅金額。";
+  }
+  function toStandaloneHtml(){
+    var node = $("data"), keep = node.textContent;
+    node.textContent = JSON.stringify(DATA);
+    var html = "<!doctype html>\n<html lang=\"zh-Hant\">\n" + document.documentElement.innerHTML + "\n</html>";
+    node.textContent = keep;
+    return html;
+  }
+
+  var sandboxed = (function(){ try { return window.self !== window.top; } catch (e) { return true; } })();
+  function saveFile(name, text, mime){
+    var blob = new Blob([text], { type: mime + ";charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+  function copyText(text, msg){
+    var done = function(){ toast(msg); };
+    if (navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else fallback();
+    function fallback(){
+      // 非 https 或舊瀏覽器沒有剪貼簿權限時的備援
+      var area = document.createElement("textarea");
+      area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.appendChild(area); area.select();
+      try { document.execCommand("copy"); done(); }
+      catch (e) { toast("這個瀏覽器不讓我複製，請改用下載。"); }
+      area.remove();
+    }
+  }
+
+  var EXPORTS = {
+    csv:     function(){ saveFile("每日明細_" + rangeLabel() + ".csv", toCsv(), "text/csv"); toast("已下載 CSV，Excel 直接開不會亂碼。"); },
+    md:      function(){ saveFile("每日明細_" + rangeLabel() + ".md", toMarkdown(), "text/markdown"); toast("已下載 Markdown。"); },
+    html:    function(){ saveFile("零售每日戰情_" + LAST + ".html", toStandaloneHtml(), "text/html"); toast("已下載單檔網頁，寄出去對方直接點開就能看。"); },
+    clip:    function(){ copyText(toTsv(), "表格已複製，貼進 Excel 或 Google 試算表就會自動分欄。"); },
+    summary: function(){ copyText(toSummary(), "戰情摘要已複製，可以直接貼進群組。"); }
+  };
+
+  var menu = $("exportMenu"), menuBtn = $("exportBtn");
+  function closeMenu(){ menu.hidden = true; menuBtn.setAttribute("aria-expanded", "false"); }
+  menuBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+    menuBtn.setAttribute("aria-expanded", String(!menu.hidden));
+  });
+  document.addEventListener("click", function(e){ if (!menu.hidden && !menu.contains(e.target)) closeMenu(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeMenu(); });
+  menu.addEventListener("click", function(e){
+    var b = e.target.closest("button[data-export]"); if (!b) return;
+    closeMenu();
+    try { EXPORTS[b.dataset.export](); }
+    catch (err) { toast("輸出失敗：" + err.message); }
+  });
+  if (sandboxed){
+    $("menuNote").textContent = "你現在是在線上檢視，瀏覽器會擋掉下載。要存檔請用本機那份 HTML 檔，或改用上面兩個「複製」。";
+    $("menuNote").hidden = false;
+  }
+
+  /* ══════════ 7. 更新資料 ══════════ */
+  function ingest(file){
+    var isCsv = /\.csv$/i.test(file.name);
+    var reader = new FileReader();
+    reader.onerror = function(){ toast("讀不到這個檔案，再試一次。"); };
+    reader.onload = function(){
+      toast("讀取中…");
+      Promise.resolve()
+        .then(function(){
+          return isCsv ? readCsv(reader.result) : readXlsx(new Uint8Array(reader.result));
+        })
+        .then(function(parsed){
+          if (!parsed.records.length) throw new Error("empty");
+          DATA = aggregate(parsed.records, file.name, parsed.sheet);
+          DATA.meta.campaign_start = CAMP;        // 換檔案不要把檔期起算日弄丟
+          try { localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); } catch (e) {}
+          renderAll();
+          toast("已更新：" + fmtInt(DATA.meta.rows) + " 筆明細，資料到 " + DATA.meta.last_date + "。");
+        })
+        .catch(function(err){
+          if (err.message === "nolib")
+            toast("Excel 元件沒載進來（可能沒網路）。請在 Excel 或 Google 試算表把「2026 銷售紀錄」另存成 CSV 再丟一次。");
+          else if (err.message === "nosheet")
+            toast("這個檔案裡找不到「" + SHEET_NAME + "」工作表。");
+          else if (err.message === "empty")
+            toast("這個檔案裡沒有讀到任何有日期的明細。");
+          else toast("解析失敗：" + err.message);
+        });
+    };
+    if (isCsv) reader.readAsText(file, "utf-8"); else reader.readAsArrayBuffer(file);
+  }
+
+  $("loadBtn").addEventListener("click", function(){ $("fileInput").click(); });
+  $("fileInput").addEventListener("change", function(){
+    if (this.files && this.files[0]) ingest(this.files[0]);
+    this.value = "";
+  });
+  var drop = $("drop"), dragDepth = 0;
+  window.addEventListener("dragenter", function(e){ e.preventDefault(); if (++dragDepth) drop.classList.add("on"); });
+  window.addEventListener("dragover", function(e){ e.preventDefault(); });
+  window.addEventListener("dragleave", function(e){ e.preventDefault(); if (--dragDepth <= 0){ dragDepth = 0; drop.classList.remove("on"); } });
+  window.addEventListener("drop", function(e){
+    e.preventDefault(); dragDepth = 0; drop.classList.remove("on");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) ingest(e.dataTransfer.files[0]);
+  });
+
+  /* ══════════ 8. 其他控制項 ══════════ */
+  $("campInput").addEventListener("change", function(){
+    if (!this.value) return;
+    CAMP = this.value;
+    try { localStorage.setItem(STORE_KEY + ":camp", CAMP); } catch (e) {}
+    renderAll();
+  });
+  $("metricSeg").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    metric = b.dataset.metric;
+    [].forEach.call(this.children, function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+    draw();
+  });
+  $("rangeSeg").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    rangeDays = +b.dataset.days;
+    [].forEach.call(this.children, function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+    draw();
+  });
+  $("tableSeg").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    tableFrom = b.dataset.from;
+    [].forEach.call(this.children, function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+    renderTable();
+  });
+  var wasNarrow = (chart.parentNode.clientWidth || 900) < 560, rt;
+  window.addEventListener("resize", function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){
+      var now = (chart.parentNode.clientWidth || 900) < 560;
+      if (now !== wasNarrow){ wasNarrow = now; draw(); }
+    }, 150);
+  });
+
+  renderAll();
+  window.__DAILY__ = { get data(){ return DATA; }, aggregate: aggregate, readXlsx: readXlsx };
+})();
+</script>
