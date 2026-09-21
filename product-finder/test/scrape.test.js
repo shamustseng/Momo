@@ -230,7 +230,7 @@ test('線上版：產出 data.json，且頁面程式帶有資料分支網址', (
   const data = { sources: { momo: { label: 'momo 購物網', updatedAt: '2026-09-20T00:00:00Z', products: [
     { id: 'momo:1', source: 'momo', sku: '1', name: '測試', price: 100, prices: { list: 150, promo: 100, flash: null }, url: 'u', keywords: [] },
   ] } } };
-  const live = { dataUrl: 'https://raw.githubusercontent.com/x/y/product-finder-data/data.json', workflowUrl: 'https://github.com/x/y/actions', intervalHours: 1 };
+  const live = { dataUrl: 'https://raw.githubusercontent.com/x/y/product-finder-data/data.json', workflowUrl: 'https://github.com/x/y/actions' };
   const files = buildHosted(data, {}, live);
   const payload = JSON.parse(files['data.json']);
   assert.strictEqual(payload.sources.momo.products[0].prices.promo, 100, 'data.json 要含三種標價');

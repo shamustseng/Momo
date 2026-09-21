@@ -60,6 +60,7 @@ button,input,select,textarea{ font:inherit; color:inherit; }
   transition:background .15s, border-color .15s;
 }
 .btn:hover{ background:var(--surface-2); }
+a.btn{ text-decoration:none; display:inline-flex; align-items:center; }
 .btn:disabled{ opacity:.55; cursor:progress; }
 .btn-primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
 .btn-primary:hover:not(:disabled){ background:var(--accent-hover); border-color:var(--accent-hover); }
