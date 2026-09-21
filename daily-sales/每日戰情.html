@@ -166,6 +166,30 @@
   .zero{ color:var(--ink-faint); }
   .flagdot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--warn); margin-left:6px; vertical-align:middle; }
 
+  .mixcard{ background:var(--surface); border:1px solid var(--border); border-radius:4px;
+            padding:16px 18px 10px; box-shadow:var(--shadow); }
+  .mixnote{ color:var(--ink-faint); }
+  .mixempty{ color:var(--ink-faint); font-size:13.5px; padding:6px 0 12px; }
+  .mixrow{
+    display:grid; grid-template-columns:minmax(120px,1.35fr) minmax(90px,3fr) 52px 88px 62px;
+    align-items:center; gap:12px; padding:7px 0; border-top:1px solid var(--border);
+  }
+  .mixrow:first-child{ border-top:0; }
+  .mixname{ font-size:13.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mixtrack{ min-width:0; }
+  .mixbar{ display:flex; gap:2px; height:14px; border-radius:3px; overflow:hidden; min-width:3px; }
+  .mixbar i{ display:block; min-width:2px; }
+  .mixpct,.mixgmv,.mixqty{ font-family:var(--font-num); font-variant-numeric:tabular-nums;
+                           font-size:13px; text-align:right; }
+  .mixpct{ font-weight:600; }
+  .mixgmv{ color:var(--ink-muted); }
+  .mixqty{ color:var(--ink-faint); }
+  @media (max-width:640px){
+    .mixrow{ grid-template-columns:1fr 52px 62px; grid-template-areas:"name pct qty" "bar bar bar"; gap:4px 10px; }
+    .mixname{ grid-area:name; } .mixtrack{ grid-area:bar; }
+    .mixpct{ grid-area:pct; } .mixqty{ grid-area:qty; } .mixgmv{ display:none; }
+  }
+
   .method,.howto{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:16px 20px; }
   .howto{ background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent); }
   .method h3,.howto h3{ font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:10px; }
@@ -316,6 +340,21 @@
         <tbody id="tbody"></tbody>
         <tfoot id="tfoot"></tfoot>
       </table>
+    </div>
+  </section>
+
+  <section id="secMix">
+    <div class="sechead">
+      <h2>產品組合</h2>
+      <span class="hint" id="mixHint">—</span>
+    </div>
+    <div class="mixcard">
+      <div class="legend">
+        <span><i style="background:var(--momo)"></i>momo ＋ momo 寄倉</span>
+        <span><i style="background:var(--web)"></i>官網</span>
+        <span class="mixnote">佔比為該品項銷售額佔兩通路合計的比重，跟著上面「每日明細」選的區間走</span>
+      </div>
+      <div id="mixBody"></div>
     </div>
   </section>
 
@@ -678,7 +717,10 @@
       if (!NON_PRODUCT[x.brand]){
         b.qty  += x.qty;
         b.cost += x.costEx;
-        if (x.item) b.items[x.item] = (b.items[x.item] || 0) + x.qty;
+        if (x.item){
+          var it = b.items[x.item] || (b.items[x.item] = { qty:0, gmv:0 });
+          it.qty += x.qty; it.gmv += x.gross;
+        }
       }
       if (x.so) b.orders[x.so] = 1;
       if (!min || x.date < min) min = x.date;
@@ -694,9 +736,11 @@
         row[g] = b ? {
           gmv: Math.round(b.gmv), rev: Math.round(b.rev), qty: Math.round(b.qty),
           gp: Math.round(b.rev - b.cost), orders: Object.keys(b.orders).length,
-          top: Object.keys(b.items).map(function(k){ return [k, b.items[k]]; })
-                 .sort(function(a,c){ return c[1]-a[1]; }).slice(0,3)
-        } : { gmv:0, rev:0, qty:0, gp:0, orders:0, top:[] };
+          // [品項, 件數, 銷售額]，產品組合那一段用這個算
+          items: Object.keys(b.items).map(function(k){
+            return [k, Math.round(b.items[k].qty), Math.round(b.items[k].gmv)];
+          }).sort(function(a, c){ return c[2] - a[2]; })
+        } : { gmv:0, rev:0, qty:0, gp:0, orders:0, items:[] };
       });
       out.push(row);
       cur = shiftDays(cur, 1);
@@ -829,6 +873,57 @@
     }).join("");
   }
 
+  /* ── 產品組合 ── */
+  var MIX_LIMIT = 12;
+  function productMix(rows){
+    var byItem = {}, total = 0;
+    rows.forEach(function(d){
+      ["momo","web"].forEach(function(g){
+        (d[g].items || []).forEach(function(it){
+          var e = byItem[it[0]] || (byItem[it[0]] = { name:it[0], qty:0, gmv:0, momo:0, web:0 });
+          e.qty += it[1]; e.gmv += it[2]; e[g] += it[2]; total += it[2];
+        });
+      });
+    });
+    var list = Object.keys(byItem).map(function(k){ return byItem[k]; })
+                 .sort(function(a, b){ return b.gmv - a.gmv; });
+    if (list.length > MIX_LIMIT){
+      var tail = list.slice(MIX_LIMIT - 1);
+      list = list.slice(0, MIX_LIMIT - 1).concat([{
+        name: "其他 " + tail.length + " 項",
+        qty:  tail.reduce(function(a, x){ return a + x.qty; }, 0),
+        gmv:  tail.reduce(function(a, x){ return a + x.gmv; }, 0),
+        momo: tail.reduce(function(a, x){ return a + x.momo; }, 0),
+        web:  tail.reduce(function(a, x){ return a + x.web; }, 0)
+      }]);
+    }
+    list.forEach(function(e){ e.share = total ? e.gmv / total : 0; });
+    return { list: list, total: total };
+  }
+
+  function renderMix(){
+    var mix = productMix(tableRows()), max = mix.list.length ? mix.list[0].gmv : 0;
+    $("mixHint").textContent = tableRangeText() + "　合計 " + money(mix.total);
+    if (!mix.list.length){
+      $("mixBody").innerHTML = '<p class="mixempty">這段期間 momo 與官網都沒有銷售。</p>';
+      return;
+    }
+    $("mixBody").innerHTML = mix.list.map(function(e){
+      var w = max ? (e.gmv / max) * 100 : 0;
+      var mw = e.gmv ? (e.momo / e.gmv) * 100 : 0;
+      return '<div class="mixrow">' +
+        '<div class="mixname" title="' + e.name + '">' + e.name + '</div>' +
+        '<div class="mixtrack"><div class="mixbar" style="width:' + w.toFixed(1) + '%">' +
+          (e.momo ? '<i style="flex:' + mw.toFixed(2) + ';background:var(--momo)"></i>' : '') +
+          (e.web  ? '<i style="flex:' + (100 - mw).toFixed(2) + ';background:var(--web)"></i>' : '') +
+        '</div></div>' +
+        '<div class="mixpct num">' + (e.share * 100).toFixed(1) + '%</div>' +
+        '<div class="mixgmv num">' + money(e.gmv) + '</div>' +
+        '<div class="mixqty num">' + fmtInt(e.qty) + ' 件</div>' +
+      '</div>';
+    }).join("");
+  }
+
   /* ── 圖 ── */
   var SVGNS = "http://www.w3.org/2000/svg";
   function svgEl(name, attrs, text){
@@ -946,6 +1041,11 @@
   }
 
   /* ── 表 ── */
+  function tableRangeText(){
+    var rows = tableRows();
+    if (!rows.length) return "無資料";
+    return md(rows[0].date) + "–" + md(rows[rows.length - 1].date) + "（" + rows.length + " 天）";
+  }
   function tableRows(){
     if (tableFrom === "camp")  return slice(CAMP, LAST);
     if (tableFrom === "month") return slice(monthStart, LAST);
@@ -973,7 +1073,7 @@
       '<td class="d b">' + f("other","gmv") + '</td></tr>';
   }
 
-  var SECTIONS = ["verdict","secKpi","secChart","secTable"];
+  var SECTIONS = ["verdict","secKpi","secChart","secTable","secMix"];
   function renderAll(){
     recompute();
     var empty = !days.length;
@@ -987,7 +1087,7 @@
       $("srcTxt").textContent = "尚未載入";
       return;
     }
-    renderHead(); renderNotice(); renderVerdict(); renderKpis(); draw(); renderTable();
+    renderHead(); renderNotice(); renderVerdict(); renderKpis(); draw(); renderTable(); renderMix();
   }
 
   /* ══════════ 6. 一鍵輸出 ══════════ */
@@ -1004,24 +1104,35 @@
     var rows = tableRows();
     return rows.length ? rows[0].date + "_" + rows[rows.length-1].date : "無資料";
   }
+  var MIX_HEADER = ["品項","銷售額(含稅)","佔比","件數","momo銷售額","官網銷售額"];
+  function mixMatrix(){
+    return productMix(tableRows()).list.map(function(e){
+      return [e.name, e.gmv, (e.share * 100).toFixed(1) + "%", e.qty, e.momo, e.web];
+    });
+  }
   function csvCell(v){
     var s = v == null ? "" : String(v);
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
+  // 每日明細 + 產品組合，兩張表放在同一份檔案裡
+  function sheetRows(){
+    return [["每日明細　" + tableRangeText()], HEADER].concat(
+      exportMatrix(), [[], ["產品組合　momo ＋ 官網，依銷售額排序"], MIX_HEADER], mixMatrix());
+  }
   function toCsv(){
-    return "﻿" + [HEADER].concat(exportMatrix())
-      .map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
+    return "\uFEFF" + sheetRows().map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
   }
   function toTsv(){
-    return [HEADER].concat(exportMatrix())
-      .map(function(r){ return r.join("\t"); }).join("\n");
+    return sheetRows().map(function(r){ return r.join("\t"); }).join("\n");
+  }
+  function mdTable(header, rows){
+    return "| " + header.join(" | ") + " |\n" +
+           "| " + header.map(function(){ return "---"; }).join(" | ") + " |\n" +
+           rows.map(function(r){ return "| " + r.join(" | ") + " |"; }).join("\n") + "\n";
   }
   function toMarkdown(){
-    var rows = exportMatrix();
-    var head = "| " + HEADER.join(" | ") + " |";
-    var sep  = "| " + HEADER.map(function(){ return "---"; }).join(" | ") + " |";
-    var body = rows.map(function(r){ return "| " + r.join(" | ") + " |"; }).join("\n");
-    return "## 每日明細　" + rangeLabel().replace("_", " ~ ") + "\n\n" + head + "\n" + sep + "\n" + body + "\n";
+    return "## 每日明細　" + tableRangeText() + "\n\n" + mdTable(HEADER, exportMatrix()) +
+           "\n## 產品組合　momo ＋ 官網\n\n" + mdTable(MIX_HEADER, mixMatrix());
   }
   function toSummary(){
     var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
@@ -1031,7 +1142,15 @@
       "· momo＋寄倉：日均銷售額 " + money(cM) + "（" + pct(cM,pM) + " vs 檔期前）／期間合計 " + money(sum(camp,"momo","gmv")) + "\n" +
       "· 官網：日均銷售額 " + money(cW) + "（" + pct(cW,pW) + " vs 檔期前）／期間合計 " + money(sum(camp,"web","gmv")) + "\n" +
       "· 兩通路期間實收合計 " + money(sum(camp,"momo","rev") + sum(camp,"web","rev")) + "（未稅）\n" +
+      mixLine() +
       "資料到 " + LAST + "。銷售額為消費者付的含稅金額，實收為公司入帳未稅金額。";
+  }
+  function mixLine(){
+    var top = productMix(camp).list.slice(0, 3);
+    if (!top.length) return "";
+    return "· 賣最好的：" + top.map(function(e){
+      return e.name + " " + (e.share * 100).toFixed(0) + "%";
+    }).join("、") + "\n";
   }
   function toStandaloneHtml(){
     var node = $("data"), keep = node.textContent;
@@ -1184,7 +1303,7 @@
     var b = e.target.closest("button"); if (!b) return;
     tableFrom = b.dataset.from;
     [].forEach.call(this.children, function(x){ x.setAttribute("aria-pressed", String(x === b)); });
-    renderTable();
+    renderTable(); renderMix();
   });
   var wasNarrow = (chart.parentNode.clientWidth || 900) < 560, rt;
   window.addEventListener("resize", function(){
