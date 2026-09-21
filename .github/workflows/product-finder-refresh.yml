@@ -1,11 +1,10 @@
-name: product-finder 定時重抓
+name: product-finder 重新抓取
 
-# 每小時重抓 momo 與 Alpha Plus 官網的商品清單，把結果推到 product-finder-data 分支。
+# 重抓 momo 與 Alpha Plus 官網的商品清單，把結果推到 product-finder-data 分支。
 # 線上頁面開啟時直接讀該分支的 data.json，不需要任何人重新發布頁面。
-# 注意：schedule 只會在預設分支上的 workflow 生效；手動 Run workflow 則任何有這個檔案的分支都可以。
+# 只在有人按「Run workflow」時執行（線上頁的「重新搜尋」按鈕會開這個 workflow 的頁面），沒有定時排程。
+# 注意：手動 Run workflow 只認預設分支上的這個檔案。
 on:
-  schedule:
-    - cron: '7 * * * *'
   workflow_dispatch:
 
 permissions:

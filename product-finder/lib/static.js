@@ -10,8 +10,8 @@ const STYLES = path.join(__dirname, '..', 'public', 'styles.css');
  * 把商品資料打包成不需要伺服器的網頁。兩種產物共用同一份版面與程式：
  *  - buildStaticHtml(data)：單一 HTML 檔，樣式／程式／資料全內嵌，雙擊即開。
  *  - buildHosted(data)：發布到 claude.ai 用的檔案（index.html、app.js、styles.css、data.json）。
- *    線上版開啟時會去讀 GitHub Actions 定時重抓、推到資料分支的 data.json，
- *    所以頁面本身不用重新發布就能看到最新資料；多一個「重新載入」按鈕手動再讀一次。
+ *    線上版開啟時會去讀資料分支上的 data.json（GitHub Actions 抓完推上去的），
+ *    所以頁面本身不用重新發布就能看到最新資料；「重新搜尋」按鈕開 GitHub 的 Run workflow 分頁並等結果。
  */
 
 function preparePayload(data) {
@@ -74,7 +74,7 @@ const MARKUP = `
       <button class="tab" data-source="alphaplus" role="tab">Alpha Plus 官網</button>
     </nav>
     <div class="actions">
-      <button class="btn" id="refresh-btn" hidden>重新載入</button>
+      <a class="btn" id="refresh-btn" target="_blank" rel="noopener noreferrer" hidden>重新搜尋</a>
       <div class="menu">
         <button class="btn btn-primary" id="export-btn" aria-haspopup="true" aria-expanded="false">一鍵輸出</button>
         <div class="menu-panel" id="export-menu" hidden>
@@ -138,7 +138,7 @@ const MARKUP = `
 /** 頁面程式。\`MARKUP_JSON\` 與 \`HOSTED\` 兩個佔位符在打包時填入。 */
 const APP_JS = String.raw`'use strict';
 const HOSTED = __HOSTED__;
-const LIVE = __LIVE_JSON__;   // 線上版：{ dataUrl, workflowUrl, intervalHours }；單檔版：null
+const LIVE = __LIVE_JSON__;   // 線上版：{ dataUrl, workflowUrl }；單檔版：null
 let DATA = JSON.parse(document.getElementById('data').textContent);
 const LABELS = { momo: 'momo 購物網', alphaplus: 'Alpha Plus 官網' };
 const ORDER = ['momo', 'alphaplus'];
@@ -254,41 +254,51 @@ function render() {
   renderRefreshState();
 }
 
-/* ---------- 資料狀態橫幅 ---------- */
+/* ---------- 重新搜尋與狀態橫幅 ---------- */
+
+// 等待 GitHub Actions 抓完的狀態：null（沒在等）| { since, baseline, timer }
+let waiting = null;
+const WAIT_LIMIT_MS = 10 * 60 * 1000;
+const POLL_MS = 15 * 1000;
 
 /**
- * 只有兩種情況要提醒：
- *  - 上一次自動重抓整個失敗（refreshStatus === 'failed'），畫面上的是沿用的舊資料
- *  - 資料太久沒更新（超過排程間隔的 3 倍），代表背景排程本身可能停了
- * 兩種都用紅色橫幅，讓人一眼知道現在看的不是最新的。
+ * 橫幅只有三種情況會出現：
+ *  - 正在等 GitHub Actions 抓取（使用者剛按了「重新搜尋」）
+ *  - 等了 10 分鐘還沒有新資料：可能沒按 Run workflow，或抓取失敗
+ *  - 上一次抓取整個失敗（refreshStatus === 'failed'），畫面上的是沿用的舊資料
  */
 function renderRefreshState() {
   const banner = $('refresh-banner');
-  banner.classList.remove('stale');
+  const text = $('refresh-text');
+  banner.classList.remove('stale', 'failed');
+  if (waiting && waiting.timedOut) {
+    banner.hidden = false;
+    banner.classList.add('failed');
+    text.textContent = '等了 10 分鐘沒有收到新資料。可能是 GitHub 分頁上還沒按「Run workflow」，或這次抓取失敗了——請到 GitHub 的 Actions 頁查看，或再按一次「重新搜尋」。';
+    return;
+  }
+  if (waiting) {
+    banner.hidden = false;
+    text.textContent = '已開啟 GitHub 分頁，請在那一頁按「Run workflow」→ 綠色「Run workflow」。抓取約 1 分鐘，完成後本頁會自動更新（每 15 秒檢查一次，最多等 10 分鐘）。';
+    return;
+  }
   if (DATA.refreshStatus === 'failed') {
     banner.hidden = false;
     banner.classList.add('failed');
-    $('refresh-text').textContent = '上次自動重新抓取失敗：' + (DATA.refreshError || '發生未知錯誤') + '。目前顯示的是上一次成功的資料（' + fmtTime(DATA.generatedAt, true) + '）。';
-    return;
-  }
-  const intervalH = LIVE && LIVE.intervalHours ? LIVE.intervalHours : 0;
-  const ageH = (Date.now() - new Date(DATA.generatedAt).getTime()) / 3600000;
-  if (intervalH && ageH > intervalH * 3) {
-    banner.hidden = false;
-    banner.classList.add('failed');
-    $('refresh-text').textContent = '資料已超過 ' + Math.floor(ageH) + ' 小時沒有更新（正常每 ' + intervalH + ' 小時更新一次），自動抓取可能停了，請到 GitHub 檢查排程。';
+    text.textContent = '上次重新抓取失敗：' + (DATA.refreshError || '發生未知錯誤') + '。目前顯示的是上一次成功的資料（' + fmtTime(DATA.generatedAt, true) + '）。';
     return;
   }
   banner.hidden = true;
-  banner.classList.remove('failed');
 }
 
 let downloadsApi = null;
 
 /**
  * 線上版才有的東西：
- *  - 最新資料：由 GitHub Actions 定時重抓、推到資料分支；頁面開啟時直接讀那份 JSON，
- *    不用等任何人重新發布這個頁面。讀不到就用內嵌的那份（發布當時的資料）。
+ *  - 最新資料：GitHub Actions 抓完會把 data.json 推到資料分支；頁面開啟時直接讀那份，
+ *    不用重新發布這個頁面。讀不到就用內嵌的那份（發布當時的資料）。
+ *  - 重新搜尋：GitHub 沒有「不登入就能觸發」的方式，所以按鈕會開 GitHub 的 Run workflow 分頁
+ *    讓有權限的人按一下，本頁同時開始輪詢 data.json，抓完自動換上新資料。
  *  - downloads：把產生的檔案交給使用者存檔（檢視器不允許頁面自行下載，一定要走這個）
  * 單檔版沒有 window.claude 也沒有 LIVE，全部退回原本的做法。
  */
@@ -303,37 +313,53 @@ async function setupCapabilities() {
 
 function setupLiveData() {
   const btn = $('refresh-btn');
-  btn.hidden = false;
-  btn.addEventListener('click', () => loadLiveData(true));
+  if (LIVE.workflowUrl) {
+    btn.href = LIVE.workflowUrl;
+    btn.hidden = false;
+    btn.addEventListener('click', startWaiting);   // 不擋預設行為：連結照常在新分頁開 GitHub
+  }
   const note = $('auto-note');
   note.hidden = false;
-  note.textContent = '';
-  note.append(document.createTextNode('資料每 ' + (LIVE.intervalHours || 1) + ' 小時由 GitHub Actions 自動重新抓取，開啟本頁時會自動載入最新一份；急著要現在的價格，可以'));
-  if (LIVE.workflowUrl) {
-    const a = el('a', null, '到 GitHub 手動跑一次抓取');
-    a.href = LIVE.workflowUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
-    note.append(a, document.createTextNode('（約 1–2 分鐘），再按「重新載入」。'));
-  }
+  note.textContent = '資料只在按「重新搜尋」時重新抓取（透過 GitHub Actions，約 1 分鐘）；開啟本頁會自動載入最近一次抓取的結果。';
 }
 
-async function loadLiveData(manual) {
-  const btn = $('refresh-btn');
-  btn.disabled = true;
+function startWaiting() {
+  if (waiting && waiting.timer) clearInterval(waiting.timer);
+  waiting = { since: Date.now(), baseline: DATA.generatedAt, timedOut: false, timer: null };
+  renderRefreshState();
+  waiting.timer = setInterval(async () => {
+    const fresh = await loadLiveData();
+    if (fresh && fresh.generatedAt !== waiting.baseline) {
+      clearInterval(waiting.timer);
+      waiting = null;
+      renderRefreshState();
+      toast('已更新為 ' + fmtTime(fresh.generatedAt) + ' 抓取的資料');
+      return;
+    }
+    if (Date.now() - waiting.since > WAIT_LIMIT_MS) {
+      clearInterval(waiting.timer);
+      waiting.timedOut = true;
+      renderRefreshState();
+    }
+  }, POLL_MS);
+}
+
+/** 讀資料分支上最新的 data.json；成功就換上並重畫，回傳新資料；失敗回傳 null（沿用目前畫面）。 */
+async function loadLiveData() {
   try {
     // 加時間戳避開 CDN 快取，確保拿到剛推上去的那一份
     const res = await fetch(LIVE.dataUrl + (LIVE.dataUrl.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const fresh = await res.json();
     if (!fresh || !fresh.sources) throw new Error('資料格式不對');
-    const changed = fresh.generatedAt !== DATA.generatedAt;
-    DATA = fresh;
-    $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
-    render();
-    if (manual) toast(changed ? '已載入 ' + fmtTime(DATA.generatedAt) + ' 的資料' : '已經是最新的了（' + fmtTime(DATA.generatedAt) + '）');
-  } catch (err) {
-    if (manual) toast('讀不到最新資料（' + (err && err.message) + '），先顯示發布時的版本');
-  } finally {
-    btn.disabled = false;
+    if (fresh.generatedAt !== DATA.generatedAt) {
+      DATA = fresh;
+      $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
+      render();
+    }
+    return fresh;
+  } catch {
+    return null;
   }
 }
 
@@ -528,7 +554,7 @@ ${appJs(false)}
  * 發布到 claude.ai 用的檔案。index.html 不含 doctype/html/head/body 外殼（發布工具會自己包）。
  * data.json 是同一份資料的純 JSON，給 GitHub Actions 推到資料分支、讓頁面開啟時讀最新的用；
  * index.html 內嵌的那份只是讀不到時的備援。
- * live = { dataUrl, workflowUrl, intervalHours }，來自 config.json 的 hosted 區塊；沒有就不啟用自動載入。
+ * live = { dataUrl, workflowUrl }，來自 config.json 的 hosted 區塊；沒有就不啟用自動載入。
  */
 function buildHosted(data, payloadOverrides = {}, live = null) {
   const payload = { ...preparePayload(data), ...payloadOverrides };

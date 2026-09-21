@@ -91,21 +91,22 @@ data/seed.json     初始清單（第一次使用時的預設資料）
 test/              測試
 ```
 
-## 線上版：每小時自動更新，不靠任何人
+## 線上版：按「重新搜尋」才重抓，不靠 Claude
 
 `npm run hosted` 產出 `dist/hosted/` 四個檔案（index.html、app.js、styles.css、data.json），前三個發布成 claude.ai Artifact。
 
-真正讓資料保持新鮮的是 GitHub Actions（`.github/workflows/product-finder-refresh.yml`）：
+重抓由 GitHub Actions（`.github/workflows/product-finder-refresh.yml`）執行，沒有定時排程，只在有人按 Run workflow 時跑：
 
-1. 每小時（每小時的第 7 分）跑一次 `node scripts/build-hosted.js --refresh`，把 momo 與官網重抓一遍。
-2. 把產出的 `data.json`（加上 `cache.json`）強制推到 `product-finder-data` 分支——這個分支永遠只有一個 commit，不會弄髒主分支歷史。
-3. 線上頁面開啟時直接讀 `https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json`
-   （公開 repo 有 CORS 標頭，CDN 快取 5 分鐘，頁面會加時間戳避開），所以**頁面本身不用重新發布**就會顯示最新資料。
-   讀不到時退回 index.html 內嵌的那一份（發布當時的資料）。
-4. 「重新載入」按鈕只是再讀一次 data.json；急著要現在的價格，到 GitHub 的 Actions 頁手動 **Run workflow**，1–2 分鐘後再按重新載入。
+1. 線上頁的**重新搜尋**按鈕會在新分頁開這個 workflow 的 GitHub 頁面；有 repo 權限的人按「Run workflow」→ 綠色「Run workflow」。
+   （GitHub 沒有不登入就能觸發的方式，所以這一下一定要在 GitHub 上按。）
+2. workflow 跑 `node scripts/build-hosted.js --refresh`，把 momo 與官網重抓一遍（約 1 分鐘），
+   把產出的 `data.json`（加上 `cache.json`）強制推到 `product-finder-data` 分支——這個分支永遠只有一個 commit，不會弄髒主分支歷史。
+3. 線上頁同時每 15 秒讀一次 `https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json`
+   （公開 repo 有 CORS 標頭，CDN 快取 5 分鐘，頁面會加時間戳避開），拿到新的就自動換上，所以**頁面本身不用重新發布**。
+   開頁面時也會先讀一次，永遠顯示最近一次抓取的結果；讀不到時退回 index.html 內嵌的那一份（發布當時的資料）。
 
 失敗時怎麼提醒：
+- 等了 10 分鐘還沒有新資料（沒按 Run workflow、或抓取掛了）→ 頁面顯示紅色橫幅，停止等待。
 - 兩邊都抓不到 → `data.json` 沿用上一次成功的資料、`refreshStatus: 'failed'`，頁面顯示紅色橫幅與原因；workflow 本身也會標成失敗，GitHub 會寄通知。
-- 排程整個停了（例如 workflow 被停用）→ 資料超過 3 小時沒更新，頁面顯示紅色「自動抓取可能停了」。
 
-**注意**：GitHub 的 `schedule` 只會執行**預設分支**上的 workflow。這個檔案所在的分支必須是預設分支（或合併進去），定時重抓才會啟動；手動 Run workflow 則任何分支都可以。相關網址與間隔設定在 `config.json` 的 `hosted` 區塊。
+**注意**：手動 Run workflow 只認**預設分支**上的 workflow 檔，這個檔案改了要合併進預設分支才生效。相關網址在 `config.json` 的 `hosted` 區塊。

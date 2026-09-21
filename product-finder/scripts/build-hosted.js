@@ -7,7 +7,7 @@
  *   node scripts/build-hosted.js --refresh  先重新抓取兩邊再產出
  * 在有 proxy 的環境要加 NODE_USE_ENV_PROXY=1。
  *
- * 這支 script 由 GitHub Actions 定時執行（.github/workflows/product-finder-refresh.yml），
+ * 這支 script 由 GitHub Actions 執行（.github/workflows/product-finder-refresh.yml，有人按 Run workflow 時），
  * 產出的 data.json 會被推到資料分支，線上頁面開啟時直接讀那一份，不需要任何人重新發布頁面。
  *
  * --refresh 會自己判斷這次重新抓取算成功還是失敗，並把結果寫進輸出：
