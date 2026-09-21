@@ -11,6 +11,7 @@
     --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
     --momo:#D6316B; --momo-soft:#FBE3EC;
     --web:#2a78d6; --web-soft:#DCE9FA;
+    --pool:#8A5A00;
     --good:#2F9E44; --bad:#C4362F; --warn:#B5730A; --warn-soft:#F6E8D2; --warn-ink:#6B4507;
     --band:#EFE7D6;
     --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
@@ -25,6 +26,7 @@
       --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
       --momo:#D9527F; --momo-soft:#3B2029;
       --web:#3987e5; --web-soft:#182838;
+      --pool:#A8752A;
       --good:#4CAF6B; --bad:#E2665F; --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
       --band:#2A2419;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
@@ -37,6 +39,7 @@
     --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
     --momo:#D9527F; --momo-soft:#3B2029;
     --web:#3987e5; --web-soft:#182838;
+    --pool:#A8752A;
     --good:#4CAF6B; --bad:#E2665F; --warn:#B67F2E; --warn-soft:#3A2D16; --warn-ink:#F0D19C;
     --band:#2A2419;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
@@ -171,7 +174,7 @@
   .mixnote{ color:var(--ink-faint); }
   .mixempty{ color:var(--ink-faint); font-size:13.5px; padding:6px 0 12px; }
   .mixrow{
-    display:grid; grid-template-columns:minmax(120px,1.35fr) minmax(90px,3fr) 52px 88px 62px;
+    display:grid; grid-template-columns:minmax(150px,1.5fr) minmax(80px,2.4fr) 52px 88px 46px 62px;
     align-items:center; gap:12px; padding:7px 0; border-top:1px solid var(--border);
   }
   .mixrow:first-child{ border-top:0; }
@@ -185,10 +188,40 @@
   .mixgmv{ color:var(--ink-muted); }
   .mixqty{ color:var(--ink-faint); }
   @media (max-width:640px){
-    .mixrow{ grid-template-columns:1fr 52px 62px; grid-template-areas:"name pct qty" "bar bar bar"; gap:4px 10px; }
-    .mixname{ grid-area:name; } .mixtrack{ grid-area:bar; }
-    .mixpct{ grid-area:pct; } .mixqty{ grid-area:qty; } .mixgmv{ display:none; }
+    .mixrow{ grid-template-columns:1fr 46px 52px; grid-template-areas:"name mar pct" "bar bar bar" "det det det"; gap:4px 10px; }
+    .mixname{ grid-area:name; } .mixtrack{ grid-area:bar; } .mixmar{ grid-area:mar; }
+    .mixpct{ grid-area:pct; } .mixdetail{ grid-area:det; }
+    .mixgmv,.mixqty{ display:none; }
   }
+
+  .mixrow{ cursor:pointer; }
+  .mixrow:hover{ background:var(--surface-2); }
+  .mixrow:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .mixrow.open{ background:var(--surface-2); }
+  .mixname{ display:flex; align-items:center; gap:6px; }
+  .mixname .nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .caret{ color:var(--ink-faint); font-size:10px; flex:none; }
+  .mixmar{ font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:13px;
+           text-align:right; color:var(--ink-muted); }
+  .mixmar.odd{ color:var(--bad); font-weight:600; cursor:help; }
+  .chip{ flex:none; font-size:10.5px; padding:1px 6px; border-radius:3px; white-space:nowrap;
+         background:var(--surface-3); color:var(--ink-muted); }
+  .chip.ok{ background:var(--accent-soft); color:var(--accent-ink); }
+  .chip.warn{ background:var(--warn-soft); color:var(--warn-ink); font-weight:700; }
+  .mixdetail{ grid-column:1/-1; cursor:default; padding:10px 0 14px; display:flex;
+              flex-direction:column; gap:12px; }
+  .dtitle{ font-size:13.5px; font-weight:700; }
+  .dsub{ font-weight:400; color:var(--ink-faint); font-size:12.5px; }
+  .tablewrap.dt table{ min-width:560px; font-size:12.5px; }
+  .tablewrap.dt th,.tablewrap.dt td{ padding:6px 10px; }
+  .dcat{ font-size:12.5px; }
+  .dcatlab{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+            color:var(--ink-faint); }
+  .dcat ul{ margin:6px 0 0; padding-left:18px; color:var(--ink-muted); line-height:1.8; }
+  .dcat b{ display:inline-block; min-width:34px; color:var(--ink); }
+  .dcat a{ color:var(--accent); }
+  .warnline{ margin:6px 0 0; color:var(--warn-ink); background:var(--warn-soft);
+             border-radius:5px; padding:8px 10px; line-height:1.55; }
 
   .method,.howto{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:16px 20px; }
   .howto{ background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent); }
@@ -352,7 +385,9 @@
       <div class="legend">
         <span><i style="background:var(--momo)"></i>momo ＋ momo 寄倉</span>
         <span><i style="background:var(--web)"></i>官網</span>
-        <span class="mixnote">佔比為該品項銷售額佔兩通路合計的比重，跟著上面「每日明細」選的區間走</span>
+        <span><i style="background:var(--pool)"></i>其他通路</span>
+        <span class="mixnote">點一列看該品項的通路拆解、毛利與產品目錄對照。區間跟著上面「每日明細」走，
+        這一段含其他通路（全家、團購主…），所以合計會大於上面兩個主指標</span>
       </div>
       <div id="mixBody"></div>
     </div>
@@ -390,6 +425,7 @@
 <div class="drop" id="drop">放開就開始重算</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script id="catalog" type="application/json">{"updatedAt":{"momo":"2026-09-21T01:02:42.714Z","alphaplus":"2026-09-21T01:02:56.896Z"},"products":[{"src":"momo","sku":"15250521","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 青花椒辣醬240g","price":330,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15250521"},{"src":"momo","sku":"15356778","name":"【BROTH MASTER 雞湯大叔】雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240g","price":310,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15356778"},{"src":"momo","sku":"15491916","name":"【BROTH MASTER 雞湯大叔】雞湯大叔×打寶蛤 蛤蜊雞湯460g*5包組","price":950,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15491916"},{"src":"momo","sku":"15414344","name":"【BROTH MASTER 雞湯大叔】快樂雞滴雞精60mlx10包 常溫 (紅羽母雞滴煉精華 純粹無添加)","price":790,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15414344"},{"src":"momo","sku":"15474320","name":"【BROTH MASTER 雞湯大叔】黑松露牛肝菌雞湯禮盒2入 (濃郁蕈菇風味)","price":990,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15474320"},{"src":"momo","sku":"15467510","name":"【阿爾法餐飲集團】雞湯大叔/雞湯桑/麵屋一燈/賴山嶼通用 $799抵$888好禮即享券(一次抵用型)","price":799,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467510"},{"src":"momo","sku":"15394742","name":"【BROTH MASTER 雞湯大叔】$482雞湯火鍋套餐(雪花牛或梅花豬擇一)好禮即享券","price":438,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394742"},{"src":"momo","sku":"15689825","name":"【雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王】9/19偷殺!5大品牌399抵499 即享券(限內用/一次抵用型)","price":399,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689825"},{"src":"momo","sku":"15235085","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 青花椒辣醬240g*2入","price":640,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15235085"},{"src":"momo","sku":"15127931","name":"【BROTH MASTER 雞湯大叔】快樂雞滴雞精禮盒(6入/盒) 常溫 (紅羽母雞滴煉精華 純粹無添加)","price":650,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15127931"},{"src":"momo","sku":"15126499","name":"【BROTH MASTER 雞湯大叔】黑松露牛肝菌雞湯禮盒 (濃郁蕈菇風味)","price":590,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15126499"},{"src":"momo","sku":"15540751","name":"【BROTH MASTER 雞湯大叔】雞湯大叔×海瑞摃丸 泰度打拋摃丸*4包組 (網紅娘娘監製)","price":849,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15540751"},{"src":"momo","sku":"15711974","name":"【雞湯大叔】$547暖心獨享套餐好禮即享券","price":508,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711974"},{"src":"momo","sku":"15467509","name":"【BROTH MASTER 雞湯大叔】$1494泰國季限定-泰chill雙人套餐好禮即享券(贈蒜香羅勒雞腿排乙份)","price":1299,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15467509"},{"src":"momo","sku":"15633823","name":"【BROTH MASTER 雞湯大叔】泰鮮雙享組 (含蛤蜊雞湯*3包+打拋摃丸*2)","price":888,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15633823"},{"src":"momo","sku":"15394739","name":"【BROTH MASTER 雞湯大叔】$646雞湯火鍋套餐(海鮮拼盤)好禮即享券","price":587,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394739"},{"src":"momo","sku":"15689826","name":"【雞湯大叔/雞湯桑/麵屋一燈/賴山嶼/撈王】9/21限搶!5大品牌799抵999 即享券(限內用/一次抵用型)","price":799,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15689826"},{"src":"momo","sku":"15642252","name":"【BROTH MASTER 雞湯大叔】雞湯大叔 x 洄瀾醬人 茶油剝皮辣椒240gx2入","price":600,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15642252"},{"src":"momo","sku":"15634154","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 青花椒辣醬240g*3入","price":900,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15634154"},{"src":"momo","sku":"15394740","name":"【BROTH MASTER 雞湯大叔】$613松露野菇雞湯火鍋套餐(板腱牛)好禮即享券","price":557,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15394740"},{"src":"momo","sku":"15711975","name":"【雞湯大叔】$1073暖心雙享套餐好禮即享券","price":988,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711975"},{"src":"momo","sku":"15706866","name":"【BROTH MASTER 雞湯大叔】雞湯大叔xKai 翡翠檸檬康普氣泡茶330ml*8入組","price":640,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15706866"},{"src":"momo","sku":"15707333","name":"【BROTH MASTER 雞湯大叔】快樂雞滴雞精60mlx30包 常溫 (紅羽母雞滴煉精華 純粹無添加)","price":2299,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15707333"},{"src":"momo","sku":"15714183","name":"【BROTH MASTER 雞湯大叔】雞湯大叔 椒香成雙禮盒 (內含青花椒辣醬+茶油剝皮辣椒各1瓶 附提袋)","price":799,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15714183"},{"src":"momo","sku":"15714173","name":"【BROTH MASTER 雞湯大叔】娘娘駕到聯名雙享組(含泰Chill打拋豬煎餃2包＋泰度打拋摃丸2包）","price":777,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15714173"},{"src":"momo","sku":"15712738","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x龍鳳 泰Chill打拋豬煎餃380g*5包組","price":845,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15712738"},{"src":"momo","sku":"15711906","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 百香土鳳梨氣泡飲330ml*6入組","price":415,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711906"},{"src":"momo","sku":"15711905","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x賴山嶼 百香土鳳梨氣泡飲330ml*24入組","price":1200,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711905"},{"src":"momo","sku":"15712739","name":"【BROTH MASTER 雞湯大叔】雞湯大叔x龍鳳 泰Chill打拋豬煎餃380g*3包組","price":649,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15712739"},{"src":"momo","sku":"14614419","name":"【雞湯桑】$298松露旨味雞白湯拉麵 好禮即享券","price":298,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614419"},{"src":"momo","sku":"15711977","name":"【雞湯桑】$653經典雙享套餐好禮即享券","price":608,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711977"},{"src":"momo","sku":"14614418","name":"【雞湯桑】$248東京雞白湯拉麵 好禮即享券","price":248,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614418"},{"src":"momo","sku":"15711976","name":"【雞湯桑】$316經典獨享套餐好禮即享券","price":298,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711976"},{"src":"momo","sku":"14614420","name":"【雞湯桑】$298海膽魚子雞白湯拉麵 好禮即享券","price":298,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614420"},{"src":"momo","sku":"14614417","name":"【雞湯桑】$248松露牛肝菌拉麵 好禮即享券","price":248,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614417"},{"src":"momo","sku":"14614416","name":"【雞湯桑】$248櫻花柚子拉麵 好禮即享券","price":248,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=14614416"},{"src":"momo","sku":"15711984","name":"【撈王】$4099 豪華歡聚餐好禮即享券","price":3788,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711984"},{"src":"momo","sku":"15711983","name":"【撈王】$2407 人氣經典分享餐好禮即享券","price":2288,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711983"},{"src":"momo","sku":"15711979","name":"【麵屋一燈】$702職人雙享套餐好禮即享券","price":658,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711979"},{"src":"momo","sku":"15711981","name":"【賴山嶼】$614經典麻辣燙雙享套餐好禮即享券","price":568,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711981"},{"src":"momo","sku":"15711978","name":"【麵屋一燈】$366職人獨享套餐好禮即享券","price":348,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711978"},{"src":"momo","sku":"15711980","name":"【賴山嶼】$297經典麻辣燙獨享套餐好禮即享券","price":278,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=15711980"},{"src":"momo","sku":"13355759","name":"【撈王】藤椒酸菜鍋湯底(1200公克x2包)","price":699,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13355759"},{"src":"momo","sku":"13372301","name":"【撈王】胡椒雙鍋饗宴 火鍋(經典胡椒豬肚雞鍋+竹蔗羊肉爐)","price":899,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13372301"},{"src":"momo","sku":"13428646","name":"【撈王】胡椒雙鍋饗宴 火鍋(豬肚雞羊肉爐兩口味任選) 鍋物","price":899,"url":"https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13428646"},{"src":"web","sku":"","name":"【賴山嶼】種子盲盒","price":129,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E8%B3%B4%E5%B1%B1%E5%B6%BC%E7%A8%AE%E5%AD%90%E7%9B%B2%E7%9B%92"},{"src":"web","sku":"","name":"【撈王】九宮格老火鍋冰箱磁鐵","price":99,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E6%92%88%E7%8E%8B%E4%B9%9D%E5%AE%AE%E6%A0%BC%E8%80%81%E7%81%AB%E9%8D%8B%E5%86%B0%E7%AE%B1%E7%A3%81%E9%90%B5"},{"src":"web","sku":"","name":"阿爾法九週年品牌周邊禮盒","price":999,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%98%BF%E7%88%BE%E6%B3%95%E4%B9%9D%E9%80%B1%E5%B9%B4%E5%93%81%E7%89%8C%E5%91%A8%E9%82%8A%E7%A6%AE%E7%9B%92"},{"src":"web","sku":"","name":"阿爾法安心御守禮品卡999元 餘額型禮品卡","price":999,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%98%BF%E7%88%BE%E6%B3%95%E5%AE%89%E5%BF%83%E5%BE%A1%E5%AE%88%E7%A6%AE%E5%93%81%E5%8D%A1999%E5%85%83%E9%A4%98%E9%A1%8D%E5%9E%8B%E7%A6%AE%E5%93%81%E5%8D%A1"},{"src":"web","sku":"","name":"【雞湯桑】雞湯桑百變長腿娃娃","price":129,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9B%9E%E6%B9%AF%E6%A1%91%E7%99%BE%E8%AE%8A%E9%95%B7%E8%85%BF%E5%A8%83%E5%A8%83"},{"src":"web","sku":"","name":"【雞湯大叔】雞湯大叔廚師娃娃","price":129,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9B%9E%E6%B9%AF%E5%A4%A7%E5%8F%94%E5%BB%9A%E5%B8%AB%E5%A8%83%E5%A8%83"},{"src":"web","sku":"","name":"【雞湯大叔 x Kai】翡翠檸檬康普氣泡茶","price":269,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9B%9E%E6%B9%AF%E5%A4%A7%E5%8F%94xkai_%E7%BF%A1%E7%BF%A0%E6%AA%B8%E6%AA%AC%E5%BA%B7%E6%99%AE%E6%B0%A3%E6%B3%A1%E8%8C%B6"},{"src":"web","sku":"","name":"【賴山嶼】百香土鳳梨氣泡飲 (24入組)","price":1650,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E7%99%BE%E9%A6%99%E5%9C%9F%E9%B3%B3%E6%A2%A8%E6%B0%A3%E6%B3%A1%E9%A3%B2-%E8%B3%B4%E5%B1%B1%E5%B6%BC"},{"src":"web","sku":"","name":"【雞湯大叔經典限定】椒香成雙禮盒 (內含青花椒辣醬+茶油剝皮辣椒各1瓶) (限量加贈品牌保冷袋)","price":1099,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E7%B6%93%E5%85%B8%E9%99%90%E5%AE%9A%E6%A4%92%E9%A6%99%E6%88%90%E9%9B%99%E7%A6%AE%E7%9B%92-%E5%85%A7%E5%90%AB%E9%9D%92%E8%8A%B1%E6%A4%92%E8%BE%A3%E9%86%AC%E8%8C%B6%E6%B2%B9%E5%89%9D%E7%9A%AE%E8%BE%A3%E6%A4%92%E5%90%841%E7%93%B6"},{"src":"web","sku":"","name":"【雞湯大叔 x 海瑞摃丸】泰度打拋摃丸300g*3包組","price":630,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E6%B3%B0%E5%BA%A6%E6%89%93%E6%8B%8B%E6%91%83%E4%B8%B8-%E7%B6%B2%E7%B4%85%E5%A8%98%E5%A8%98-%E6%B5%B7%E7%91%9E"},{"src":"web","sku":"","name":"【雞湯大叔 x 打寶蛤】 蛤蜊雞湯460g*5包組 (限時免運)","price":999,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E8%9B%A4%E8%9C%8A%E9%9B%9E%E6%B9%AF-%E5%85%8D%E9%81%8B"},{"src":"web","sku":"","name":"【雞湯大叔 x 洄瀾醬人】 茶油剝皮辣椒240g 1入 / 3入 / 12入","price":330,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E8%8C%B6%E6%B2%B9%E5%89%9D%E7%9A%AE%E8%BE%A3%E6%A4%92"},{"src":"web","sku":"","name":"【雞湯大叔】快樂雞滴雞精60ml*15包 / 20包","price":1120,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9B%9E%E6%B9%AF%E5%A4%A7%E5%8F%94-%E6%BB%B4%E9%9B%9E%E7%B2%BE"},{"src":"web","sku":"","name":"【賴山嶼】 青花椒辣醬1入 / 3入 / 12入","price":330,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%9D%92%E8%8A%B1%E6%A4%92%E8%BE%A3%E9%86%AC3%E5%85%A5"},{"src":"web","sku":"","name":"【賴山嶼】 百香土鳳梨氣泡飲 （6入組）","price":415,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E7%99%BE%E9%A6%99%E5%9C%9F%E9%B3%B3%E6%A2%A8%E6%B0%A3%E6%B3%A1%E9%A3%B2"},{"src":"web","sku":"","name":"【雞湯大叔】爪爪兄弟 寵物餐包-蔬果燉雞10入 / 20入組","price":750,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E7%88%AA%E7%88%AA%E5%85%84%E5%BC%9F%E9%A4%90%E5%8C%85-%E8%94%AC%E6%9E%9C%E7%87%89%E9%9B%9E-%E7%8B%97%E7%8B%97%E4%B8%BB%E9%A3%9F%E9%A4%90%E5%8C%85"},{"src":"web","sku":"","name":"【雞湯大叔】黑松露牛肝菌雞湯禮盒 2入組 (免運)","price":990,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E6%9D%BE%E9%9C%B2%E9%9B%9E%E6%B9%AF%E7%A6%AE%E7%9B%92"},{"src":"web","sku":"","name":"【雞湯大叔】快樂雞滴雞精禮盒 (內含6包滴雞精)","price":650,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E6%BB%B4%E9%9B%9E%E7%B2%BE%E7%A6%AE%E7%9B%92"},{"src":"web","sku":"","name":"【麵屋一燈】16週年小夜燈","price":299,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%BA%B5%E5%B1%8B%E4%B8%80%E7%87%8816%E9%80%B1%E5%B9%B4%E5%B0%8F%E5%A4%9C%E7%87%88"},{"src":"web","sku":"","name":"【麵屋一燈】招牌小燈箱","price":129,"url":"https://alphaplus.cyberbiz.co/zh-TW/products/%E9%BA%B5%E5%B1%8B%E4%B8%80%E7%87%88%E6%8B%9B%E7%89%8C%E5%B0%8F%E7%87%88%E7%AE%B1"}]}</script>
 <script id="data" type="application/json">{"meta":{"source":"","rows":0,"first_date":"","last_date":"","imputed":0,"built_at":"","campaign_start":"2026-09-19"},"days":[]}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -713,13 +749,16 @@
       var day = days[x.date] || (days[x.date] = { momo:bucket(), web:bucket(), other:bucket() });
       var b = day[groupOf(x.channel)];
       b.gmv += x.gross;
-      b.rev += MOMO_CH[x.channel] ? x.netEx : x.grossEx;   // momo 收進價、官網收售價
+      // momo 與批發通路收進價，官網（沒填進價）才用售價未稅
+      var rv = MOMO_CH[x.channel] ? x.netEx : (x.netEx || x.grossEx);
+      b.rev += rv;
       if (!NON_PRODUCT[x.brand]){
         b.qty  += x.qty;
         b.cost += x.costEx;
         if (x.item){
-          var it = b.items[x.item] || (b.items[x.item] = { qty:0, gmv:0 });
-          it.qty += x.qty; it.gmv += x.gross;
+          var it = b.items[x.item] || (b.items[x.item] = { qty:0, gmv:0, rev:0, cost:0 });
+          it.qty += x.qty; it.gmv += x.gross; it.cost += x.costEx;
+          it.rev += rv;
         }
       }
       if (x.so) b.orders[x.so] = 1;
@@ -736,9 +775,10 @@
         row[g] = b ? {
           gmv: Math.round(b.gmv), rev: Math.round(b.rev), qty: Math.round(b.qty),
           gp: Math.round(b.rev - b.cost), orders: Object.keys(b.orders).length,
-          // [品項, 件數, 銷售額]，產品組合那一段用這個算
+          // [品項, 件數, 銷售額, 實收, 成本]，產品組合那一段用這個算
           items: Object.keys(b.items).map(function(k){
-            return [k, Math.round(b.items[k].qty), Math.round(b.items[k].gmv)];
+            var it = b.items[k];
+            return [k, Math.round(it.qty), Math.round(it.gmv), Math.round(it.rev), Math.round(it.cost)];
           }).sort(function(a, c){ return c[2] - a[2]; })
         } : { gmv:0, rev:0, qty:0, gp:0, orders:0, items:[] };
       });
@@ -874,54 +914,180 @@
   }
 
   /* ── 產品組合 ── */
-  var MIX_LIMIT = 12;
+  var GROUPS = ["momo", "web", "other"];
   function productMix(rows){
     var byItem = {}, total = 0;
     rows.forEach(function(d){
-      ["momo","web"].forEach(function(g){
+      GROUPS.forEach(function(g){
         (d[g].items || []).forEach(function(it){
-          var e = byItem[it[0]] || (byItem[it[0]] = { name:it[0], qty:0, gmv:0, momo:0, web:0 });
-          e.qty += it[1]; e.gmv += it[2]; e[g] += it[2]; total += it[2];
+          var e = byItem[it[0]] || (byItem[it[0]] =
+            { name:it[0], qty:0, gmv:0, rev:0, cost:0, momo:0, web:0, other:0 });
+          e.qty += it[1]; e.gmv += it[2]; e.rev += (it[3] || 0); e.cost += (it[4] || 0);
+          e[g] += it[2]; total += it[2];
         });
       });
     });
     var list = Object.keys(byItem).map(function(k){ return byItem[k]; })
                  .sort(function(a, b){ return b.gmv - a.gmv; });
-    if (list.length > MIX_LIMIT){
-      var tail = list.slice(MIX_LIMIT - 1);
-      list = list.slice(0, MIX_LIMIT - 1).concat([{
-        name: "其他 " + tail.length + " 項",
-        qty:  tail.reduce(function(a, x){ return a + x.qty; }, 0),
-        gmv:  tail.reduce(function(a, x){ return a + x.gmv; }, 0),
-        momo: tail.reduce(function(a, x){ return a + x.momo; }, 0),
-        web:  tail.reduce(function(a, x){ return a + x.web; }, 0)
-      }]);
-    }
-    list.forEach(function(e){ e.share = total ? e.gmv / total : 0; });
+    list.forEach(function(e){
+      e.share = total ? e.gmv / total : 0;
+      e.gp = e.rev - e.cost;
+      e.margin = e.rev ? e.gp / e.rev : 0;
+      e.listing = catalogFor(e.name);
+    });
     return { list: list, total: total };
   }
 
+  /* ── 產品目錄對照（資料來自 product-finder「產品查詢器」）── */
+  var CATALOG = { updatedAt:{}, products:[] };
+  try { CATALOG = JSON.parse($("catalog").textContent) || CATALOG; } catch (e) {}
+  // 本機開檔時順手抓一份最新的；線上檢視會被 CSP 擋掉，就用內建這份。
+  (function(){
+    var url = "https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json";
+    if (typeof fetch !== "function") return;
+    fetch(url, { cache:"no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      if (!d || !d.sources) return;
+      var next = { updatedAt:{}, products:[] };
+      Object.keys(d.sources).forEach(function(k){
+        var src = k === "momo" ? "momo" : "web";
+        next.updatedAt[k] = d.sources[k].updatedAt || "";
+        (d.sources[k].products || []).forEach(function(p){
+          if (p.price == null) return;
+          next.products.push({ src:src, sku:p.sku || "", name:p.name, price:p.price, url:p.url || "" });
+        });
+      });
+      if (next.products.length){ CATALOG = next; catCache = {}; renderMix(); }
+    }).catch(function(){});
+  })();
+
+  // 銷售紀錄用簡稱、商城用完整品名，對不上的在這裡補一條就好
+  var CAT_ALIAS = {
+    "滴雞精單包": "滴雞精",
+    "辣醬剝皮辣椒禮盒": "椒香成雙禮盒",
+    "打拋豬煎餃": "煎餃"
+  };
+  var catCache = {};
+  function catalogFor(item){
+    if (catCache[item]) return catCache[item];
+    var key = String(CAT_ALIAS[item] || item).replace(/\s+/g, "");
+    var hits = CATALOG.products.filter(function(p){
+      return p.name.replace(/\s+/g, "").indexOf(key) >= 0;
+    });
+    var r = {
+      hits: hits,
+      momo: hits.some(function(p){ return p.src === "momo"; }),
+      web:  hits.some(function(p){ return p.src === "web"; })
+    };
+    catCache[item] = r;
+    return r;
+  }
+  function catalogDate(){
+    var d = CATALOG.updatedAt || {};
+    var v = d.momo || d.alphaplus || "";
+    return v ? v.slice(0, 10) : "—";
+  }
+
+  var openItem = null;                       // 展開細查的品項
+
+  // 有在賣、卻查不到上架的通路，是最值得看一眼的狀況
+  function listingChip(e){
+    var c = e.listing;
+    if (!c.hits.length) return '<span class="chip warn">目錄查無</span>';
+    if (e.web  && !c.web)  return '<span class="chip warn">官網有賣沒上架</span>';
+    if (e.momo && !c.momo) return '<span class="chip warn">momo 有賣沒上架</span>';
+    if (c.momo && c.web)   return '<span class="chip ok">兩邊都上架</span>';
+    if (c.momo)            return '<span class="chip">只在 momo 上架</span>';
+    return '<span class="chip">只在官網上架</span>';
+  }
+
+  // 毛利率離譜（負很多或超過 100%）通常是進度表的成本欄填錯，不是真的賠錢
+  function marginOdd(e){ return e.rev && (e.margin < -0.5 || e.margin > 1); }
+
   function renderMix(){
     var mix = productMix(tableRows()), max = mix.list.length ? mix.list[0].gmv : 0;
-    $("mixHint").textContent = tableRangeText() + "　合計 " + money(mix.total);
+    $("mixHint").textContent = tableRangeText() + "　合計 " + money(mix.total) +
+                               "　目錄對照 " + catalogDate();
     if (!mix.list.length){
-      $("mixBody").innerHTML = '<p class="mixempty">這段期間 momo 與官網都沒有銷售。</p>';
+      $("mixBody").innerHTML = '<p class="mixempty">這段期間沒有銷售。</p>';
       return;
     }
     $("mixBody").innerHTML = mix.list.map(function(e){
       var w = max ? (e.gmv / max) * 100 : 0;
-      var mw = e.gmv ? (e.momo / e.gmv) * 100 : 0;
-      return '<div class="mixrow">' +
-        '<div class="mixname" title="' + e.name + '">' + e.name + '</div>' +
+      var seg = function(v, color){
+        return v ? '<i style="flex:' + ((v / e.gmv) * 100).toFixed(2) + ';background:' + color + '"></i>' : '';
+      };
+      var open = openItem === e.name;
+      return '<div class="mixrow' + (open ? ' open' : '') + '" data-item="' + esc(e.name) + '" ' +
+             'role="button" tabindex="0" aria-expanded="' + open + '">' +
+        '<div class="mixname"><span class="caret" aria-hidden="true">' + (open ? "▾" : "▸") + '</span>' +
+          '<span class="nm" title="' + esc(e.name) + '">' + esc(e.name) + '</span>' + listingChip(e) + '</div>' +
         '<div class="mixtrack"><div class="mixbar" style="width:' + w.toFixed(1) + '%">' +
-          (e.momo ? '<i style="flex:' + mw.toFixed(2) + ';background:var(--momo)"></i>' : '') +
-          (e.web  ? '<i style="flex:' + (100 - mw).toFixed(2) + ';background:var(--web)"></i>' : '') +
+          seg(e.momo, "var(--momo)") + seg(e.web, "var(--web)") + seg(e.other, "var(--pool)") +
         '</div></div>' +
         '<div class="mixpct num">' + (e.share * 100).toFixed(1) + '%</div>' +
         '<div class="mixgmv num">' + money(e.gmv) + '</div>' +
+        '<div class="mixmar num' + (marginOdd(e) ? ' odd" title="毛利率不合理，多半是進度表的成本欄填錯' +
+          '（例如整筆成本被當成單件成本再乘數量）' : '"') + '">' +
+          (e.rev ? (e.margin * 100).toFixed(0) + '%' : '–') + '</div>' +
         '<div class="mixqty num">' + fmtInt(e.qty) + ' 件</div>' +
+        (open ? itemDetail(e) : '') +
       '</div>';
     }).join("");
+  }
+
+  /* 單一品項細查：各通路的量、金額、毛利，加上目錄上有哪些規格 */
+  function itemDetail(e){
+    var rows = tableRows();
+    var per = { momo:{q:0,g:0,r:0,c:0}, web:{q:0,g:0,r:0,c:0}, other:{q:0,g:0,r:0,c:0} };
+    var first = "", last = "", days = 0;
+    rows.forEach(function(d){
+      var hit = false;
+      GROUPS.forEach(function(g){
+        (d[g].items || []).forEach(function(it){
+          if (it[0] !== e.name) return;
+          hit = true;
+          per[g].q += it[1]; per[g].g += it[2]; per[g].r += (it[3] || 0); per[g].c += (it[4] || 0);
+        });
+      });
+      if (hit){ days++; if (!first) first = d.date; last = d.date; }
+    });
+    var LABEL = { momo:"momo ＋ 寄倉", web:"官網", other:"其他通路" };
+    var COLOR = { momo:"var(--momo)", web:"var(--web)", other:"var(--pool)" };
+    var lines = GROUPS.filter(function(g){ return per[g].g; }).map(function(g){
+      var p = per[g], gp = p.r - p.c;
+      return '<tr><td class="l"><i class="swatch" style="background:' + COLOR[g] + '"></i>' + LABEL[g] + '</td>' +
+        '<td class="d">' + fmtInt(p.q) + '</td><td class="d">' + money(p.g) + '</td>' +
+        '<td class="d">' + money(p.r) + '</td><td class="d">' + money(gp) + '</td>' +
+        '<td class="d">' + (p.r ? Math.round(gp / p.r * 100) + '%' : '–') + '</td>' +
+        '<td class="d">' + (p.q ? money(p.g / p.q) : '–') + '</td></tr>';
+    }).join("");
+
+    var cat = e.listing.hits.map(function(p){
+      var tag = p.src === "momo" ? "momo" : "官網";
+      return '<li><b>' + tag + '</b>' + (p.sku ? ' <span class="num">' + p.sku + '</span>' : '') +
+        ' <span class="num">' + money(p.price) + '</span> ' +
+        (p.url ? '<a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.name) + '</a>'
+               : esc(p.name)) + '</li>';
+    }).join("");
+
+    return '<div class="mixdetail" onclick="event.stopPropagation()">' +
+      '<div class="dtitle">' + esc(e.name) + '　<span class="dsub">' +
+        (first ? first + " ~ " + last + "　有出貨 " + days + " 天" : "這段期間沒有出貨") + '</span></div>' +
+      (marginOdd(e) ? '<p class="warnline">這個品項的毛利率算出來不合理，多半是進度表的「商品成本(未稅)」' +
+        '填成整筆金額、又被乘上數量。金額欄可以信，毛利先別引用。</p>' : '') +
+      '<div class="tablewrap dt"><table><thead><tr><th class="l">通路</th><th>件數</th>' +
+        '<th>銷售額</th><th>實收</th><th>毛利</th><th>毛利率</th><th>每件均價</th></tr></thead>' +
+        '<tbody>' + lines + '</tbody></table></div>' +
+      '<div class="dcat"><span class="dcatlab">產品目錄（' + catalogDate() + '）</span>' +
+        (cat ? '<ul>' + cat + '</ul>'
+             : '<p class="warnline">產品查詢器裡找不到這個品項 —— 有出貨但商城沒上架，或名稱對不上，值得查一下。</p>') +
+      '</div></div>';
+  }
+
+  function esc(t){
+    return String(t).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
   }
 
   /* ── 圖 ── */
@@ -1104,10 +1270,19 @@
     var rows = tableRows();
     return rows.length ? rows[0].date + "_" + rows[rows.length-1].date : "無資料";
   }
-  var MIX_HEADER = ["品項","銷售額(含稅)","佔比","件數","momo銷售額","官網銷售額"];
+  var MIX_HEADER = ["品項","銷售額(含稅)","佔比","件數","momo銷售額","官網銷售額","其他通路銷售額",
+                    "實收(未稅)","毛利(未稅)","毛利率","每件均價","產品目錄"];
   function mixMatrix(){
     return productMix(tableRows()).list.map(function(e){
-      return [e.name, e.gmv, (e.share * 100).toFixed(1) + "%", e.qty, e.momo, e.web];
+      var c = e.listing;
+      var where = !c.hits.length ? "目錄查無"
+                : (e.web && !c.web) ? "官網有賣沒上架"
+                : (e.momo && !c.momo) ? "momo有賣沒上架"
+                : (c.momo && c.web) ? "momo＋官網"
+                : (c.momo ? "只在momo" : "只在官網");
+      return [e.name, e.gmv, (e.share * 100).toFixed(1) + "%", e.qty, e.momo, e.web, e.other,
+              e.rev, e.gp, e.rev ? Math.round(e.margin * 100) + "%" : "",
+              e.qty ? Math.round(e.gmv / e.qty) : "", where];
     });
   }
   function csvCell(v){
@@ -1117,7 +1292,7 @@
   // 每日明細 + 產品組合，兩張表放在同一份檔案裡
   function sheetRows(){
     return [["每日明細　" + tableRangeText()], HEADER].concat(
-      exportMatrix(), [[], ["產品組合　momo ＋ 官網，依銷售額排序"], MIX_HEADER], mixMatrix());
+      exportMatrix(), [[], ["產品組合　含全部通路，依銷售額排序"], MIX_HEADER], mixMatrix());
   }
   function toCsv(){
     return "\uFEFF" + sheetRows().map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
@@ -1132,7 +1307,7 @@
   }
   function toMarkdown(){
     return "## 每日明細　" + tableRangeText() + "\n\n" + mdTable(HEADER, exportMatrix()) +
-           "\n## 產品組合　momo ＋ 官網\n\n" + mdTable(MIX_HEADER, mixMatrix());
+           "\n## 產品組合　含全部通路\n\n" + mdTable(MIX_HEADER, mixMatrix());
   }
   function toSummary(){
     var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
@@ -1299,6 +1474,19 @@
     [].forEach.call(this.children, function(x){ x.setAttribute("aria-pressed", String(x === b)); });
     draw();
   });
+  $("mixBody").addEventListener("click", function(ev){
+    var row = ev.target.closest(".mixrow"); if (!row) return;
+    openItem = openItem === row.dataset.item ? null : row.dataset.item;
+    renderMix();
+  });
+  $("mixBody").addEventListener("keydown", function(ev){
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    var row = ev.target.closest(".mixrow"); if (!row) return;
+    ev.preventDefault();
+    openItem = openItem === row.dataset.item ? null : row.dataset.item;
+    renderMix();
+  });
+
   $("tableSeg").addEventListener("click", function(e){
     var b = e.target.closest("button"); if (!b) return;
     tableFrom = b.dataset.from;
