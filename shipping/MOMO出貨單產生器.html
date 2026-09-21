@@ -386,7 +386,7 @@
       <div class="field" style="margin-top:8px"><textarea id="setNoticeText"></textarea></div>
     </details>
     <details style="margin-top:8px" open>
-      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；每一個訂單逐列列出商品*數量，包含贈品、不合併）</summary>
+      <summary>希塔出貨訊息預覽（表F 格式，可直接複製貼到 Lark；同品項合併加總，包含贈品）</summary>
       <div class="btn-row" style="margin:8px 0"><button class="btn sm" id="btnCopyMsg" type="button">複製訊息</button><span class="hint" id="msgHint"></span></div>
       <div class="msgbox" id="msgBox"></div>
     </details>
@@ -656,7 +656,7 @@ const PLATFORMS = {
 };
 const P = PLATFORMS[PLATFORM_KEY] || PLATFORMS.momo;
 /* 表E 客戶代號（依 Channel） */
-const CUSTOMER_CODES = { MOMO:'27365925', CYBERBIZ:'54688786', '官網':'54688786', '美聯社型錄':'60458619' };
+const CUSTOMER_CODES = { MOMO:'27365925', 'MOMO寄倉':'27365925', CYBERBIZ:'54688786', '官網':'54688786', '美聯社型錄':'60458619' };
 const customerCode = ch => CUSTOMER_CODES[String(ch||'').toUpperCase()] || CUSTOMER_CODES[ch] || '';
 /* 表F 備註判斷用的商品屬性（以簡稱比對） */
 const FRAGILE_ITEMS = ['青花椒辣醬','茶油剝皮辣椒'];          // 易碎
@@ -1178,6 +1178,7 @@ function parseCyberbizPage(pg, text){
   doc.carrier = kvFrom('配送方式', shipIdx); doc.payment = kvFrom('付款方式', shipIdx);
   const track = kvFrom('託運單號', shipIdx); doc.trackNo = (track.match(/(\d{10,14})/)||[])[1] || '';
   doc.buyer = kv('訂購人'); doc.invoice = (kv('發票號碼').match(/([A-Z]{2}\d{8})/)||[])[1] || '';
+  doc.shippingFee = num(grab(/\n運費\s*(?:NT\$)?\s*([\d,]+)/));   // 訂單明細的運費列（表一：Cyberbiz 報表要有「運費」列）
   doc.temp = /冷凍/.test(doc.carrier||'') ? '冷凍' : /冷藏/.test(doc.carrier||'') ? '冷藏' : '';
   // 商品明細：表頭「商品名稱」列到「小計／總商品數／配送資訊」之間
   const hdr = lines.find(L=>L.items.some(it=>/^(商品名稱|品名)$/.test(it.s)) && L.items.some(it=>/^數量$/.test(it.s)));
@@ -1354,7 +1355,8 @@ function cyberbizRecords(){
     if(lab){ usedLabels.add(lab); if(!meta.trackNo) meta.trackNo = lab.trackNo; if(!meta.temp) meta.temp = lab.temp; meta.deliveryNo = lab.deliveryNo; }
     const src = order || fulfill || picking; const kinds = group.map(d=>CB_KIND_NAME[d.kind]).concat(lab ? [CB_KIND_NAME.label] : []).join('＋');
     if(meta.address && meta.storeName && !meta.address.includes(meta.storeName)) meta.address = `${meta.storeName}${meta.storeId?`（${meta.storeId}）`:''} ${meta.address}`;
-    src.lines.forEach(l=>recs.push({ source: kinds, orderNo, shipNo:'', trackNo: meta.trackNo||'', carrier: meta.carrier||'', deadline:'', orderDate: meta.orderDate||'', shipDate: meta.shipDate||'', status:'', payStatus: meta.payment||'', receiver: meta.receiver||'', buyer: meta.buyer||'', phone: meta.phone||'', address: meta.address||'', storeName: meta.storeName||'', storeId: meta.storeId||'', sku:l.sku||'', name:l.name, spec:l.spec||'', barcode:'', vendorCode:'', qty:l.qty, cod:0, invoice: meta.invoice||'', invoiceDate:'', note:'', dims:'', temp: meta.temp||'', pieces:'', channel:'CYBERBIZ', priceRaw: l.lineTotal!=null ? l.lineTotal : (l.unitPrice!=null ? l.unitPrice*l.qty : null), costRaw:null, orderRef: orderNo, deliveryNo: meta.deliveryNo||'' }));
+    const cbLines = [...src.lines]; if(order && order.shippingFee>0) cbLines.push({ name:'運費', spec:'', qty:1, lineTotal: order.shippingFee, unitPrice: order.shippingFee, sku:'', isFee:true });
+    cbLines.forEach(l=>recs.push({ source: kinds, orderNo, shipNo:'', trackNo: meta.trackNo||'', isFee: !!l.isFee, carrier: meta.carrier||'', deadline:'', orderDate: meta.orderDate||'', shipDate: meta.shipDate||'', status:'', payStatus: meta.payment||'', receiver: meta.receiver||'', buyer: meta.buyer||'', phone: meta.phone||'', address: meta.address||'', storeName: meta.storeName||'', storeId: meta.storeId||'', sku:l.sku||'', name:l.name, spec:l.spec||'', barcode:'', vendorCode:'', qty:l.qty, cod:0, invoice: meta.invoice||'', invoiceDate:'', note:'', dims:'', temp: meta.temp||'', pieces:'', channel:'CYBERBIZ', priceRaw: l.lineTotal!=null ? l.lineTotal : (l.unitPrice!=null ? l.unitPrice*l.qty : null), costRaw:null, orderRef: orderNo, deliveryNo: meta.deliveryNo||'' }));
   });
   labels.filter(l=>!usedLabels.has(l)).forEach(l=>recs.push({ source:CB_KIND_NAME.label, orderNo:'', trackNo:l.trackNo, carrier:'黑貓快速到店', receiver:'', address:l.address||'', storeName:l.storeName||'', name:'（缺訂單明細，請補上）', qty:1, temp:l.temp||'', channel:'CYBERBIZ', missingLines:true }));
   return recs;
@@ -1411,6 +1413,7 @@ function rebuildAll(){
     r.packQty = (m && num(m.packQty)) || parsePackQty(r.name) || 1;
     r.units = (r.qty||0) * r.packQty;
     r.shortName = shortName(r.name, r.brand, m, pr);
+    if(r.isFee){ r.shortName = '運費'; r.brand = '運費'; r.warehouse = ''; r.nsCode = ''; r.packQty = 1; r.units = r.qty||1; r.unitCost = ''; r.matched = true; r.isGift = false; }
     r.orderRefs = [r.orderRef || r.orderNo].filter(Boolean);
     const scmPrice = r.priceRaw!=null ? (priceMode==='unit' ? r.priceRaw * (r.qty||0) : r.priceRaw) : (m && m.price!=='' ? num(m.price) * (r.qty||0) : null);
     const scmCost  = r.costRaw!=null  ? (costMode==='unit' ? r.costRaw * r.units : costMode==='item' ? r.costRaw * (r.qty||0) : r.costRaw) : (m && m.cost!=='' ? num(m.cost) * (r.qty||0) : null);
@@ -1639,8 +1642,9 @@ function buildMessage(sel){
   const cfgDate = ($('#setDate').value || todayISO()).replace(/-/g,'/');
   const m = cfgDate.match(/^(\d{4})\/(\d{2})\/(\d{2})/); const wd = m ? new Date(+m[1], +m[2]-1, +m[3]).getDay() : -1;
   const mention = $('#setNotifyName').value.trim() || (wd===4 ? '@王傳斌' : '@湯恩齊 Keith');
-  // 希塔出貨（Lance）：每一個訂單的每一排都寫成 商品*數量，包含贈品，全部分開不合併
-  const rows = []; sel.forEach(s=>s.lines.forEach(l=>rows.push(`${l.shortName || l.name}*${l.units || l.qty || 0}`)));
+  // 希塔出貨（Lance 最新）：所有訂單的商品*數量，同品項合併加總，包含贈品；運費不列
+  const agg = new Map(); sel.forEach(s=>s.lines.forEach(l=>{ if(l.isFee) return; const n = l.shortName || l.name; agg.set(n, (agg.get(n)||0) + (l.units || l.qty || 0)); }));
+  const rows = [...agg.entries()].map(([n,q])=>`${n}*${q}`);
   if(!rows.length) return '';
   const lines = [mention, `您好，以下是${P.msgPlatform}要出貨的訂單，再麻煩您協助`, ...rows];
   return lines.join('\n');
@@ -1723,9 +1727,10 @@ function headerRow(ws, r, values, widths){
 }
 function bodyRow(ws, r, values, opts={}){
   const row = ws.getRow(r); row.values = values;
-  row.eachCell({includeEmpty:true}, (c,col)=>{ c.font=f(); c.border=border; c.alignment={ vertical:'middle', wrapText: (opts.wrap||[]).includes(col), horizontal: (opts.center||[]).includes(col)?'center':(opts.right||[]).includes(col)?'right':'left' }; if(opts.numFmt && opts.numFmt[col]) c.numFmt = opts.numFmt[col]; });
+  row.eachCell({includeEmpty:true}, (c,col)=>{ c.font=f(); if(!opts.noBorder) c.border=border; c.alignment={ vertical:'middle', wrapText: (opts.wrap||[]).includes(col), horizontal: (opts.center||[]).includes(col)?'center':(opts.right||[]).includes(col)?'right':'left' }; if(opts.numFmt && opts.numFmt[col]) c.numFmt = opts.numFmt[col]; });
   return row;
 }
+const pill = (cell, argb) => { cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb} }; };
 
 function setupShipCols(ws){ ws.columns = [{width:6},{width:16},{width:24},{width:24},{width:16},{width:7},{width:16},{width:6}]; }
 function writeShipment(ws, s, cfg, r, idx, total){
@@ -1793,6 +1798,7 @@ function buildRetailSheet(wb, sel, cfg){
   const cols = ['出貨倉別','客戶代號','倉庫訂單編號/託運單號','NS打單與交貨','月份','Brand','Channel','order_create_date','平台訂單號','銷售訂單','料號','品項','數量','售價/單價','售價/單價(未稅)','總金額(含稅)','總金額(未稅)','進價(未稅)','總進價收入(未稅)','總進價收入(含稅)','商品成本(未稅)','商品成本(總未稅)','商品成本(總含稅)'];
   headerRow(ws, 1, cols, [10,10,20,10,8,10,10,12,28,10,13,26,6,12,12,12,12,10,12,12,12,12,12]);
   const MON = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const blockRows = [];
   let r = 2;
   sel.forEach(s=>{
     const d = P.key==='cyberbiz' ? (s.orderDate || s.invoiceDate || cfg.date) : (s.invoiceDate || s.orderDate || s.printDate || cfg.date);   // H：momo 用發票日期；cyberbiz 用訂單明細的訂單日期
@@ -1800,10 +1806,13 @@ function buildRetailSheet(wb, sel, cfg){
     const dateText = dm ? `${+dm[3]}-${MON[+dm[2]-1]}` : d;                             // H：格式「16-SEP」
     const month = dm ? +(dm[1]+dm[2]) : '';                                            // E：月份 = 日期 20xx/yy → 20xxyy
     const channel = s.channel || cfg.channel;                                          // G：Channel = 檔名／PDF 上的通路，判不出用預設
+    const mainWh = String((s.lines.find(l=>!l.isGift && !l.isFee && l.warehouse)||{}).warehouse||'').replace(/倉$/,'');   // 該訂單主商品的倉別（贈品／運費列跟著它合併）
     s.lines.forEach(l=>{
       const zeroPrice = l.isGift || l.unitPrice===0 || l.lineTotal===0;                // F：1M=0 → 填「贈品」；A：贈品不寫倉別、不上底色
       const orderRef = (l.orderRefs && l.orderRefs.length ? l.orderRefs : [l.orderRef || s.orderNo]).join('、');   // I：平台訂單號必須完整
-      const vals = [zeroPrice ? '' : (l.warehouse||''), customerCode(channel), s.trackNo||'', '', month, zeroPrice ? '贈品' : (l.brand||''), channel, dateText, orderRef, '',
+      const whShort = zeroPrice || l.isFee ? '' : String(l.warehouse||'').replace(/倉$/,'');   // 表一：倉別顯示「希塔／愛上」
+      const brandText = l.isFee ? '運費' : zeroPrice ? '贈品' : (l.brand||'');
+      const vals = [whShort, customerCode(channel), s.trackNo||'', '', month, brandText, channel, dateText, orderRef, '',
         l.nsCode||'',                                             // K：料號（表C NS 品號）
         l.shortName || l.name,                                    // L：品項 = 簡稱
         l.units,                                                  // M：數量 = 1M × 入
@@ -1818,12 +1827,30 @@ function buildRetailSheet(wb, sel, cfg){
         { formula:`ROUND(U${r}*M${r},2)` },                       // V：商品成本(總未稅) = U × 數量，0.01 位
         { formula:`ROUND(V${r}*1.05,4)` }];                       // W：商品成本(總含稅) = V × 含稅，0.0001 位
       // 金額欄位以 General 格式顯示：公式已四捨五入到指定位數，小數尾數為 0 時自動不顯示（210 而非 210.0）
-      const row = bodyRow(ws, r, vals, { wrap:[12], center:[1,2,4,5,7,8,11,13], numFmt:{14:'General',15:'General',16:'0',17:'0',18:'General',19:'General',20:'0',21:'General',22:'General',23:'General'} });
-      if(!zeroPrice){ const wh = l.warehouse||''; const fill = /愛上/.test(wh) ? 'FFFF9999' : /希塔/.test(wh) ? 'FF9DC3E6' : null; if(fill) row.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:fill} }; }
+      const row = bodyRow(ws, r, vals, { noBorder:true, wrap:[12], center:[1,2,4,5,6,7,8,11,13], numFmt:{14:'General',15:'General',16:'0',17:'0',18:'General',19:'General',20:'0',21:'General',22:'General',23:'General'} });
+      // 表一／表二色塊：倉別 愛上=黃、希塔=藍；月份=青；Brand 雞湯大叔／賴山嶼=黃、贈品=藍、運費=綠
+      if(/愛上/.test(whShort)) pill(row.getCell(1), 'FFFFD966'); else if(/希塔/.test(whShort)) pill(row.getCell(1), 'FFC9DAF8');
+      if(month) pill(row.getCell(5), 'FFB7E7E0');
+      if(brandText==='贈品') pill(row.getCell(6), 'FFBDD7EE'); else if(brandText==='運費') pill(row.getCell(6), 'FF92D050'); else if(brandText) pill(row.getCell(6), 'FFFFE699');
       if(!l.matched) row.getCell(12).font = f({ color:{argb:'FFC4362F'} });
+      blockRows.push({ r, key: `${s.key}|${whShort || mainWh}`, orderRef, wh: whShort || mainWh });
       r++;
     });
   });
+  // 同倉別的同筆訂單：合併 A 倉別、B 客戶代號、C 託運單號、H order_create_date、J 銷售訂單；平台訂單號 I 只在整段相同時合併（Cyberbiz #1253）
+  let i0 = 0;
+  while(i0 < blockRows.length){
+    let i1 = i0; while(i1+1 < blockRows.length && blockRows[i1+1].key===blockRows[i0].key) i1++;
+    if(i1 > i0){
+      const a = blockRows[i0].r, b = blockRows[i1].r;
+      for(const col of ['A','B','C','H','J']) ws.mergeCells(`${col}${a}:${col}${b}`);
+      if(blockRows.slice(i0, i1+1).every(x=>x.orderRef===blockRows[i0].orderRef)) ws.mergeCells(`I${a}:I${b}`);
+      const wh = blockRows[i0].wh; const top = ws.getCell(`A${a}`);   // 合併後的倉別格顯示主商品倉別並上色（首列若是贈品／運費也能顯示）
+      if(wh && !top.value){ top.value = wh; if(/愛上/.test(wh)) pill(top,'FFFFD966'); else if(/希塔/.test(wh)) pill(top,'FFC9DAF8'); }
+    }
+    i0 = i1 + 1;
+  }
+  ws.getRow(1).eachCell(c=>{ c.border = undefined; });
   ws.autoFilter = { from:'A1', to:`W${r-1}` };
 }
 /* 愛上出貨建單資料（表F） */
@@ -1848,6 +1875,7 @@ function buildIfreshSheet(wb, sel, cfg){
       receiver = info.receiver; phone = info.phone; address = info.address;
       orderRef = `${orderNo14}-${chTag}-${t}`;
       if(wd===2 || wd===4) innerNotes.push('若無超過40件，如需當天出貨，則需請倉庫用一般黑貓宅配送到集運中心');
+      innerNotes.push('上傳列印標籤');
     } else {
       platform = s.trackNo ? `${ch}-cat` : ch;                                                  // 有宅配單號 → momo-cat，沒有 → momo
       receiver = s.receiver||''; phone = s.phone||''; address = s.address||'';
@@ -1857,10 +1885,11 @@ function buildIfreshSheet(wb, sel, cfg){
       innerNotes.push('請使用第三方支配單');
       if(hasFragile) innerNotes.push('請貼易碎品於外箱');
       if(hasDamage) innerNotes.push('出貨前請務必檢查商品是否有破損');
+      innerNotes.push('上傳出貨總表.宅配單');
     }
     const orderer = [s.buyer, s.receiver].find(v=>v && !masked(v)) || s.buyer || s.receiver || '';   // 訂購人只寫姓名，優先取未遮罩（宅配單 PDF）的姓名
     const numbered = arr => arr.map((t,k)=>`${k+1}.${t}`).join('\n');
-    s.lines.forEach(l=>{
+    s.lines.filter(l=>!l.isFee).forEach(l=>{
       const row = bodyRow(ws, r, [i+1, platform, l.shortName||l.name, l.units, orderRef, orderer, receiver, phone, address, '無(已付款)', '否', numbered(custNotes), numbered(innerNotes), s.trackNo||'', l.isGift ? '' : (l.warehouse||''), l.temp||s.tempC||''], { wrap:[3,9,12,13], center:[1,4,10,11,15,16] });
       row.height = Math.max(18, 15*Math.max(custNotes.length, innerNotes.length, 1)+4);
       r++;
