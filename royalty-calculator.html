@@ -728,7 +728,7 @@
     <div class="column">
       <section class="card">
         <h2>商品與銷量估算</h2>
-        <p class="sub">售價與上市日取自附件三。每店日均銷量與販售天數請依實際檔期調整，右兩欄即時重算。</p>
+        <p class="sub">售價與上市日取自附件三。販售天數一律先以 60 天計，每店日均預設 0.3 個，兩者都請依實際檔期調整，右兩欄即時重算。</p>
         <div class="card-body">
           <div class="table-wrap">
             <table aria-label="商品估算">
@@ -740,9 +740,9 @@
           </div>
           <div class="btn-row">
             <span style="font-size:12.5px;color:var(--ink-muted);font-weight:600;align-self:center">全部套用每店日均：</span>
-            <button class="btn" type="button" data-frate="0.2">0.2</button>
             <button class="btn" type="button" data-frate="0.3">0.3</button>
             <button class="btn" type="button" data-frate="0.5">0.5</button>
+            <button class="btn" type="button" data-frate="0.8">0.8</button>
             <button class="btn" type="button" data-frate="1">1.0</button>
           </div>
         </div>
@@ -1064,7 +1064,7 @@
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const CONTRACT_END = '2027-08-31';
+  const DEFAULT_DAYS = 60;
   const PRODUCTS = [
     { name:'松露菌菇雞粥',   cat:'粥品',   price:69,  launch:'2026-09-30' },
     { name:'起司泡菜雞肉粥', cat:'粥品',   price:75,  launch:'2026-09-30' },
@@ -1083,14 +1083,13 @@
   const DAY = 86400000;
   const d = s => Date.parse(s + 'T00:00:00Z');
   const days = (a, b) => Math.max(0, Math.round((b - a)/DAY) + 1);
-  const defaultDays = launch => days(d(launch), d(CONTRACT_END));
 
   const D = {
     mode:'bottom', directSales:60000000, stores:4000, rate:0.5, vat:5, wire:30,
     basis:'incl', countGap:true,
-    rows: PRODUCTS.map(p => ({ price:p.price, daily:0.3, days:defaultDays(p.launch) })),
+    rows: PRODUCTS.map(p => ({ price:p.price, daily:0.3, days:DEFAULT_DAYS })),
   };
-  const KEY = 'family-royalty-v1';
+  const KEY = 'family-royalty-v2';
   let s = JSON.parse(JSON.stringify(D));
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -1177,12 +1176,15 @@
     body += '<tr class="total"><td>合計</td><td></td><td></td>' + cell(fmt0(r.totalSales)) + cell(fmt0(totalRoy)) + cell(fmt0(totalRoy * (1 + s.vat/100))) + '</tr>';
     $('fPeriodBody').innerHTML = body;
 
-    $('fGapFlag').innerHTML = s.countGap
-      ? '<b>第四期沒有合約依據。</b>第 5-1 條寫「第一期至第四期款項」，附件二只列到第三期（結算至 116/06/30）。上表的第四期是按同一 0.5% 推算的 ' + fmt0(r.gapRoyalty) + '，請款前需要全家補附件二第四期或另行書面確認。'
-      : '<b>第四期未計入。</b>合作期間到 116/08/31，但附件二只結算到 116/06/30。116/07/01–116/08/31 這兩個月的銷售目前沒有請款依據。';
+    const gapWhy = '第 5-1 條寫「第一期至第四期款項」，附件二只列到第三期（結算至 116/06/30），合作期間卻到 116/08/31。';
+    $('fGapFlag').innerHTML = !s.countGap
+      ? '<b>第四期未計入。</b>' + gapWhy + ' 116/07/01–116/08/31 這兩個月的銷售目前沒有請款依據。'
+      : r.gapRoyalty > 0
+        ? '<b>第四期沒有合約依據。</b>' + gapWhy + ' 上表的第四期是按同一 0.5% 推算的 ' + fmt0(r.gapRoyalty) + '，請款前需要全家補附件二第四期或另行書面確認。'
+        : '<b>第四期沒有合約依據。</b>' + gapWhy + ' 目前的販售天數假設下，116/07/01–116/08/31 沒有銷售落在這一期，金額為零；若檔期延長或追加新品，這段就會有沒有請款依據的銷售。';
 
     // Sensitivity
-    const rates = [0.1, 0.2, 0.3, 0.5, 0.8, 1.0];
+    const rates = [0.1, 0.3, 0.5, 0.8, 1.0];
     $('fSensRate').innerHTML = rates.map(x => {
       const c = compute(s, x);
       const cur = s.mode === 'bottom' && s.rows.every(row => row.daily === x);
