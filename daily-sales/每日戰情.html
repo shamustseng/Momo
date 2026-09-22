@@ -285,6 +285,7 @@
           <button type="button" data-export="html">下載單檔網頁<small>整頁打包，寄給別的部門直接開</small></button>
           <button type="button" data-export="md">下載 Markdown<small>貼進報告或 Notion</small></button>
           <hr>
+          <button type="button" data-export="brief">複製簡易數字<small>每日回報格式，貼群組用</small></button>
           <button type="button" data-export="clip">複製表格<small>直接貼進 Excel／Google 試算表</small></button>
           <button type="button" data-export="summary">複製戰情摘要<small>三行文字，貼進 LINE 群或信件</small></button>
           <div class="menu-note" id="menuNote" hidden></div>
@@ -407,7 +408,8 @@
       <ol>
         <li>從《2026 零售商品進度表》下載最新檔（要含「2026 銷售紀錄」這個工作表）。</li>
         <li>回到這一頁按 <b>更新資料</b> 選那個檔案，或直接把檔案拖到這個視窗上。數字會自己重算，也會記在這台電腦的瀏覽器裡，下次打開還在。</li>
-        <li>按 <b>一鍵輸出</b>。要給業務就 <b>下載 CSV</b>，要寄給別的部門就 <b>下載單檔網頁</b>，要貼群組就 <b>複製戰情摘要</b>。</li>
+        <li>按 <b>一鍵輸出</b>。每日回報貼群組用 <b>複製簡易數字</b>；要給業務就 <b>下載 CSV</b>；
+          要寄給別的部門就 <b>下載單檔網頁</b>。</li>
       </ol>
     </div>
   </section>
@@ -1381,6 +1383,28 @@
       return e.name + " " + (e.share * 100).toFixed(0) + "%";
     }).join("、") + "\n";
   }
+  /* 每日回報用的五行數字。「前日」＝資料裡最後一天，也就是回報區間的結束日。 */
+  function toBrief(){
+    var mmdd = function(v){ var p = v.split("-"); return p[1] + "/" + p[2]; };
+    var last = days[days.length - 1];
+    var dayAmt = last.momo.gmv + last.web.gmv;
+    var dayOrd = last.momo.orders + last.web.orders;
+    var dayQty = last.momo.qty + last.web.qty;
+    var cM = sum(camp, "momo", "gmv"), cW = sum(camp, "web", "gmv");
+    var cOrd = sum(camp, "momo", "orders") + sum(camp, "web", "orders");
+    var cQty = sum(camp, "momo", "qty") + sum(camp, "web", "qty");
+    var other = sum(camp, "other", "gmv");
+
+    var t = "回報區間：" + mmdd(CAMP) + "-" + mmdd(LAST) + "\n" +
+      "前日銷售：" + fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件\n" +
+      "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
+      "MOMO：" + fmtInt(cM) + "元\n" +
+      "CYBERBIZ：" + fmtInt(cW) + "元";
+    // 累積要等於下面兩行相加，所以有其他通路時另外列一行，不混進總額
+    if (other) t += "\n其他通路：" + fmtInt(other) + "元";
+    return t;
+  }
+
   function toStandaloneHtml(){
     var node = $("data"), keep = node.textContent;
     node.textContent = JSON.stringify(DATA);
@@ -1442,6 +1466,7 @@
     csv:     function(){ saveFile("每日明細_" + rangeLabel() + ".csv", toCsv(), "text/csv", "已下載 CSV，Excel 直接開不會亂碼。"); },
     md:      function(){ saveFile("每日明細_" + rangeLabel() + ".md", toMarkdown(), "text/markdown", "已下載 Markdown。"); },
     html:    function(){ saveFile("零售每日戰情_" + LAST + ".html", toStandaloneHtml(), "text/html", "已下載單檔網頁，寄出去對方直接點開就能看。"); },
+    brief:   function(){ copyText(toBrief(), "簡易數字已複製，可以直接貼進群組。"); },
     clip:    function(){ copyText(toTsv(), "表格已複製，貼進 Excel 或 Google 試算表就會自動分欄。"); },
     summary: function(){ copyText(toSummary(), "戰情摘要已複製，可以直接貼進群組。"); }
   };
