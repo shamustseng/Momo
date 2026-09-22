@@ -1452,8 +1452,15 @@ function rebuildAll(){
     if(!g.address && (g.storeName || g.storeId)) g.address = `${g.storeName||''}${g.storeId?`（${g.storeId}）`:''}`;
     else if(g.address && g.storeName && !g.address.includes(g.storeName)) g.address = `${g.storeName}${g.storeId?`（${g.storeId}）`:''} ${g.address}`;
     const whs = new Set(g.lines.map(l=>l.warehouse).filter(Boolean)); g.warehouse = [...whs].join('、');
+    // 分流／合併用倉別（Lance）：贈品以「緊鄰的上一排非贈品」為主要商品，連續多排贈品持續上推；
+    // 贈品無論原倉別都跟主要商品同倉；同一訂單出現不同主商品時，各贈品歸各自的主商品倉別
+    let prevWh = '';
+    g.lines.forEach(l=>{
+      if(l.isGift || l.isFee){ l.routeWh = prevWh || l.warehouse || ''; }
+      else { l.routeWh = l.warehouse || ''; prevWh = l.routeWh || prevWh; }
+    });
+    if(!prevWh){ const firstWh = (g.lines.find(l=>l.warehouse)||{}).warehouse || ''; if(firstWh) g.lines.forEach(l=>{ if(!l.routeWh) l.routeWh = firstWh; }); }   // 整張單只有贈品時，用贈品自己的倉別
     g.mainWh = (g.lines.find(l=>!l.isGift && !l.isFee && l.warehouse)||{}).warehouse || '';
-    g.lines.forEach(l=>{ l.routeWh = (l.isGift || l.isFee) ? (g.mainWh || l.warehouse || '') : (l.warehouse || ''); });   // 分流倉別：愛上倉→愛上出貨；希塔倉→回報訊息
     if(whs.size>1) g.warnings.push('品項分屬不同倉');
     if(!g.receiver) g.warnings.push('無收件人');
     if(g.lines.some(l=>!l.qty)) g.warnings.push('數量為 0');
@@ -1810,7 +1817,6 @@ function buildRetailSheet(wb, sel, cfg){
     const dateText = dm ? `${+dm[3]}-${MON[+dm[2]-1]}` : d;                             // H：格式「16-SEP」
     const month = dm ? +(dm[1]+dm[2]) : '';                                            // E：月份 = 日期 20xx/yy → 20xxyy
     const channel = s.channel || cfg.channel;                                          // G：Channel = 檔名／PDF 上的通路，判不出用預設
-    const mainWh = String((s.lines.find(l=>!l.isGift && !l.isFee && l.warehouse)||{}).warehouse||'').replace(/倉$/,'');   // 該訂單主商品的倉別（贈品／運費列跟著它合併）
     s.lines.forEach(l=>{
       const zeroPrice = l.isGift || l.unitPrice===0 || l.lineTotal===0;                // F：1M=0 → 填「贈品」；A：贈品不寫倉別、不上底色
       const orderRef = (l.orderRefs && l.orderRefs.length ? l.orderRefs : [l.orderRef || s.orderNo]).join('、');   // I：平台訂單號必須完整
@@ -1834,11 +1840,14 @@ function buildRetailSheet(wb, sel, cfg){
       const row = bodyRow(ws, r, vals, { noBorder:true, wrap:[12], center:[1,2,4,5,6,7,8,11,13], numFmt:{14:'General',15:'General',16:'0',17:'0',18:'General',19:'General',20:'0',21:'General',22:'General',23:'General'} });
       // Lance：格子底色全部維持白色（不上色）
       if(!l.matched) row.getCell(12).font = f({ color:{argb:'FFC4362F'} });
-      blockRows.push({ r, key: `${orderRef}|${whShort}`, orderRef, wh: whShort });
+      // Lance：平台訂單號「前面相同」即同一訂單（26091021486619-001-001-001 與 -002-001-001 同屬 26091021486619）
+      const baseOrder = String(l.orderNo || s.orderNo || orderRef).split('、')[0].replace(/-.*$/,'');
+      const routeWh = String(l.routeWh || l.warehouse || '').replace(/倉$/,'');
+      blockRows.push({ r, key: `${baseOrder}|${routeWh}`, orderRef, wh: routeWh });
       r++;
     });
   });
-  // Lance：相同平台訂單號(I) 且相同倉別(A) 的連續列才合併 A、B、C、H、J（Cyberbiz 另合併 I）；I 或 A 有一個不同就不合併
+  // Lance：平台訂單號前面相同且倉別相同（贈品歸主商品倉別）的連續列合併 A、B、C、H、J（Cyberbiz 另合併 I）；任一不同即不合併
   let i0 = 0;
   while(i0 < blockRows.length){
     let i1 = i0; while(i1+1 < blockRows.length && blockRows[i1+1].key===blockRows[i0].key) i1++;
@@ -1846,6 +1855,7 @@ function buildRetailSheet(wb, sel, cfg){
       const a = blockRows[i0].r, b = blockRows[i1].r;
       const cols = P.key==='cyberbiz' ? ['A','B','C','H','I','J'] : ['A','B','C','H','J'];
       for(const col of cols) ws.mergeCells(`${col}${a}:${col}${b}`);
+      const top = ws.getCell(`A${a}`); if(!top.value && blockRows[i0].wh) top.value = blockRows[i0].wh;   // 合併區首列若為贈品，補上主商品倉別
     }
     i0 = i1 + 1;
   }
@@ -1891,7 +1901,7 @@ function buildIfreshSheet(wb, sel, cfg){
     // 分流：只放愛上倉的商品（贈品跟主商品倉別）；倉別未知的列也放這裡並在附註提醒
     s.lines.filter(l=>!l.isFee && !/希塔/.test(l.routeWh||'')).forEach(l=>{
       const q = [remark, l.routeWh ? '' : '倉別未知，請確認'].filter(Boolean).join('；');
-      const row = bodyRow(ws, r, [i+1, platform, l.shortName||l.name, l.units, orderRef, orderer, receiver, phone, address, '無(已付款)', '否', numbered(custNotes), numbered(innerNotes), s.trackNo||'', l.isGift ? '' : (l.warehouse||''), l.temp||s.tempC||'', q], { wrap:[3,9,12,13,17], center:[1,4,10,11,15,16] });
+      const row = bodyRow(ws, r, [i+1, platform, l.shortName||l.name, l.units, orderRef, orderer, receiver, phone, address, '無(已付款)', '否', numbered(custNotes), numbered(innerNotes), s.trackNo||'', l.routeWh || (l.isGift ? '' : (l.warehouse||'')), l.temp||s.tempC||'', q], { wrap:[3,9,12,13,17], center:[1,4,10,11,15,16] });
       row.height = Math.max(18, 15*Math.max(custNotes.length, innerNotes.length, 1)+4);
       r++;
     });
