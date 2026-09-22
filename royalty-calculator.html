@@ -1,4 +1,4 @@
-<title>龍鳳聯名權利金測算器</title>
+<title>雞湯大叔聯名權利金測算器</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -10,6 +10,7 @@
     --lf:#B8322B; --lf-soft:#F8E2DF; --lf-ink:#6E1B16;
     --nn:#7A4BB5; --nn-soft:#ECE3F7; --nn-ink:#3F2466;
     --lw:#B5730A; --lw-soft:#F6E8D2; --lw-ink:#6B4507;
+    --fm:#1D6FA8; --fm-soft:#DDEBF6; --fm-ink:#0F4467;
     --good:#2F9E44; --bad:#C4362F;
     --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
     --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
@@ -23,6 +24,7 @@
       --lf:#D8574F; --lf-soft:#3E1F1C; --lf-ink:#F5C6C1;
       --nn:#A47BE0; --nn-soft:#2E2340; --nn-ink:#DCCBF5;
       --lw:#C98A2E; --lw-soft:#3A2D16; --lw-ink:#F0D19C;
+      --fm:#4E9FD4; --fm-soft:#172C3C; --fm-ink:#BEDCF1;
       --good:#4CAF6B; --bad:#E2665F;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
     }
@@ -34,6 +36,7 @@
     --lf:#D8574F; --lf-soft:#3E1F1C; --lf-ink:#F5C6C1;
     --nn:#A47BE0; --nn-soft:#2E2340; --nn-ink:#DCCBF5;
     --lw:#C98A2E; --lw-soft:#3A2D16; --lw-ink:#F0D19C;
+    --fm:#4E9FD4; --fm-soft:#172C3C; --fm-ink:#BEDCF1;
     --good:#4CAF6B; --bad:#E2665F;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
   }
@@ -61,7 +64,7 @@
 
   .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; }
   .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); border-top:3px solid var(--border); }
-  .kpi.lf{ border-top-color:var(--lf); } .kpi.nn{ border-top-color:var(--nn); } .kpi.alpha{ border-top-color:var(--accent); } .kpi.lw{ border-top-color:var(--lw); }
+  .kpi.lf{ border-top-color:var(--lf); } .kpi.nn{ border-top-color:var(--nn); } .kpi.alpha{ border-top-color:var(--accent); } .kpi.lw{ border-top-color:var(--lw); } .kpi.fm{ border-top-color:var(--fm); }
   .kpi .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:700; }
   .kpi .value{ font-size:25px; font-weight:700; margin-top:6px; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
   .kpi .value small{ font-size:12px; font-weight:600; color:var(--ink-faint); }
@@ -101,6 +104,7 @@
   .party.alpha{ background:var(--accent-soft); border-color:transparent; color:var(--accent-ink); }
   .party.nn{ background:var(--nn-soft); border-color:transparent; color:var(--nn-ink); }
   .party.lw{ background:var(--lw-soft); border-color:transparent; color:var(--lw-ink); }
+  .party.fm{ background:var(--fm-soft); border-color:transparent; color:var(--fm-ink); }
   .party .role{ font-size:11px; letter-spacing:.07em; text-transform:uppercase; font-weight:700; opacity:.75; }
   .party .name{ font-weight:800; font-size:15px; }
   .party .amt{ font-size:20px; font-weight:800; margin-top:4px; }
@@ -116,13 +120,19 @@
   tr.total td{ font-weight:800; border-top:2px solid var(--ink); border-bottom:0; }
   td .sub{ display:block; font-size:11.5px; color:var(--ink-faint); font-family:var(--font-ui); white-space:normal; }
   .pill{ display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; }
-  .pill.lf{ background:var(--lf-soft); color:var(--lf-ink); } .pill.nn{ background:var(--nn-soft); color:var(--nn-ink); } .pill.alpha{ background:var(--accent-soft); color:var(--accent-ink); } .pill.lw{ background:var(--lw-soft); color:var(--lw-ink); }
+  .pill.lf{ background:var(--lf-soft); color:var(--lf-ink); } .pill.nn{ background:var(--nn-soft); color:var(--nn-ink); } .pill.alpha{ background:var(--accent-soft); color:var(--accent-ink); } .pill.lw{ background:var(--lw-soft); color:var(--lw-ink); } .pill.fm{ background:var(--fm-soft); color:var(--fm-ink); }
   .prod-switch{ display:flex; gap:6px; flex-wrap:wrap; }
   .prod-switch button{ border:1px solid var(--border); background:var(--surface); color:var(--ink-muted); border-radius:999px; padding:8px 16px; font-size:13.5px; font-weight:700; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; gap:0; line-height:1.35; }
   .prod-switch button small{ font-size:11px; font-weight:600; color:var(--ink-faint); }
   .prod-switch button[aria-pressed="true"]{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
   .prod-switch button[aria-pressed="true"] small{ color:var(--bg); opacity:.7; }
   .prod{ display:flex; flex-direction:column; gap:22px; }
+  table input[type="number"]{ background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:4px 6px; color:var(--ink); width:60px; text-align:right; font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:12.5px; }
+  td.name{ min-width:132px; }
+  #fProductBody ~ * , table thead th{ }
+  .sens-rate[hidden]{ display:none !important; }
+  .flag{ background:var(--lf-soft); color:var(--lf-ink); border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.6; }
+  .flag b{ font-weight:800; }
   .status{ display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; padding:2px 9px; border-radius:999px; background:var(--surface-3); color:var(--ink-muted); vertical-align:middle; margin-left:6px; }
   .neg{ color:var(--bad); }
 
@@ -145,8 +155,8 @@
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <span class="eyebrow">雞湯大叔 × 旗山龍鳳 聯名系列</span>
-      <h1>龍鳳聯名權利金測算器</h1>
+      <span class="eyebrow">阿爾法餐飲 · 雞湯大叔 聯名案</span>
+      <h1>雞湯大叔聯名權利金測算器</h1>
     </div>
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="切換深淺色主題" title="切換主題">◐</button>
   </div>
@@ -156,6 +166,7 @@
   <nav class="prod-switch" aria-label="選擇商品">
     <button type="button" id="swJiaozi" aria-pressed="true">泰Chill 打拋豬煎餃<small>已簽約 · 分潤對象：娘娘團隊</small></button>
     <button type="button" id="swDanjiao" aria-pressed="false">麻辣香菜蛋餃<small>洽談中 · 分潤對象：撈王總公司</small></button>
+    <button type="button" id="swFamily" aria-pressed="false">全家 鮮食聯名<small>已簽約 · 阿爾法直接收授權金</small></button>
   </nav>
 
 <div class="prod" id="prodJiaozi">
@@ -620,6 +631,193 @@
   </div>
 </div>
 
+<div class="prod" id="prodFamily" hidden>
+  <section class="hero">
+    <h2 style="font-size:22px">全家 × 雞湯大叔：阿爾法能收到多少授權金</h2>
+    <p>阿爾法把雞湯大叔商標再授權給全家，用於全家店舖限定的鮮食聯名商品。全家按聯名商品總實銷金額的 0.5% 給付獎勵金，分期結算。這一案沒有第三方分潤，金額全數歸阿爾法。</p>
+    <div class="source">依據：《合作協議書》阿爾法餐飲股份有限公司 × 全家便利商店股份有限公司，合作期間 115/09/01–116/08/31（西元 2026/09/01–2027/08/31）。附件二授權金說明、附件三預計合作商品明細。</div>
+  </section>
+
+  <section class="kpi-grid" aria-label="重點數字">
+    <div class="kpi fm">
+      <div class="label">全期授權金（未稅）</div>
+      <div class="value num" id="fTotalRoyalty">—</div>
+      <div class="delta" id="fTotalRoyaltySub">—</div>
+    </div>
+    <div class="kpi alpha">
+      <div class="label">預估總實銷金額</div>
+      <div class="value num" id="fTotalSales">—</div>
+      <div class="delta" id="fTotalSalesSub">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">預估總銷售個數</div>
+      <div class="value num" id="fTotalUnits">—</div>
+      <div class="delta" id="fTotalUnitsSub">—</div>
+    </div>
+    <div class="kpi lf">
+      <div class="label">附件二未涵蓋期間的授權金</div>
+      <div class="value num" id="fGapRoyalty">—</div>
+      <div class="delta">116/07/01–116/08/31 落在合作期間內，但附件二只列到第三期</div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <div class="column">
+      <section class="card">
+        <h2>假設設定</h2>
+        <p class="sub">授權金率與商品售價取自合約，銷量假設為阿爾法自行估算。</p>
+        <div class="card-body">
+          <div class="group-title">估算方式</div>
+          <div class="field">
+            <div class="seg" role="group" aria-label="估算方式">
+              <button type="button" id="fModeBottom" aria-pressed="true">逐品項估算</button>
+              <button type="button" id="fModeDirect" aria-pressed="false">直接輸入實銷金額</button>
+            </div>
+          </div>
+          <div class="field" id="fDirectField" hidden>
+            <label for="fDirectSales">全期總實銷金額（元）</label>
+            <input type="number" id="fDirectSales" min="0" step="1000000" value="60000000">
+            <span class="hint">已有營收目標時直接填入，右側改按各期天數比例分攤。</span>
+          </div>
+          <div class="field" id="fStoresField">
+            <label for="fStores">全家門市家數</label>
+            <input type="number" id="fStores" min="0" step="100" value="4000">
+            <span class="hint">合約未載明，請依實際鋪貨店數調整。</span>
+          </div>
+
+          <div class="group-title">合約參數</div>
+          <div class="field">
+            <label for="fRate">授權金率（%）</label>
+            <input type="number" id="fRate" min="0" max="100" step="0.1" value="0.5">
+            <span class="hint">附件二：總實銷金額 × 0.5%</span>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="fVat">營業稅率（%）</label>
+              <input type="number" id="fVat" min="0" max="100" step="0.5" value="5">
+            </div>
+            <div class="field">
+              <label for="fWire">每期匯費（元）</label>
+              <input type="number" id="fWire" min="0" step="10" value="30">
+              <span class="hint">第 5-2 條：匯費由阿爾法負擔</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>實銷金額計價基礎</label>
+            <div class="seg" role="group" aria-label="實銷金額基礎">
+              <button type="button" id="fBasisIncl" aria-pressed="true">以架上售價計</button>
+              <button type="button" id="fBasisExcl" aria-pressed="false">換算未稅</button>
+            </div>
+            <span class="hint">附件三的售價為門市標價（含稅）。合約未寫明實銷金額是否應扣除營業稅，這是請款前要跟全家對齊的一點。</span>
+          </div>
+          <div class="field">
+            <label>第四期（116/07–116/08）</label>
+            <div class="seg" role="group" aria-label="第四期處理方式">
+              <button type="button" id="fGapOn" aria-pressed="true">比照 0.5% 計入</button>
+              <button type="button" id="fGapOff" aria-pressed="false">不計入</button>
+            </div>
+            <span class="hint">第 5-1 條寫「第一期至第四期款項」，但附件二只列三期。切換此處看這段的金額差異。</span>
+          </div>
+          <div class="btn-row" style="margin-top:6px">
+            <button class="btn ghost" type="button" id="fReset">回復預設值</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="card">
+        <h2>商品與銷量估算</h2>
+        <p class="sub">售價與上市日取自附件三。每店日均銷量與販售天數請依實際檔期調整，右兩欄即時重算。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="商品估算">
+              <thead>
+                <tr><th>商品</th><th>售價</th><th>日均</th><th>天數</th><th>銷售個數</th><th>實銷金額</th><th>授權金</th></tr>
+              </thead>
+              <tbody id="fProductBody"></tbody>
+            </table>
+          </div>
+          <div class="btn-row">
+            <span style="font-size:12.5px;color:var(--ink-muted);font-weight:600;align-self:center">全部套用每店日均：</span>
+            <button class="btn" type="button" data-frate="0.2">0.2</button>
+            <button class="btn" type="button" data-frate="0.3">0.3</button>
+            <button class="btn" type="button" data-frate="0.5">0.5</button>
+            <button class="btn" type="button" data-frate="1">1.0</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>分期結算與入帳時程</h2>
+        <p class="sub">全家提供銷售報表後，阿爾法核對無誤開立發票，全家月結 60 日匯款。</p>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table aria-label="分期結算">
+              <thead>
+                <tr><th>期別</th><th>銷售計算區間</th><th>報表提供日</th><th>實銷金額</th><th>授權金（未稅）</th><th>含稅請款</th></tr>
+              </thead>
+              <tbody id="fPeriodBody"></tbody>
+            </table>
+          </div>
+          <div class="flag" id="fGapFlag"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>敏感度</h2>
+        <p class="sub">左表改每店日均銷量（全部商品一起調），右表改總實銷金額。</p>
+        <p class="sub" id="fSensNote" hidden>直接輸入模式下，授權金只取決於實銷金額。</p>
+        <div class="card-body">
+          <div class="sched">
+            <div class="table-wrap sens-rate" id="fSensRateWrap">
+              <table aria-label="銷量敏感度">
+                <thead><tr><th>每店日均</th><th>銷售個數</th><th>實銷金額</th><th>授權金</th></tr></thead>
+                <tbody id="fSensRate"></tbody>
+              </table>
+            </div>
+            <div class="table-wrap">
+              <table aria-label="營收敏感度">
+                <thead><tr><th>總實銷金額</th><th>授權金</th></tr></thead>
+                <tbody id="fSensSales"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>條款依據</h2>
+        <p class="sub">測算器每一個數字對應的合約原文。</p>
+        <div class="card-body clauses">
+          <div class="clause"><div class="src">附件二<br>授權金說明</div><div class="txt"><q>鮮食聯名商品（附件三）總實銷金額 × 0.5%。</q>三期分別對應 115/09/30–115/12/31、116/01/01–116/03/31、116/04/01–116/06/30，報表提供日為 116/01/10、116/04/10、116/07/10 前。</div></div>
+          <div class="clause"><div class="src">第 5-1 條<br>付款期數</div><div class="txt"><q>本合作案付款方式分為第一期至第四期款項，乙方應於本商品正式上市之協議區間內，依附件二約定之授權商品銷售級距貢獻金額之計算方式，給付甲方獎勵金。</q></div></div>
+          <div class="clause"><div class="src">第 5-2 條<br>對帳與付款</div><div class="txt"><q>乙方應於 116 年 1 月 10 日、4 月 10 日及 7 月 10 日以前提供每三個月之商品銷售數據報表……甲方於核對無誤後，開立對應之獎勵金金額之統一發票向乙方請款，乙方應於確認發票無誤後月結六十日進行匯款……匯款手續費由甲方支付，乙方得於應付款項中扣除之。</q></div></div>
+          <div class="clause"><div class="src">第 5-3 條<br>延長販售</div><div class="txt"><q>如於本協議書期滿後仍有延長販售之情形，乙方應於延長販售期滿之當月底前，依前二項方式提供最終銷售數據並完成結清。</q></div></div>
+          <div class="clause"><div class="src">第 5-4 條<br>稅額</div><div class="txt"><q>前三項獎勵金金額均以未稅金額計算，相關稅額應依法另行加計。</q></div></div>
+          <div class="clause"><div class="src">第 2、3-1 條<br>期間</div><div class="txt"><q>本協議書有效期間自民國 115 年 09 月 01 日起至民國 116 年 08 月 31 日止。</q><q>本商品預計販售期間：自 115 年 09 月 01 日至 116 年 08 月 31 日止。</q>附件二第一期的銷售計算區間則自 115/09/30 起算。</div></div>
+          <div class="clause"><div class="src">第 4-2、6-3 條<br>排他</div><div class="txt"><q>甲方不得在前述區域就本商品同一或類似商品另行授權予乙方相同或類似之便利商店業者。</q><q>甲方不得自行生產、銷售或授權第三人生產、銷售相同商品……惟於甲乙雙方合作前，甲方已開發或既有之其他商品則不在此限。</q></div></div>
+          <div class="clause"><div class="src">第 3-4 條<br>技術指導</div><div class="txt"><q>甲方應配合至乙方指定之鮮食廠提供相關協助，其交通費用由乙方負擔，甲方應出具單據向乙方進行請款。</q>屬實報實銷，未計入授權金。</div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>解讀與待確認事項</h2>
+        <div class="card-body">
+          <ul class="notes" style="margin:0;padding-left:18px">
+            <li><b>附件二少了一期。</b>第 5-1 條寫「第一期至第四期款項」，附件二只列到第三期（結算至 116/06/30）。合作期間到 116/08/31，中間有兩個月沒有對應的計算與報表日。簽約方應補附件二第四期，否則這段的授權金沒有請款依據。</li>
+            <li><b>實銷金額的定義。</b>合約寫「總實銷金額」，未說明是含稅標價還是未稅。以架上售價計與換算未稅，差 4.8%。請款前應與全家書面確認。</li>
+            <li><b>「銷售級距貢獻金額」與 0.5% 不一致。</b>第 5-1 條提到依「銷售級距貢獻金額之計算方式」，但附件二是單一費率 0.5%，沒有級距表。若原本談的是階梯式費率，附件二應補上級距。</li>
+            <li><b>銷量假設不在合約內。</b>門市家數、每店日均銷量、販售天數都是阿爾法自行估算，合約沒有保證銷量，也沒有最低保證授權金。全家若鋪貨不如預期，阿爾法沒有下檔保護。</li>
+            <li><b>現金入帳很慢。</b>以第一期為例，銷售截止 115/12/31，報表 116/01/10 前，核對後開票，再月結 60 日，實際入帳約在 116 年 3 月。全期最後一筆可能落在 116 年底。</li>
+            <li><b>匯費由阿爾法負擔。</b>全家可直接從應付款中扣除，金額小但每期都有。</li>
+            <li><b>延長販售要另外結清。</b>第 5-3 條規定期滿後若延長販售，須於當月底前提供最終銷售數據完成結清，這部分未計入上表。</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
 </main>
 
 <script>
@@ -845,18 +1043,197 @@
 
   // Product switch
   const PKEY = 'lf-royalty-product';
+  const TABS = [['jiaozi','prodJiaozi','swJiaozi'], ['danjiao','prodDanjiao','swDanjiao'], ['family','prodFamily','swFamily']];
   function show(which){
-    $('prodJiaozi').hidden = which !== 'jiaozi';
-    $('prodDanjiao').hidden = which !== 'danjiao';
-    $('swJiaozi').setAttribute('aria-pressed', which === 'jiaozi');
-    $('swDanjiao').setAttribute('aria-pressed', which === 'danjiao');
+    if (!TABS.some(t => t[0] === which)) which = 'jiaozi';
+    TABS.forEach(([key, panel, btn]) => {
+      $(panel).hidden = which !== key;
+      $(btn).setAttribute('aria-pressed', which === key);
+    });
     try { localStorage.setItem(PKEY, which); } catch(e){}
   }
-  $('swJiaozi').addEventListener('click', () => show('jiaozi'));
-  $('swDanjiao').addEventListener('click', () => show('danjiao'));
+  TABS.forEach(([key,, btn]) => $(btn).addEventListener('click', () => show(key)));
   let initial = 'jiaozi';
   try { initial = localStorage.getItem(PKEY) || 'jiaozi'; } catch(e){}
   show(initial);
+
+  sync(); render();
+})();
+</script>
+\n
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const CONTRACT_END = '2027-08-31';
+  const PRODUCTS = [
+    { name:'松露菌菇雞粥',   cat:'粥品',   price:69,  launch:'2026-09-30' },
+    { name:'起司泡菜雞肉粥', cat:'粥品',   price:75,  launch:'2026-09-30' },
+    { name:'人蔘雞湯',       cat:'湯品',   price:79,  launch:'2026-09-30' },
+    { name:'韓式辣燉雞湯',   cat:'熱食麵', price:119, launch:'2026-09-30' },
+    { name:'白蘭地雞粥',     cat:'粥品',   price:79,  launch:'2026-11-01' },
+    { name:'白蘭地雞湯',     cat:'湯品',   price:79,  launch:'2026-11-01' },
+    { name:'白蘭地雞肉麵',   cat:'熱食麵', price:119, launch:'2026-11-01' },
+  ];
+  const PERIODS = [
+    { label:'第一期', start:'2026-09-30', end:'2026-12-31', report:'116/01/10', roc:'115/09/30–115/12/31', gap:false },
+    { label:'第二期', start:'2027-01-01', end:'2027-03-31', report:'116/04/10', roc:'116/01/01–116/03/31', gap:false },
+    { label:'第三期', start:'2027-04-01', end:'2027-06-30', report:'116/07/10', roc:'116/04/01–116/06/30', gap:false },
+    { label:'第四期', start:'2027-07-01', end:'2027-08-31', report:'附件二未列', roc:'116/07/01–116/08/31', gap:true },
+  ];
+  const DAY = 86400000;
+  const d = s => Date.parse(s + 'T00:00:00Z');
+  const days = (a, b) => Math.max(0, Math.round((b - a)/DAY) + 1);
+  const defaultDays = launch => days(d(launch), d(CONTRACT_END));
+
+  const D = {
+    mode:'bottom', directSales:60000000, stores:4000, rate:0.5, vat:5, wire:30,
+    basis:'incl', countGap:true,
+    rows: PRODUCTS.map(p => ({ price:p.price, daily:0.3, days:defaultDays(p.launch) })),
+  };
+  const KEY = 'family-royalty-v1';
+  let s = JSON.parse(JSON.stringify(D));
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (v && typeof v === 'object' && Array.isArray(v.rows) && v.rows.length === PRODUCTS.length) s = Object.assign({}, D, v);
+  } catch(e){}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} };
+
+  const fmt0 = n => 'NT$ ' + (Math.round(n) || 0).toLocaleString('zh-TW');
+  const fmt2 = n => 'NT$ ' + n.toLocaleString('zh-TW', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const int = n => (Math.round(n) || 0).toLocaleString('zh-TW');
+  const pct = n => (n*100).toLocaleString('zh-TW', {maximumFractionDigits:1}) + '%';
+  const cell = (v, cls) => '<td class="num' + (cls ? ' ' + cls : '') + '">' + v + '</td>';
+
+  function compute(st, dailyO){
+    const activePeriods = PERIODS.filter(p => !p.gap || st.countGap);
+    const salesBase = p => st.basis === 'incl' ? p : p/(1 + st.vat/100);
+    const perPeriod = PERIODS.map(() => ({ units:0, sales:0 }));
+    const rows = PRODUCTS.map((p, i) => {
+      const r = st.rows[i];
+      const daily = dailyO == null ? r.daily : dailyO;
+      const start = d(p.launch), end = start + Math.max(0, r.days - 1)*DAY;
+      const units = st.stores * daily * Math.max(0, r.days);
+      const unitPrice = salesBase(r.price);
+      PERIODS.forEach((per, j) => {
+        if (per.gap && !st.countGap) return;
+        const ov = days(Math.max(start, d(per.start)), Math.min(end, d(per.end)));
+        if (ov <= 0 || r.days <= 0) return;
+        const u = st.stores * daily * ov;
+        perPeriod[j].units += u;
+        perPeriod[j].sales += u * unitPrice;
+      });
+      return { units, unitPrice, sales: units * unitPrice, daily, days:r.days, launch:p.launch };
+    });
+    let totalUnits = rows.reduce((a, r) => a + r.units, 0);
+    let totalSales = perPeriod.reduce((a, p) => a + p.sales, 0);
+    let periods = perPeriod;
+    if (st.mode === 'direct'){
+      totalSales = st.directSales;
+      const weight = PERIODS.map(p => (p.gap && !st.countGap) ? 0 : days(d(p.start), d(p.end)));
+      const wSum = weight.reduce((a,b) => a+b, 0) || 1;
+      periods = PERIODS.map((p, j) => ({ units:0, sales: totalSales * weight[j]/wSum }));
+      totalUnits = 0;
+    }
+    const rate = st.rate/100;
+    const royalty = totalSales * rate;
+    const gapIdx = PERIODS.findIndex(p => p.gap);
+    const gapRoyalty = st.countGap ? periods[gapIdx].sales * rate : 0;
+    return { rows, periods, totalUnits, totalSales, royalty, rate, gapRoyalty, activePeriods };
+  }
+
+  function render(){
+    const r = compute(s);
+    $('fTotalRoyalty').textContent = fmt0(r.royalty);
+    $('fTotalRoyaltySub').textContent = '實銷金額 ' + fmt0(r.totalSales) + ' × ' + s.rate + '%，扣匯費 ' + fmt0(s.wire * r.activePeriods.length) + ' 後淨額 ' + fmt0(r.royalty - s.wire * r.activePeriods.length);
+    $('fTotalSales').textContent = fmt0(r.totalSales);
+    $('fTotalSalesSub').textContent = s.basis === 'incl' ? '以附件三架上售價計' : '架上售價換算未稅後計';
+    $('fTotalUnits').textContent = s.mode === 'direct' ? '—' : int(r.totalUnits) + ' 個';
+    $('fTotalUnitsSub').textContent = s.mode === 'direct' ? '直接輸入模式不估算個數' : s.stores.toLocaleString('zh-TW') + ' 店 × 每店日均 × 販售天數';
+    $('fGapRoyalty').textContent = s.countGap ? fmt0(r.gapRoyalty) : '未計入';
+
+    // Product table
+    $('fProductBody').innerHTML = PRODUCTS.map((p, i) => {
+      const row = r.rows[i];
+      return '<tr><td class="name"><b>' + p.name + '</b><span class="sub">' + p.cat + ' · 上市 ' + p.launch.slice(5).replace('-','/') + '</span></td>' +
+        '<td class="num"><input type="number" min="0" step="1" data-frow="' + i + '" data-fkey="price" value="' + s.rows[i].price + '"></td>' +
+        '<td class="num"><input type="number" min="0" step="0.1" data-frow="' + i + '" data-fkey="daily" value="' + s.rows[i].daily + '"></td>' +
+        '<td class="num"><input type="number" min="0" step="1" data-frow="' + i + '" data-fkey="days" value="' + s.rows[i].days + '"></td>' +
+        cell(int(row.units)) + cell(fmt0(row.sales)) + cell(fmt0(row.sales * r.rate)) + '</tr>';
+    }).join('') +
+      '<tr class="total"><td>合計</td><td></td><td></td><td></td>' + cell(int(r.totalUnits)) + cell(fmt0(r.rows.reduce((a,x)=>a+x.sales,0))) + cell(fmt0(r.rows.reduce((a,x)=>a+x.sales,0) * r.rate)) + '</tr>';
+    $('fProductBody').closest('.card').hidden = s.mode === 'direct';
+
+    // Periods
+    let body = '';
+    PERIODS.forEach((per, j) => {
+      const skip = per.gap && !s.countGap;
+      const sales = skip ? 0 : r.periods[j].sales;
+      const roy = sales * r.rate;
+      body += '<tr' + (per.gap ? ' style="background:var(--lf-soft)"' : '') + '><td>' + per.label + (per.gap ? ' <span class="pill lf">附件二未列</span>' : '') + '</td>' +
+        '<td style="text-align:left">' + per.roc + '</td><td style="text-align:left">' + per.report + '</td>' +
+        cell(skip ? '不計入' : fmt0(sales)) + cell(skip ? '—' : fmt0(roy)) + cell(skip ? '—' : fmt0(roy * (1 + s.vat/100))) + '</tr>';
+    });
+    const totalRoy = r.royalty;
+    body += '<tr class="total"><td>合計</td><td></td><td></td>' + cell(fmt0(r.totalSales)) + cell(fmt0(totalRoy)) + cell(fmt0(totalRoy * (1 + s.vat/100))) + '</tr>';
+    $('fPeriodBody').innerHTML = body;
+
+    $('fGapFlag').innerHTML = s.countGap
+      ? '<b>第四期沒有合約依據。</b>第 5-1 條寫「第一期至第四期款項」，附件二只列到第三期（結算至 116/06/30）。上表的第四期是按同一 0.5% 推算的 ' + fmt0(r.gapRoyalty) + '，請款前需要全家補附件二第四期或另行書面確認。'
+      : '<b>第四期未計入。</b>合作期間到 116/08/31，但附件二只結算到 116/06/30。116/07/01–116/08/31 這兩個月的銷售目前沒有請款依據。';
+
+    // Sensitivity
+    const rates = [0.1, 0.2, 0.3, 0.5, 0.8, 1.0];
+    $('fSensRate').innerHTML = rates.map(x => {
+      const c = compute(s, x);
+      const cur = s.mode === 'bottom' && s.rows.every(row => row.daily === x);
+      return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '>' + cell(x.toFixed(1) + ' 個') + cell(int(c.totalUnits)) + cell(fmt0(c.totalSales)) + cell(fmt0(c.royalty)) + '</tr>';
+    }).join('');
+    const sales = [20000000, 40000000, 60000000, 80000000, 120000000];
+    if (!sales.includes(Math.round(r.totalSales))) { sales.push(Math.round(r.totalSales)); sales.sort((a,b)=>a-b); }
+    $('fSensSales').innerHTML = sales.map(v => {
+      const cur = Math.abs(v - r.totalSales) < 1;
+      return '<tr' + (cur ? ' style="background:var(--surface-2)"' : '') + '>' + cell(fmt0(v) + (cur ? ' <span class="sub">目前估算</span>' : '')) + cell(fmt0(v * r.rate)) + '</tr>';
+    }).join('');
+
+    $('fModeBottom').setAttribute('aria-pressed', s.mode === 'bottom');
+    $('fModeDirect').setAttribute('aria-pressed', s.mode === 'direct');
+    $('fBasisIncl').setAttribute('aria-pressed', s.basis === 'incl');
+    $('fBasisExcl').setAttribute('aria-pressed', s.basis === 'excl');
+    $('fGapOn').setAttribute('aria-pressed', s.countGap);
+    $('fGapOff').setAttribute('aria-pressed', !s.countGap);
+    $('fDirectField').hidden = s.mode !== 'direct';
+    $('fSensRateWrap').hidden = s.mode === 'direct';
+    $('fSensNote').hidden = s.mode !== 'direct';
+    $('fStoresField').hidden = s.mode === 'direct';
+  }
+
+  const SCALARS = { fDirectSales:'directSales', fStores:'stores', fRate:'rate', fVat:'vat', fWire:'wire' };
+  const sync = () => {
+    Object.entries(SCALARS).forEach(([id,k]) => { $(id).value = s[k]; });
+  };
+  Object.entries(SCALARS).forEach(([id,k]) => $(id).addEventListener('input', e => {
+    const v = parseFloat(e.target.value); s[k] = isNaN(v) ? 0 : v; save(); render();
+  }));
+  $('fProductBody').addEventListener('input', e => {
+    const t = e.target; if (!t.dataset.frow) return;
+    const v = parseFloat(t.value);
+    s.rows[+t.dataset.frow][t.dataset.fkey] = isNaN(v) ? 0 : v;
+    save();
+    const focusKey = t.dataset.frow + ':' + t.dataset.fkey;
+    render();
+    const next = $('fProductBody').querySelector('[data-frow="' + t.dataset.frow + '"][data-fkey="' + t.dataset.fkey + '"]');
+    if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+  });
+  document.querySelectorAll('[data-frate]').forEach(b => b.addEventListener('click', () => {
+    const v = parseFloat(b.dataset.frate); s.rows.forEach(r => r.daily = v); save(); render();
+  }));
+  $('fModeBottom').addEventListener('click', () => { s.mode='bottom'; save(); render(); });
+  $('fModeDirect').addEventListener('click', () => { s.mode='direct'; save(); render(); });
+  $('fBasisIncl').addEventListener('click', () => { s.basis='incl'; save(); render(); });
+  $('fBasisExcl').addEventListener('click', () => { s.basis='excl'; save(); render(); });
+  $('fGapOn').addEventListener('click', () => { s.countGap=true; save(); render(); });
+  $('fGapOff').addEventListener('click', () => { s.countGap=false; save(); render(); });
+  $('fReset').addEventListener('click', () => { s = JSON.parse(JSON.stringify(D)); sync(); save(); render(); });
 
   sync(); render();
 })();
