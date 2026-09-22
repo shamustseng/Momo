@@ -1405,15 +1405,13 @@
     var cM = sum(camp, "momo", "gmv"), cW = sum(camp, "web", "gmv");
     var cOrd = sum(camp, "momo", "orders") + sum(camp, "web", "orders");
     var cQty = sum(camp, "momo", "qty") + sum(camp, "web", "qty");
-    var other = sum(camp, "other", "gmv");
 
+    // 只報 MOMO 與 CYBERBIZ；其他通路（全家、團購主…）不進這份回報
     var t = "回報區間：" + mmdd(CAMP) + "-" + mmdd(LAST) + "\n" +
       "當日銷售：" + fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件\n" +
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       "MOMO：" + fmtInt(cM) + "元\n" +
       "CYBERBIZ：" + fmtInt(cW) + "元";
-    // 累積要等於下面兩行相加，所以有其他通路時另外列一行，不混進總額
-    if (other) t += "\n其他通路：" + fmtInt(other) + "元";
     return t;
   }
 
