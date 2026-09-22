@@ -174,7 +174,7 @@
   .mixnote{ color:var(--ink-faint); }
   .mixempty{ color:var(--ink-faint); font-size:13.5px; padding:6px 0 12px; }
   .mixrow{
-    display:grid; grid-template-columns:minmax(150px,1.5fr) minmax(80px,2.4fr) 52px 88px 46px 62px;
+    display:grid; grid-template-columns:minmax(150px,1.6fr) minmax(80px,2.6fr) 52px 96px 62px;
     align-items:center; gap:12px; padding:7px 0; border-top:1px solid var(--border);
   }
   .mixrow:first-child{ border-top:0; }
@@ -188,10 +188,9 @@
   .mixgmv{ color:var(--ink-muted); }
   .mixqty{ color:var(--ink-faint); }
   @media (max-width:640px){
-    .mixrow{ grid-template-columns:1fr 46px 52px;
-             grid-template-areas:"name mar pct" "bar bar bar" "tot tot tot" "sub sub sub" "det det det";
-             gap:4px 10px; }
-    .mixname{ grid-area:name; } .mixtrack{ grid-area:bar; } .mixmar{ grid-area:mar; }
+    .mixrow{ grid-template-columns:1fr 56px;
+             grid-template-areas:"name pct" "bar bar" "tot tot" "sub sub" "det det"; gap:4px 10px; }
+    .mixname{ grid-area:name; } .mixtrack{ grid-area:bar; }
     .mixpct{ grid-area:pct; } .mixgmv{ grid-area:tot; } .mixsub{ grid-area:sub; } .mixdetail{ grid-area:det; }
     .mixgmv,.mixqty{ display:none; }
     .mixtotal .mixgmv{ display:block; text-align:left; }
@@ -204,9 +203,6 @@
   .mixname{ display:flex; align-items:center; gap:6px; }
   .mixname .nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .caret{ color:var(--ink-faint); font-size:10px; flex:none; }
-  .mixmar{ font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:13px;
-           text-align:right; color:var(--ink-muted); }
-  .mixmar.odd{ color:var(--bad); font-weight:600; cursor:help; }
   .chip{ flex:none; font-size:10.5px; padding:1px 6px; border-radius:3px; white-space:nowrap;
          background:var(--surface-3); color:var(--ink-muted); }
   .chip.ok{ background:var(--accent-soft); color:var(--accent-ink); }
@@ -215,7 +211,7 @@
              margin-top:2px; padding-top:10px; }
   .mixtotal:hover{ background:none; }
   .mixtotal .mixbar{ opacity:.75; }
-  .mixtotal .mixgmv,.mixtotal .mixmar,.mixtotal .mixqty{ color:var(--ink); font-weight:700; }
+  .mixtotal .mixgmv,.mixtotal .mixqty{ color:var(--ink); font-weight:700; }
   .mixsub{ grid-column:1/-1; font-family:var(--font-num); font-variant-numeric:tabular-nums;
            font-size:11.5px; font-weight:400; color:var(--ink-faint); padding-top:4px; }
   .tablewrap.dt tfoot td{ font-weight:700; background:var(--surface-2);
@@ -398,7 +394,7 @@
         <span><i style="background:var(--momo)"></i>momo ＋ momo 寄倉</span>
         <span><i style="background:var(--web)"></i>官網</span>
         <span><i style="background:var(--pool)"></i>其他通路</span>
-        <span class="mixnote">點一列看該品項的通路拆解、毛利與產品目錄對照。區間跟著上面「每日明細」走，
+        <span class="mixnote">點一列看該品項的通路拆解與產品目錄對照。區間跟著上面「每日明細」走，
         這一段含其他通路（全家、團購主…），所以合計會大於上面兩個主指標</span>
       </div>
       <div id="mixBody"></div>
@@ -454,7 +450,7 @@
   var MOMO_CH      = { "MOMO":1, "MOMO寄倉":1 };
   var WEB_CH       = { "官網":1 };
   var NON_PRODUCT  = { "贈品":1, "運費":1 };
-  var COL = { brand:6, channel:7, date:8, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19, costEx:22 };
+  var COL = { brand:6, channel:7, date:8, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19 };
   var STORE_KEY = "alpha-daily-sales-v1";
 
   /* ══════════ 小工具 ══════════ */
@@ -691,7 +687,7 @@
           date: iso(d), brand: text(r, COL.brand), channel: text(r, COL.channel),
           item: text(r, COL.item), so: text(r, COL.so),
           qty: val(r, COL.qty), gross: val(r, COL.gross), grossEx: val(r, COL.grossEx),
-          netEx: val(r, COL.netEx), costEx: val(r, COL.costEx)
+          netEx: val(r, COL.netEx)
         });
       }
       return { records: recs, sheet: name };
@@ -733,7 +729,7 @@
         date: iso(d), brand:(r[COL.brand-1]||"").trim(), channel:(r[COL.channel-1]||"").trim(),
         item:(r[COL.item-1]||"").trim(), so:(r[COL.so-1]||"").trim(),
         qty:num(r[COL.qty-1]), gross:num(r[COL.gross-1]), grossEx:num(r[COL.grossEx-1]),
-        netEx:num(r[COL.netEx-1]), costEx:num(r[COL.costEx-1])
+        netEx:num(r[COL.netEx-1])
       });
     }
     return { records: recs, sheet: "CSV" };
@@ -759,7 +755,7 @@
     });
 
     var groupOf = function(ch){ return MOMO_CH[ch] ? "momo" : (WEB_CH[ch] ? "web" : "other"); };
-    var bucket = function(){ return { gmv:0, rev:0, qty:0, cost:0, orders:{}, items:{} }; };
+    var bucket = function(){ return { gmv:0, rev:0, qty:0, orders:{}, items:{} }; };
     var days = {}, min = null, max = null;
 
     recs.forEach(function(x){
@@ -773,12 +769,10 @@
       if (rv > x.gross * 1.01) oddRev++;   // 實收不可能大於銷售額，這種是進度表的進價欄填錯
       b.rev += rv;
       if (!NON_PRODUCT[x.brand]){
-        b.qty  += x.qty;
-        b.cost += x.costEx;
+        b.qty += x.qty;
         if (x.item){
-          var it = b.items[x.item] || (b.items[x.item] = { qty:0, gmv:0, rev:0, cost:0 });
-          it.qty += x.qty; it.gmv += x.gross; it.cost += x.costEx;
-          it.rev += rv;
+          var it = b.items[x.item] || (b.items[x.item] = { qty:0, gmv:0, rev:0 });
+          it.qty += x.qty; it.gmv += x.gross; it.rev += rv;
         }
       }
       if (x.so) b.orders[x.so] = 1;
@@ -794,13 +788,13 @@
         var b = day && day[g];
         row[g] = b ? {
           gmv: Math.round(b.gmv), rev: Math.round(b.rev), qty: Math.round(b.qty),
-          gp: Math.round(b.rev - b.cost), orders: Object.keys(b.orders).length,
-          // [品項, 件數, 銷售額, 實收, 成本]，產品組合那一段用這個算
+          orders: Object.keys(b.orders).length,
+          // [品項, 件數, 銷售額, 實收]，產品組合那一段用這個算
           items: Object.keys(b.items).map(function(k){
             var it = b.items[k];
-            return [k, Math.round(it.qty), Math.round(it.gmv), Math.round(it.rev), Math.round(it.cost)];
+            return [k, Math.round(it.qty), Math.round(it.gmv), Math.round(it.rev)];
           }).sort(function(a, c){ return c[2] - a[2]; })
-        } : { gmv:0, rev:0, qty:0, gp:0, orders:0, items:[] };
+        } : { gmv:0, rev:0, qty:0, orders:0, items:[] };
       });
       out.push(row);
       cur = shiftDays(cur, 1);
@@ -945,8 +939,8 @@
       GROUPS.forEach(function(g){
         (d[g].items || []).forEach(function(it){
           var e = byItem[it[0]] || (byItem[it[0]] =
-            { name:it[0], qty:0, gmv:0, rev:0, cost:0, momo:0, web:0, other:0 });
-          e.qty += it[1]; e.gmv += it[2]; e.rev += (it[3] || 0); e.cost += (it[4] || 0);
+            { name:it[0], qty:0, gmv:0, rev:0, momo:0, web:0, other:0 });
+          e.qty += it[1]; e.gmv += it[2]; e.rev += (it[3] || 0);
           e[g] += it[2]; total += it[2];
         });
       });
@@ -955,8 +949,6 @@
                  .sort(function(a, b){ return b.gmv - a.gmv; });
     list.forEach(function(e){
       e.share = total ? e.gmv / total : 0;
-      e.gp = e.rev - e.cost;
-      e.margin = e.rev ? e.gp / e.rev : 0;
       e.listing = catalogFor(e.name);
     });
     return { list: list, total: total };
@@ -1024,8 +1016,6 @@
     return '<span class="chip">只在官網上架</span>';
   }
 
-  // 毛利率離譜（負很多或超過 100%）通常是進度表的成本欄填錯，不是真的賠錢
-  function marginOdd(e){ return e.rev && (e.margin < -0.5 || e.margin > 1); }
 
   function renderMix(){
     var mix = productMix(tableRows()), max = mix.list.length ? mix.list[0].gmv : 0;
@@ -1050,9 +1040,6 @@
         '</div></div>' +
         '<div class="mixpct num">' + (e.share * 100).toFixed(1) + '%</div>' +
         '<div class="mixgmv num">' + money(e.gmv) + '</div>' +
-        '<div class="mixmar num' + (marginOdd(e) ? ' odd" title="毛利率不合理，多半是進度表的成本欄填錯' +
-          '（例如整筆成本被當成單件成本再乘數量）' : '"') + '">' +
-          (e.rev ? (e.margin * 100).toFixed(0) + '%' : '–') + '</div>' +
         '<div class="mixqty num">' + fmtInt(e.qty) + ' 件</div>' +
         (open ? itemDetail(e) : '') +
       '</div>';
@@ -1062,11 +1049,10 @@
   /* 產品組合的合計列：條形按通路拆，比例就是三個通路的佔比 */
   function mixTotalRow(mix){
     var t = mix.list.reduce(function(a, e){
-      a.qty += e.qty; a.gmv += e.gmv; a.rev += e.rev; a.cost += e.cost;
+      a.qty += e.qty; a.gmv += e.gmv; a.rev += e.rev;
       a.momo += e.momo; a.web += e.web; a.other += e.other;
       return a;
-    }, { qty:0, gmv:0, rev:0, cost:0, momo:0, web:0, other:0 });
-    var gp = t.rev - t.cost;
+    }, { qty:0, gmv:0, rev:0, momo:0, web:0, other:0 });
     var seg = function(v, color){
       return v ? '<i style="flex:' + ((v / t.gmv) * 100).toFixed(2) + ';background:' + color + '"></i>' : '';
     };
@@ -1077,17 +1063,16 @@
       '</div></div>' +
       '<div class="mixpct num">100%</div>' +
       '<div class="mixgmv num">' + money(t.gmv) + '</div>' +
-      '<div class="mixmar num">' + (t.rev ? Math.round(gp / t.rev * 100) + '%' : '–') + '</div>' +
       '<div class="mixqty num">' + fmtInt(t.qty) + ' 件</div>' +
       '<div class="mixsub">momo ' + money(t.momo) + '　官網 ' + money(t.web) +
-        '　其他 ' + money(t.other) + '　實收 ' + money(t.rev) + '　毛利 ' + money(gp) + '</div>' +
+        '　其他 ' + money(t.other) + '　實收（未稅） ' + money(t.rev) + '</div>' +
     '</div>';
   }
 
-  /* 單一品項細查：各通路的量、金額、毛利，加上目錄上有哪些規格 */
+  /* 單一品項細查：各通路的量與金額，加上目錄上有哪些規格 */
   function itemDetail(e){
     var rows = tableRows();
-    var per = { momo:{q:0,g:0,r:0,c:0}, web:{q:0,g:0,r:0,c:0}, other:{q:0,g:0,r:0,c:0} };
+    var per = { momo:{q:0,g:0,r:0}, web:{q:0,g:0,r:0}, other:{q:0,g:0,r:0} };
     var first = "", last = "", days = 0;
     rows.forEach(function(d){
       var hit = false;
@@ -1095,7 +1080,7 @@
         (d[g].items || []).forEach(function(it){
           if (it[0] !== e.name) return;
           hit = true;
-          per[g].q += it[1]; per[g].g += it[2]; per[g].r += (it[3] || 0); per[g].c += (it[4] || 0);
+          per[g].q += it[1]; per[g].g += it[2]; per[g].r += (it[3] || 0);
         });
       });
       if (hit){ days++; if (!first) first = d.date; last = d.date; }
@@ -1103,11 +1088,10 @@
     var LABEL = { momo:"momo ＋ 寄倉", web:"官網", other:"其他通路" };
     var COLOR = { momo:"var(--momo)", web:"var(--web)", other:"var(--pool)" };
     var lines = GROUPS.filter(function(g){ return per[g].g; }).map(function(g){
-      var p = per[g], gp = p.r - p.c;
+      var p = per[g];
       return '<tr><td class="l"><i class="swatch" style="background:' + COLOR[g] + '"></i>' + LABEL[g] + '</td>' +
         '<td class="d">' + fmtInt(p.q) + '</td><td class="d">' + money(p.g) + '</td>' +
-        '<td class="d">' + money(p.r) + '</td><td class="d">' + money(gp) + '</td>' +
-        '<td class="d">' + (p.r ? Math.round(gp / p.r * 100) + '%' : '–') + '</td>' +
+        '<td class="d">' + money(p.r) + '</td>' +
         '<td class="d">' + (p.q ? money(p.g / p.q) : '–') + '</td></tr>';
     }).join("");
 
@@ -1122,14 +1106,11 @@
     return '<div class="mixdetail" onclick="event.stopPropagation()">' +
       '<div class="dtitle">' + esc(e.name) + '　<span class="dsub">' +
         (first ? first + " ~ " + last + "　有出貨 " + days + " 天" : "這段期間沒有出貨") + '</span></div>' +
-      (marginOdd(e) ? '<p class="warnline">這個品項的毛利率算出來不合理，多半是進度表的「商品成本(未稅)」' +
-        '填成整筆金額、又被乘上數量。金額欄可以信，毛利先別引用。</p>' : '') +
       '<div class="tablewrap dt"><table><thead><tr><th class="l">通路</th><th>件數</th>' +
-        '<th>銷售額</th><th>實收</th><th>毛利</th><th>毛利率</th><th>每件均價</th></tr></thead>' +
+        '<th>銷售額</th><th>實收</th><th>每件均價</th></tr></thead>' +
         '<tbody>' + lines + '</tbody><tfoot><tr><td class="l">合計</td>' +
         '<td class="d">' + fmtInt(e.qty) + '</td><td class="d">' + money(e.gmv) + '</td>' +
-        '<td class="d">' + money(e.rev) + '</td><td class="d">' + money(e.gp) + '</td>' +
-        '<td class="d">' + (e.rev ? Math.round(e.margin * 100) + '%' : '–') + '</td>' +
+        '<td class="d">' + money(e.rev) + '</td>' +
         '<td class="d">' + (e.qty ? money(e.gmv / e.qty) : '–') + '</td></tr></tfoot></table></div>' +
       '<div class="dcat"><span class="dcatlab">產品目錄（' + catalogDate() + '）</span>' +
         (cat ? '<ul>' + cat + '</ul>'
@@ -1331,7 +1312,7 @@
     return rows.length ? rows[0].date + "_" + rows[rows.length-1].date : "無資料";
   }
   var MIX_HEADER = ["品項","銷售額(含稅)","佔比","件數","momo銷售額","官網銷售額","其他通路銷售額",
-                    "實收(未稅)","毛利(未稅)","毛利率","每件均價","產品目錄"];
+                    "實收(未稅)","每件均價","產品目錄"];
   function mixMatrix(){
     return productMix(tableRows()).list.map(function(e){
       var c = e.listing;
@@ -1341,21 +1322,18 @@
                 : (c.momo && c.web) ? "momo＋官網"
                 : (c.momo ? "只在momo" : "只在官網");
       return [e.name, e.gmv, (e.share * 100).toFixed(1) + "%", e.qty, e.momo, e.web, e.other,
-              e.rev, e.gp, e.rev ? Math.round(e.margin * 100) + "%" : "",
-              e.qty ? Math.round(e.gmv / e.qty) : "", where];
+              e.rev, e.qty ? Math.round(e.gmv / e.qty) : "", where];
     });
   }
   function mixTotal(){
     var list = productMix(tableRows()).list;
     var t = list.reduce(function(a, e){
-      a.qty += e.qty; a.gmv += e.gmv; a.rev += e.rev; a.cost += e.cost;
+      a.qty += e.qty; a.gmv += e.gmv; a.rev += e.rev;
       a.momo += e.momo; a.web += e.web; a.other += e.other;
       return a;
-    }, { qty:0, gmv:0, rev:0, cost:0, momo:0, web:0, other:0 });
-    var gp = t.rev - t.cost;
+    }, { qty:0, gmv:0, rev:0, momo:0, web:0, other:0 });
     return ["合計 · " + list.length + " 項", t.gmv, "100%", t.qty, t.momo, t.web, t.other,
-            t.rev, gp, t.rev ? Math.round(gp / t.rev * 100) + "%" : "",
-            t.qty ? Math.round(t.gmv / t.qty) : "", ""];
+            t.rev, t.qty ? Math.round(t.gmv / t.qty) : "", ""];
   }
   function csvCell(v){
     var s = v == null ? "" : String(v);
