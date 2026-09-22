@@ -418,7 +418,9 @@
     <div class="method">
       <h3>口徑與注意事項</h3>
       <ul>
-        <li><b>momo</b>＝銷售紀錄裡 <code>MOMO</code>（供應商出貨）＋ <code>MOMO寄倉</code>；<b>官網</b>＝<code>官網</code>。其餘（團購主／直播主、全家、ASO、美聯社、企業採購…）歸「其他通路」，不進兩個主指標。</li>
+        <li><b>momo</b>＝銷售紀錄裡 <code>MOMO</code>（供應商出貨）＋ <code>MOMO寄倉</code>；
+          <b>官網</b>＝<code>官網</code>，也包含寫成 <code>Cyberbiz</code> 的列（同一個通路，兩種寫法會加在一起）。
+          其餘（團購主／直播主、全家、ASO、美聯社、企業採購…）歸「其他通路」，不進兩個主指標。</li>
         <li><b>銷售額</b>＝消費者付的含稅金額（總金額含稅欄）。<b>實收</b>＝公司真正入帳的未稅金額：momo 算<u>進價收入</u>，官網算<u>售價未稅</u>。兩者差額就是給 momo 的通路價差，所以 momo 的銷售額和實收不會一樣。</li>
         <li><b>件數</b>不含贈品；運費另計在「其他通路」，不灌進官網銷售額。</li>
         <li>兩張表的「其他通路」合計會差一點：每日明細算的是整個通路（含運費與沒填品名的列），
@@ -449,8 +451,18 @@
 
   /* ══════════ 口徑設定 ══════════ */
   var SHEET_NAME   = "2026 銷售紀錄";
-  var MOMO_CH      = { "MOMO":1, "MOMO寄倉":1 };
-  var WEB_CH       = { "官網":1 };
+  /* 通路分組。銷售紀錄裡同一個通路會有不同寫法——官網也可能寫成 Cyberbiz、
+     CYBERBIZ、官網(Cyberbiz)——所以先正規化再比對，兩種寫法都算同一個通路。 */
+  function chKey(ch){
+    return String(ch == null ? "" : ch).toLowerCase().replace(/[\s　（）()［］\[\]_-]/g, "");
+  }
+  function chGroup(ch){
+    var k = chKey(ch);
+    if (!k) return "other";
+    if (k.indexOf("momo") === 0) return "momo";                       // MOMO、MOMO寄倉
+    if (k.indexOf("cyberbiz") >= 0 || k.indexOf("官網") >= 0) return "web";
+    return "other";
+  }
   var NON_PRODUCT  = { "贈品":1, "運費":1 };
   var COL = { brand:6, channel:7, date:8, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19 };
   var STORE_KEY = "alpha-daily-sales-v1";
@@ -742,7 +754,7 @@
     // momo 少數幾筆沒填進價，用同品項的進價率補；補不到就用 momo 全體進價率。
     var byItem = {}, all = [];
     recs.forEach(function(x){
-      if (MOMO_CH[x.channel] && x.gross && x.netEx){
+      if (chGroup(x.channel) === "momo" && x.gross && x.netEx){
         var rr = x.netEx / x.gross;
         (byItem[x.item] = byItem[x.item] || []).push(rr);
         all.push(rr);
@@ -750,23 +762,23 @@
     });
     var fallback = median(all), imputed = 0, oddRev = 0;
     recs.forEach(function(x){
-      if (MOMO_CH[x.channel] && x.gross && !x.netEx && !NON_PRODUCT[x.brand]){
+      if (chGroup(x.channel) === "momo" && x.gross && !x.netEx && !NON_PRODUCT[x.brand]){
         x.netEx = Math.round(x.gross * (byItem[x.item] ? median(byItem[x.item]) : fallback) * 100) / 100;
         imputed++;
       }
     });
 
-    var groupOf = function(ch){ return MOMO_CH[ch] ? "momo" : (WEB_CH[ch] ? "web" : "other"); };
     var bucket = function(){ return { gmv:0, rev:0, qty:0, orders:{}, items:{} }; };
     var days = {}, min = null, max = null;
 
     recs.forEach(function(x){
       var day = days[x.date] || (days[x.date] = { momo:bucket(), web:bucket(), other:bucket() });
-      var b = day[groupOf(x.channel)];
+      var grp = chGroup(x.channel);
+      var b = day[grp];
       b.gmv += x.gross;
       // momo 與批發通路（全家、團購主…）收進價；官網是直客，沒有進價可言，一律用售價未稅
-      var rv = MOMO_CH[x.channel] ? x.netEx
-             : WEB_CH[x.channel]  ? x.grossEx
+      var rv = grp === "momo" ? x.netEx
+             : grp === "web"  ? x.grossEx
              : (x.netEx || x.grossEx);
       if (rv > x.gross * 1.01) oddRev++;   // 實收不可能大於銷售額，這種是進度表的進價欄填錯
       b.rev += rv;
