@@ -188,10 +188,13 @@
   .mixgmv{ color:var(--ink-muted); }
   .mixqty{ color:var(--ink-faint); }
   @media (max-width:640px){
-    .mixrow{ grid-template-columns:1fr 46px 52px; grid-template-areas:"name mar pct" "bar bar bar" "det det det"; gap:4px 10px; }
+    .mixrow{ grid-template-columns:1fr 46px 52px;
+             grid-template-areas:"name mar pct" "bar bar bar" "tot tot tot" "sub sub sub" "det det det";
+             gap:4px 10px; }
     .mixname{ grid-area:name; } .mixtrack{ grid-area:bar; } .mixmar{ grid-area:mar; }
-    .mixpct{ grid-area:pct; } .mixdetail{ grid-area:det; }
+    .mixpct{ grid-area:pct; } .mixgmv{ grid-area:tot; } .mixsub{ grid-area:sub; } .mixdetail{ grid-area:det; }
     .mixgmv,.mixqty{ display:none; }
+    .mixtotal .mixgmv{ display:block; text-align:left; }
   }
 
   .mixrow{ cursor:pointer; }
@@ -208,6 +211,15 @@
          background:var(--surface-3); color:var(--ink-muted); }
   .chip.ok{ background:var(--accent-soft); color:var(--accent-ink); }
   .chip.warn{ background:var(--warn-soft); color:var(--warn-ink); font-weight:700; }
+  .mixtotal{ cursor:default; font-weight:700; border-top:2px solid var(--border-strong);
+             margin-top:2px; padding-top:10px; }
+  .mixtotal:hover{ background:none; }
+  .mixtotal .mixbar{ opacity:.75; }
+  .mixtotal .mixgmv,.mixtotal .mixmar,.mixtotal .mixqty{ color:var(--ink); font-weight:700; }
+  .mixsub{ grid-column:1/-1; font-family:var(--font-num); font-variant-numeric:tabular-nums;
+           font-size:11.5px; font-weight:400; color:var(--ink-faint); padding-top:4px; }
+  .tablewrap.dt tfoot td{ font-weight:700; background:var(--surface-2);
+                          border-top:2px solid var(--border-strong); border-bottom:0; }
   .mixdetail{ grid-column:1/-1; cursor:default; padding:10px 0 14px; display:flex;
               flex-direction:column; gap:12px; }
   .dtitle{ font-size:13.5px; font-weight:700; }
@@ -411,7 +423,12 @@
         <li><b>momo</b>＝銷售紀錄裡 <code>MOMO</code>（供應商出貨）＋ <code>MOMO寄倉</code>；<b>官網</b>＝<code>官網</code>。其餘（團購主／直播主、全家、ASO、美聯社、企業採購…）歸「其他通路」，不進兩個主指標。</li>
         <li><b>銷售額</b>＝消費者付的含稅金額（總金額含稅欄）。<b>實收</b>＝公司真正入帳的未稅金額：momo 算<u>進價收入</u>，官網算<u>售價未稅</u>。兩者差額就是給 momo 的通路價差，所以 momo 的銷售額和實收不會一樣。</li>
         <li><b>件數</b>不含贈品；運費另計在「其他通路」，不灌進官網銷售額。</li>
+        <li>兩張表的「其他通路」合計會差一點：每日明細算的是整個通路（含運費與沒填品名的列），
+          產品組合只算有品名的商品，所以會少一些。momo 與官網兩欄則完全一致。</li>
         <li>momo 有 <span class="num" id="impTxt">0</span> 筆沒填進價，用同品項的進價率回推補值。</li>
+        <li id="oddRevLi" hidden>有 <span class="num" id="oddTxt">0</span> 筆的實收算出來大於銷售額，
+          那是進度表的進價欄把整筆金額填成單件、再乘上數量（例如青花椒辣醬 2 入組）。
+          數字照原樣呈現沒有動，但這幾筆會讓 momo 實收略為高估。</li>
         <li>日期採「<code>order_create_date</code>（訂單建立日）」，不是出貨日或入帳日。</li>
         <li>檔期起算日可以直接在上面「每日明細」那排改，換雙 11 或別的檔期不用改程式。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
@@ -733,7 +750,7 @@
         all.push(rr);
       }
     });
-    var fallback = median(all), imputed = 0;
+    var fallback = median(all), imputed = 0, oddRev = 0;
     recs.forEach(function(x){
       if (MOMO_CH[x.channel] && x.gross && !x.netEx && !NON_PRODUCT[x.brand]){
         x.netEx = Math.round(x.gross * (byItem[x.item] ? median(byItem[x.item]) : fallback) * 100) / 100;
@@ -749,8 +766,11 @@
       var day = days[x.date] || (days[x.date] = { momo:bucket(), web:bucket(), other:bucket() });
       var b = day[groupOf(x.channel)];
       b.gmv += x.gross;
-      // momo 與批發通路收進價，官網（沒填進價）才用售價未稅
-      var rv = MOMO_CH[x.channel] ? x.netEx : (x.netEx || x.grossEx);
+      // momo 與批發通路（全家、團購主…）收進價；官網是直客，沒有進價可言，一律用售價未稅
+      var rv = MOMO_CH[x.channel] ? x.netEx
+             : WEB_CH[x.channel]  ? x.grossEx
+             : (x.netEx || x.grossEx);
+      if (rv > x.gross * 1.01) oddRev++;   // 實收不可能大於銷售額，這種是進度表的進價欄填錯
       b.rev += rv;
       if (!NON_PRODUCT[x.brand]){
         b.qty  += x.qty;
@@ -788,7 +808,8 @@
 
     return {
       meta: { source: sourceName, sheet: sheetName, rows: recs.length,
-              first_date: min, last_date: max, imputed: imputed, built_at: iso(new Date()) },
+              first_date: min, last_date: max, imputed: imputed, odd_rev: oddRev,
+              built_at: iso(new Date()) },
       days: out
     };
   }
@@ -836,6 +857,9 @@
     $("srcTxt").textContent   = DATA.meta.source || "內建快照";
     $("builtTxt").textContent = DATA.meta.built_at || "—";
     $("impTxt").textContent   = DATA.meta.imputed != null ? DATA.meta.imputed : 0;
+    var odd = DATA.meta.odd_rev || 0;
+    $("oddTxt").textContent = odd;
+    $("oddRevLi").hidden = !odd;
     $("campInput").value = CAMP;
     $("campInput").min = DATA.meta.first_date;
     $("campInput").max = LAST;
@@ -1032,7 +1056,32 @@
         '<div class="mixqty num">' + fmtInt(e.qty) + ' 件</div>' +
         (open ? itemDetail(e) : '') +
       '</div>';
-    }).join("");
+    }).join("") + mixTotalRow(mix);
+  }
+
+  /* 產品組合的合計列：條形按通路拆，比例就是三個通路的佔比 */
+  function mixTotalRow(mix){
+    var t = mix.list.reduce(function(a, e){
+      a.qty += e.qty; a.gmv += e.gmv; a.rev += e.rev; a.cost += e.cost;
+      a.momo += e.momo; a.web += e.web; a.other += e.other;
+      return a;
+    }, { qty:0, gmv:0, rev:0, cost:0, momo:0, web:0, other:0 });
+    var gp = t.rev - t.cost;
+    var seg = function(v, color){
+      return v ? '<i style="flex:' + ((v / t.gmv) * 100).toFixed(2) + ';background:' + color + '"></i>' : '';
+    };
+    return '<div class="mixrow mixtotal">' +
+      '<div class="mixname"><span class="nm">合計 · ' + mix.list.length + ' 項</span></div>' +
+      '<div class="mixtrack"><div class="mixbar" style="width:100%">' +
+        seg(t.momo, "var(--momo)") + seg(t.web, "var(--web)") + seg(t.other, "var(--pool)") +
+      '</div></div>' +
+      '<div class="mixpct num">100%</div>' +
+      '<div class="mixgmv num">' + money(t.gmv) + '</div>' +
+      '<div class="mixmar num">' + (t.rev ? Math.round(gp / t.rev * 100) + '%' : '–') + '</div>' +
+      '<div class="mixqty num">' + fmtInt(t.qty) + ' 件</div>' +
+      '<div class="mixsub">momo ' + money(t.momo) + '　官網 ' + money(t.web) +
+        '　其他 ' + money(t.other) + '　實收 ' + money(t.rev) + '　毛利 ' + money(gp) + '</div>' +
+    '</div>';
   }
 
   /* 單一品項細查：各通路的量、金額、毛利，加上目錄上有哪些規格 */
@@ -1077,7 +1126,11 @@
         '填成整筆金額、又被乘上數量。金額欄可以信，毛利先別引用。</p>' : '') +
       '<div class="tablewrap dt"><table><thead><tr><th class="l">通路</th><th>件數</th>' +
         '<th>銷售額</th><th>實收</th><th>毛利</th><th>毛利率</th><th>每件均價</th></tr></thead>' +
-        '<tbody>' + lines + '</tbody></table></div>' +
+        '<tbody>' + lines + '</tbody><tfoot><tr><td class="l">合計</td>' +
+        '<td class="d">' + fmtInt(e.qty) + '</td><td class="d">' + money(e.gmv) + '</td>' +
+        '<td class="d">' + money(e.rev) + '</td><td class="d">' + money(e.gp) + '</td>' +
+        '<td class="d">' + (e.rev ? Math.round(e.margin * 100) + '%' : '–') + '</td>' +
+        '<td class="d">' + (e.qty ? money(e.gmv / e.qty) : '–') + '</td></tr></tfoot></table></div>' +
       '<div class="dcat"><span class="dcatlab">產品目錄（' + catalogDate() + '）</span>' +
         (cat ? '<ul>' + cat + '</ul>'
              : '<p class="warnline">產品查詢器裡找不到這個品項 —— 有出貨但商城沒上架，或名稱對不上，值得查一下。</p>') +
@@ -1266,6 +1319,13 @@
               d.date >= CAMP ? "檔期" : ""];
     });
   }
+  function exportTotal(){
+    var rows = tableRows();
+    return ["合計 · " + rows.length + " 天", "",
+            sum(rows,"momo","gmv"), sum(rows,"momo","rev"), sum(rows,"momo","qty"), sum(rows,"momo","orders"),
+            sum(rows,"web","gmv"),  sum(rows,"web","rev"),  sum(rows,"web","qty"),  sum(rows,"web","orders"),
+            sum(rows,"other","gmv"), ""];
+  }
   function rangeLabel(){
     var rows = tableRows();
     return rows.length ? rows[0].date + "_" + rows[rows.length-1].date : "無資料";
@@ -1285,14 +1345,28 @@
               e.qty ? Math.round(e.gmv / e.qty) : "", where];
     });
   }
+  function mixTotal(){
+    var list = productMix(tableRows()).list;
+    var t = list.reduce(function(a, e){
+      a.qty += e.qty; a.gmv += e.gmv; a.rev += e.rev; a.cost += e.cost;
+      a.momo += e.momo; a.web += e.web; a.other += e.other;
+      return a;
+    }, { qty:0, gmv:0, rev:0, cost:0, momo:0, web:0, other:0 });
+    var gp = t.rev - t.cost;
+    return ["合計 · " + list.length + " 項", t.gmv, "100%", t.qty, t.momo, t.web, t.other,
+            t.rev, gp, t.rev ? Math.round(gp / t.rev * 100) + "%" : "",
+            t.qty ? Math.round(t.gmv / t.qty) : "", ""];
+  }
   function csvCell(v){
     var s = v == null ? "" : String(v);
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
   // 每日明細 + 產品組合，兩張表放在同一份檔案裡
   function sheetRows(){
-    return [["每日明細　" + tableRangeText()], HEADER].concat(
-      exportMatrix(), [[], ["產品組合　含全部通路，依銷售額排序"], MIX_HEADER], mixMatrix());
+    return [["每日明細　" + tableRangeText()], HEADER]
+      .concat(exportMatrix(), [exportTotal()],
+              [[], ["產品組合　含全部通路，依銷售額排序"], MIX_HEADER],
+              mixMatrix(), [mixTotal()]);
   }
   function toCsv(){
     return "\uFEFF" + sheetRows().map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
@@ -1306,8 +1380,10 @@
            rows.map(function(r){ return "| " + r.join(" | ") + " |"; }).join("\n") + "\n";
   }
   function toMarkdown(){
-    return "## 每日明細　" + tableRangeText() + "\n\n" + mdTable(HEADER, exportMatrix()) +
-           "\n## 產品組合　含全部通路\n\n" + mdTable(MIX_HEADER, mixMatrix());
+    return "## 每日明細　" + tableRangeText() + "\n\n" +
+           mdTable(HEADER, exportMatrix().concat([exportTotal()])) +
+           "\n## 產品組合　含全部通路\n\n" +
+           mdTable(MIX_HEADER, mixMatrix().concat([mixTotal()]));
   }
   function toSummary(){
     var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
