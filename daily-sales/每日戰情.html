@@ -1383,7 +1383,7 @@
       return e.name + " " + (e.share * 100).toFixed(0) + "%";
     }).join("、") + "\n";
   }
-  /* 每日回報用的五行數字。「前日」＝資料裡最後一天，也就是回報區間的結束日。 */
+  /* 每日回報用的五行數字。「當日」＝資料裡最後一天，也就是回報區間的結束日。 */
   function toBrief(){
     var mmdd = function(v){ var p = v.split("-"); return p[1] + "/" + p[2]; };
     var last = days[days.length - 1];
@@ -1396,7 +1396,7 @@
     var other = sum(camp, "other", "gmv");
 
     var t = "回報區間：" + mmdd(CAMP) + "-" + mmdd(LAST) + "\n" +
-      "前日銷售：" + fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件\n" +
+      "當日銷售：" + fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件\n" +
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       "MOMO：" + fmtInt(cM) + "元\n" +
       "CYBERBIZ：" + fmtInt(cW) + "元";
