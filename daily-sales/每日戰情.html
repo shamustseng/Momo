@@ -432,6 +432,9 @@
         <li><b>累計一律從「檔期起算日」算起</b>，不是從月初。每日明細與產品組合的合計、
           以及「複製簡易數字」的累積銷售，都用同一個起算日。要換檔期（例如雙 11）就改上面
           「每日明細」那排的日期，不用改程式，選了會記住。</li>
+        <li><b>「複製簡易數字」的當日＝按下按鈕那天的前一天</b>，回報區間與累積也都結束在
+          昨天，所以檔案裡若已經有今天的半天資料不會被算進去。萬一資料還沒進到昨天，
+          回報區間會註明實際到哪一天。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
     </div>
@@ -1394,24 +1397,36 @@
       return e.name + " " + (e.share * 100).toFixed(0) + "%";
     }).join("、") + "\n";
   }
-  /* 每日回報用的五行數字。「當日」＝資料裡最後一天，也就是回報區間的結束日。 */
+  /* 每日回報用的五行數字。
+     「當日」＝按下一鍵輸出那天的前一天，不是資料裡的最後一天——這兩個在資料落後、
+     或是檔案裡已經有今天的半天資料時會不一樣。整份回報（區間、當日、累積）都結束在昨天。 */
   function toBrief(){
     var mmdd = function(v){ var p = v.split("-"); return p[1] + "/" + p[2]; };
-    var last = days[days.length - 1];
-    var dayAmt = last.momo.gmv + last.web.gmv;
-    var dayOrd = last.momo.orders + last.web.orders;
-    var dayQty = last.momo.qty + last.web.qty;
-    var cM = sum(camp, "momo", "gmv"), cW = sum(camp, "web", "gmv");
-    var cOrd = sum(camp, "momo", "orders") + sum(camp, "web", "orders");
-    var cQty = sum(camp, "momo", "qty") + sum(camp, "web", "qty");
+    var yest = shiftDays(iso(new Date()), -1);
+    var end  = yest;
+    if (end > LAST) end = LAST;          // 資料還沒進到昨天，就退回資料最後一天
+    if (end < CAMP) end = CAMP;          // 檔期都還沒開始的極端情況
+    var stale = end !== yest;
+
+    var day = null;
+    for (var i = 0; i < days.length; i++){ if (days[i].date === end){ day = days[i]; break; } }
+    if (!day) day = days[days.length - 1];
+
+    var rows = slice(CAMP, end);
+    var dayAmt = day.momo.gmv + day.web.gmv;
+    var dayOrd = day.momo.orders + day.web.orders;
+    var dayQty = day.momo.qty + day.web.qty;
+    var cM = sum(rows, "momo", "gmv"), cW = sum(rows, "web", "gmv");
+    var cOrd = sum(rows, "momo", "orders") + sum(rows, "web", "orders");
+    var cQty = sum(rows, "momo", "qty") + sum(rows, "web", "qty");
 
     // 只報 MOMO 與 CYBERBIZ；其他通路（全家、團購主…）不進這份回報
-    var t = "回報區間：" + mmdd(CAMP) + "-" + mmdd(LAST) + "\n" +
+    return "回報區間：" + mmdd(CAMP) + "-" + mmdd(end) +
+        (stale ? "（資料只到 " + mmdd(end) + "，" + mmdd(yest) + " 的還沒進系統）" : "") + "\n" +
       "當日銷售：" + fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件\n" +
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       "MOMO：" + fmtInt(cM) + "元\n" +
       "CYBERBIZ：" + fmtInt(cW) + "元";
-    return t;
   }
 
   function toStandaloneHtml(){
