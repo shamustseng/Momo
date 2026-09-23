@@ -838,7 +838,7 @@
   if (!CAMP) CAMP = DATA.meta.campaign_start || "";
 
   var metric = "gmv", rangeDays = 30, tableFrom = "camp";
-  var days, LAST, monthStart, camp, prev, prevStart, prevEnd, preMonth, nCamp;
+  var days, LAST, camp, prev, prevStart, prevEnd, nCamp;
 
   function slice(a, b){ return days.filter(function(d){ return d.date >= a && d.date <= b; }); }
   function sum(rows, g, k){ return rows.reduce(function(a, d){ return a + d[g][k]; }, 0); }
@@ -849,14 +849,11 @@
     LAST = DATA.meta.last_date || "";
     if (!days.length) return;                      // 還沒載資料，先別動檔期起算日
     if (!CAMP || CAMP < DATA.meta.first_date || CAMP > LAST) CAMP = LAST.slice(0,8) + "01";
-    monthStart = CAMP.slice(0,8) + "01";
     camp  = slice(CAMP, LAST);
     nCamp = camp.length;
     prevEnd = shiftDays(CAMP, -1);
     prevStart = shiftDays(CAMP, -nCamp);
     prev = slice(prevStart, prevEnd);
-    preMonth = slice(monthStart, prevEnd);
-    if (!preMonth.length) preMonth = prev;
   }
 
   /* ══════════ 5. 畫面 ══════════ */
@@ -889,21 +886,24 @@
   }
 
   function renderVerdict(){
-    var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
-    var cW = avg(camp,"web","gmv"),  pW = avg(preMonth,"web","gmv");
+    // 主句講累積（從檔期起算日算起），比較一律對「檔期前同天數」，不用月初當基準
+    var sumM = sum(camp, "momo", "gmv"), sumW = sum(camp, "web", "gmv");
+    var cM = avg(camp,"momo","gmv"), pM = avg(prev,"momo","gmv");
+    var cW = avg(camp,"web","gmv"),  pW = avg(prev,"web","gmv");
     var dM = pM ? (cM / pM - 1) : 0, dW = pW ? (cW / pW - 1) : 0;
     var pct = function(x){ return (x >= 0 ? "+" : "") + Math.round(x * 100) + "%"; };
     var lifted = dM > 0.05 || dW > 0.05;
     var thin = camp.filter(function(d){ return (d.momo.orders + d.web.orders) <= 2; }).length;
 
     $("verdictMain").innerHTML =
+      "檔期 " + md(CAMP) + "–" + md(LAST) + "（" + nCamp + " 天）<b>累積銷售 " +
+      money(sumM + sumW) + "</b>，momo " + money(sumM) + "、官網 " + money(sumW) + "。" +
       (lifted ? "檔期<b>有把業績帶起來</b>：" : "目前<b>還看不到檔期把業績拉起來</b>：") +
-      md(CAMP) + " 起 " + nCamp + " 天，momo 日均銷售額 <b>" + money(cM) + "</b>（" + pct(dM) +
-      " vs 檔期前 " + md(monthStart) + "–" + md(prevEnd) + " 的 " + money(pM) +
-      "），官網日均 <b>" + money(cW) + "</b>（" + pct(dW) + "）。";
+      "momo 日均 <b>" + money(cM) + "</b>（" + pct(dM) + " vs 檔期前 " + nCamp + " 天），" +
+      "官網日均 <b>" + money(cW) + "</b>（" + pct(dW) + "）。";
 
     // 拿檔期所在月份的前一個月當長期基準，看檔期有沒有把整體水位帶回去
-    var pm = new Date(monthStart + "T00:00:00"); pm.setDate(0);
+    var pm = new Date(CAMP.slice(0, 8) + "01T00:00:00"); pm.setDate(0);
     var lastMonth = slice(iso(new Date(pm.getFullYear(), pm.getMonth(), 1)), iso(pm));
     var lmM = avg(lastMonth, "momo", "gmv");
     var sub = "";
@@ -911,12 +911,11 @@
       sub += "但這 " + nCamp + " 天的明細看起來還沒登錄完整，所以真正該讀的是：<b>資料先補齊</b>再看。";
     }
     if (lmM){
-      var gap = Math.round((1 - pM / lmM) * 100);
-      sub += (sub ? "" : "另外，") + "上個月 momo 日均是 " + money(lmM) +
-             (gap > 0 ? "，檔期前這段已經掉了 " + gap + "%，檔期要做的是把這段補回來，不只是打平前一週。"
-                      : "，檔期前這段已經高過上個月 " + (-gap) + "%，比較基準本身就不低。");
+      sub += (sub ? "" : "另外，") + "上個月 momo 日均是 " + money(lmM) + "，檔期這 " + nCamp +
+             " 天是 " + money(cM) +
+             (cM < lmM ? "，還沒回到上個月的水位。" : "，已經高過上個月。");
     }
-    $("verdictSub").innerHTML = sub || "檔期前後的比較基準都取自同一份銷售紀錄，口徑見下方說明。";
+    $("verdictSub").innerHTML = sub || "比較基準取自同一份銷售紀錄，口徑見下方說明。";
   }
 
   function renderKpis(){
@@ -1378,8 +1377,8 @@
            mdTable(MIX_HEADER, mixMatrix().concat([mixTotal()]));
   }
   function toSummary(){
-    var cM = avg(camp,"momo","gmv"), pM = avg(preMonth,"momo","gmv");
-    var cW = avg(camp,"web","gmv"),  pW = avg(preMonth,"web","gmv");
+    var cM = avg(camp,"momo","gmv"), pM = avg(prev,"momo","gmv");
+    var cW = avg(camp,"web","gmv"),  pW = avg(prev,"web","gmv");
     var pct = function(c, p){ return p ? ((c/p-1 >= 0 ? "+" : "") + Math.round((c/p-1)*100) + "%") : "—"; };
     return "【零售每日戰情】" + md(CAMP) + "–" + md(LAST) + "（檔期第 " + nCamp + " 天）\n" +
       "· momo＋寄倉：日均銷售額 " + money(cM) + "（" + pct(cM,pM) + " vs 檔期前）／期間合計 " + money(sum(camp,"momo","gmv")) + "\n" +
