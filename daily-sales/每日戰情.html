@@ -358,7 +358,6 @@
         <input type="date" id="campInput" class="btn" style="font-family:var(--font-num);padding:6px 10px">
         <div class="segset" id="tableSeg" role="group" aria-label="表格區間">
           <button type="button" data-from="camp" aria-pressed="true">檔期起</button>
-          <button type="button" data-from="month" aria-pressed="false">當月</button>
           <button type="button" data-from="30" aria-pressed="false">近 30 天</button>
           <button type="button" data-from="all" aria-pressed="false">全部</button>
         </div>
@@ -430,7 +429,9 @@
           那是進度表的進價欄把整筆金額填成單件、再乘上數量（例如青花椒辣醬 2 入組）。
           數字照原樣呈現沒有動，但這幾筆會讓 momo 實收略為高估。</li>
         <li>日期採「<code>order_create_date</code>（訂單建立日）」，不是出貨日或入帳日。</li>
-        <li>檔期起算日可以直接在上面「每日明細」那排改，換雙 11 或別的檔期不用改程式。</li>
+        <li><b>累計一律從「檔期起算日」算起</b>，不是從月初。每日明細與產品組合的合計、
+          以及「複製簡易數字」的累積銷售，都用同一個起算日。要換檔期（例如雙 11）就改上面
+          「每日明細」那排的日期，不用改程式，選了會記住。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
     </div>
@@ -1261,10 +1262,9 @@
     return md(rows[0].date) + "–" + md(rows[rows.length - 1].date) + "（" + rows.length + " 天）";
   }
   function tableRows(){
-    if (tableFrom === "camp")  return slice(CAMP, LAST);
-    if (tableFrom === "month") return slice(monthStart, LAST);
-    if (tableFrom === "all")   return days.slice();
-    return days.slice(-30);
+    if (tableFrom === "30")   return days.slice(-30);
+    if (tableFrom === "all")  return days.slice();
+    return slice(CAMP, LAST);            // 預設與 fallback 都從檔期起算日算
   }
   function renderTable(){
     var rows = tableRows();
