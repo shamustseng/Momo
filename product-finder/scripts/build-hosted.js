@@ -2,13 +2,16 @@
 'use strict';
 
 /**
- * 產出線上版的檔案到 dist/hosted/：index.html、app.js、styles.css，以及純資料的 data.json。
+ * 產出兩份網頁：
+ *   dist/hosted/  GitHub Pages 網站版（index.html、app.js、styles.css、data.json、.nojekyll）——正式使用的版本
+ *   dist/claude/  claude.ai 唯讀副本（index.html、app.js、styles.css）——沙箱裡不能連 GitHub，只顯示資料
+ *
  *   node scripts/build-hosted.js            用目前快取的資料
  *   node scripts/build-hosted.js --refresh  先重新抓取兩邊再產出
  * 在有 proxy 的環境要加 NODE_USE_ENV_PROXY=1。
  *
- * 這支 script 由 GitHub Actions 執行（.github/workflows/product-finder-refresh.yml，有人按 Run workflow 時），
- * 產出的 data.json 會被推到資料分支，線上頁面開啟時直接讀那一份，不需要任何人重新發布頁面。
+ * 這支 script 由 GitHub Actions 執行（.github/workflows/product-finder-refresh.yml，網站上按「重新搜尋」時），
+ * dist/hosted/ 會被推到資料分支，GitHub Pages 從那個分支提供網站。
  *
  * --refresh 會自己判斷這次重新抓取算成功還是失敗，並把結果寫進輸出：
  *   - 至少一邊抓到資料 → 當作成功，refreshStatus 為 null
@@ -19,7 +22,15 @@ const fs = require('fs');
 const path = require('path');
 const store = require('../lib/store');
 const { refresh, snapshot } = require('../lib/refresh');
-const { buildHosted } = require('../lib/static');
+const { buildHosted, buildSite } = require('../lib/static');
+
+function writeAll(dir, files) {
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, body] of Object.entries(files)) {
+    fs.writeFileSync(path.join(dir, name), body);
+    console.log(`寫入 ${path.relative(process.cwd(), path.join(dir, name))}（${(body.length / 1024).toFixed(1)} KB）`);
+  }
+}
 
 (async () => {
   let data = store.load();
@@ -45,13 +56,13 @@ const { buildHosted } = require('../lib/static');
   }
 
   const live = store.loadConfig().hosted || null;
-  const out = path.join(__dirname, '..', 'dist', 'hosted');
-  fs.mkdirSync(out, { recursive: true });
   const overrides = refreshStatus === 'failed' ? { refreshStatus, refreshError } : {};
-  for (const [name, body] of Object.entries(buildHosted(data, overrides, live))) {
-    fs.writeFileSync(path.join(out, name), body);
-    console.log(`寫入 ${path.relative(process.cwd(), path.join(out, name))}（${(body.length / 1024).toFixed(1)} KB）`);
-  }
+  const dist = path.join(__dirname, '..', 'dist');
+  writeAll(path.join(dist, 'hosted'), buildSite(data, overrides, live));
+  const claude = buildHosted(data, overrides, live);
+  delete claude['data.json'];
+  writeAll(path.join(dist, 'claude'), claude);
+
   const total = store.allProducts(data).length;
   console.log(`共 ${total} 件商品${refreshStatus === 'failed' ? '（沿用上次成功的資料）' : ''}`);
   // 讓 GitHub Actions 能用結束碼判斷這次有沒有抓到新資料

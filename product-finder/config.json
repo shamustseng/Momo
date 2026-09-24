@@ -37,7 +37,11 @@
     "retries": 2
   },
   "hosted": {
-    "dataUrl": "https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json",
-    "workflowUrl": "https://github.com/shamustseng/Momo/actions/workflows/product-finder-refresh.yml"
+    "siteUrl": "https://shamustseng.github.io/Momo/",
+    "repo": "shamustseng/Momo",
+    "workflow": "product-finder-refresh.yml",
+    "ref": "claude/momo-commission-tracking-tool-9zt0tf",
+    "dataBranch": "product-finder-data",
+    "tokenUrl": "https://github.com/settings/personal-access-tokens/new?name=product-finder%20%E9%87%8D%E6%96%B0%E6%90%9C%E5%B0%8B&description=%E9%98%BF%E7%88%BE%E6%B3%95%E7%94%A2%E5%93%81%E6%B8%85%E5%96%AE%E7%B6%B2%E7%AB%99%E7%94%A8%EF%BC%8C%E5%8F%AA%E9%9C%80%20Actions%20%E8%AE%80%E5%AF%AB%E8%88%87%20Contents%20%E5%94%AF%E8%AE%80&target_name=shamustseng&expires_in=366&actions=write&contents=read"
   }
 }

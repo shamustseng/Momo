@@ -91,22 +91,31 @@ data/seed.json     初始清單（第一次使用時的預設資料）
 test/              測試
 ```
 
-## 線上版：按「重新搜尋」才重抓，不靠 Claude
+## 線上版：GitHub Pages 網站，按「重新搜尋」就重抓
 
-`npm run hosted` 產出 `dist/hosted/` 四個檔案（index.html、app.js、styles.css、data.json），前三個發布成 claude.ai Artifact。
+正式網址：**https://shamustseng.github.io/Momo/**
 
-重抓由 GitHub Actions（`.github/workflows/product-finder-refresh.yml`）執行，沒有定時排程，只在有人按 Run workflow 時跑：
+`npm run hosted` 產出兩份：
+- `dist/hosted/`——GitHub Pages 網站版（index.html、app.js、styles.css、data.json、.nojekyll）。
+- `dist/claude/`——claude.ai 唯讀副本。claude.ai 的頁面跑在沙箱裡，連不到 GitHub，所以這份只顯示資料並指向網站版。
 
-1. 線上頁的**重新搜尋**按鈕會在新分頁開這個 workflow 的 GitHub 頁面；有 repo 權限的人按「Run workflow」→ 綠色「Run workflow」。
-   （GitHub 沒有不登入就能觸發的方式，所以這一下一定要在 GitHub 上按。）
-2. workflow 跑 `node scripts/build-hosted.js --refresh`，把 momo 與官網重抓一遍（約 1 分鐘），
-   把產出的 `data.json`（加上 `cache.json`）強制推到 `product-finder-data` 分支——這個分支永遠只有一個 commit，不會弄髒主分支歷史。
-3. 線上頁同時每 15 秒讀一次 `https://raw.githubusercontent.com/shamustseng/Momo/product-finder-data/data.json`
-   （公開 repo 有 CORS 標頭，CDN 快取 5 分鐘，頁面會加時間戳避開），拿到新的就自動換上，所以**頁面本身不用重新發布**。
-   開頁面時也會先讀一次，永遠顯示最近一次抓取的結果；讀不到時退回 index.html 內嵌的那一份（發布當時的資料）。
+### 「重新搜尋」怎麼運作
 
-失敗時怎麼提醒：
-- 等了 10 分鐘還沒有新資料（沒按 Run workflow、或抓取掛了）→ 頁面顯示紅色橫幅，停止等待。
-- 兩邊都抓不到 → `data.json` 沿用上一次成功的資料、`refreshStatus: 'failed'`，頁面顯示紅色橫幅與原因；workflow 本身也會標成失敗，GitHub 會寄通知。
+1. 網站上按「重新搜尋」，頁面直接呼叫 GitHub API 觸發 `.github/workflows/product-finder-refresh.yml`（`workflow_dispatch`，沒有定時排程）。
+2. 頁面每 4 秒問 GitHub 這次執行到哪了，橫幅顯示 GitHub 回報的真實狀態：排隊中 → 抓取中 → 成功／失敗。
+3. workflow 跑 `node scripts/build-hosted.js --refresh`（約 1 分鐘），把 `dist/hosted/` 連同 `cache.json` 強制推到 `product-finder-data` 分支
+   （這個分支永遠只有一個 commit）；GitHub Pages 從這個分支的根目錄提供網站。
+4. 執行成功後頁面透過 API 讀 `data.json`（不經 CDN 快取），立刻換上新資料。
 
-**注意**：手動 Run workflow 只認**預設分支**上的 workflow 檔，這個檔案改了要合併進預設分支才生效。相關網址在 `config.json` 的 `hosted` 區塊。
+失敗一定看得到：GitHub 回報失敗、權杖失效、10 分鐘沒跑完，都會停在紅色橫幅並附「查看 GitHub 紀錄」連結；權杖失效時自動打開設定面板。
+兩邊都抓不到時，資料沿用上一次成功的清單並標示 `refreshStatus: 'failed'`。
+
+### 第一次設定（只做一次）
+
+1. **開啟 GitHub Pages**：repo 的 Settings → Pages → Build and deployment → Source 選 **Deploy from a branch**，
+   Branch 選 **product-finder-data**、資料夾 **/(root)** → Save。
+2. **建立權杖**：網站上第一次按「重新搜尋」會跳出設定面板，照步驟建立 fine-grained token——
+   Repository access 只選 `shamustseng/Momo`；權限 **Actions: Read and write**、**Contents: Read-only**。
+   貼上後按「儲存並測試」。權杖只存在那台電腦的瀏覽器（localStorage），不會進 repo；換電腦要再貼一次。
+
+相關設定在 `config.json` 的 `hosted` 區塊。手動觸發只認**預設分支**上的 workflow 與程式碼，改了要合併進預設分支才生效。

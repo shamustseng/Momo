@@ -225,20 +225,25 @@ test('官網：滿額贈品頁不當成有售價的商品', () => {
   assert.strictEqual(normal.status, '');
 });
 
-test('線上版：產出 data.json，且頁面程式帶有資料分支網址', () => {
-  const { buildHosted } = require('../lib/static');
+test('網站版與 claude.ai 版：網站版帶 GitHub 觸發設定，claude.ai 版只指向網站', () => {
+  const { buildHosted, buildSite } = require('../lib/static');
   const data = { sources: { momo: { label: 'momo 購物網', updatedAt: '2026-09-20T00:00:00Z', products: [
     { id: 'momo:1', source: 'momo', sku: '1', name: '測試', price: 100, prices: { list: 150, promo: 100, flash: null }, url: 'u', keywords: [] },
   ] } } };
-  const live = { dataUrl: 'https://raw.githubusercontent.com/x/y/product-finder-data/data.json', workflowUrl: 'https://github.com/x/y/actions' };
-  const files = buildHosted(data, {}, live);
-  const payload = JSON.parse(files['data.json']);
-  assert.strictEqual(payload.sources.momo.products[0].prices.promo, 100, 'data.json 要含三種標價');
-  assert.strictEqual(payload.refreshStatus, null);
-  assert.ok(files['app.js'].includes(live.dataUrl), '頁面程式要知道去哪裡讀最新資料');
-  assert.ok(files['index.html'].includes('"generatedAt"'), 'index.html 仍內嵌一份當備援');
-  const offline = buildHosted(data);
-  assert.ok(offline['app.js'].includes('const LIVE = null'), '沒有 hosted 設定時不啟用自動載入');
+  const live = { siteUrl: 'https://x.github.io/y/', repo: 'x/y', workflow: 'wf.yml', ref: 'main', dataBranch: 'data', tokenUrl: 'https://github.com/settings/personal-access-tokens/new' };
+
+  const site = buildSite(data, {}, live);
+  assert.ok(site['index.html'].startsWith('<!doctype html>'), 'GitHub Pages 沒有外殼，要是完整文件');
+  assert.ok(site['index.html'].includes('<meta charset="utf-8">'));
+  assert.ok('.nojekyll' in site, '要關掉 Jekyll，檔案才會原樣提供');
+  assert.strictEqual(JSON.parse(site['data.json']).sources.momo.products[0].prices.promo, 100, 'data.json 要含三種標價');
+  assert.ok(site['app.js'].includes('"mode":"site"') && site['app.js'].includes('"repo":"x/y"') && site['app.js'].includes('"workflow":"wf.yml"'));
+  assert.ok(site['app.js'].includes('const HOSTED = false'), '網站版不在 claude.ai，存檔走一般下載');
+
+  const artifact = buildHosted(data, {}, live);
+  assert.ok(artifact['app.js'].includes('"mode":"artifact"') && artifact['app.js'].includes('https://x.github.io/y/'));
+  assert.ok(!artifact['app.js'].includes('"repo":"x/y"'), 'claude.ai 沙箱連不到 GitHub，不該帶觸發設定');
+  assert.ok(buildHosted(data)['app.js'].includes('const LIVE = null'), '沒有 hosted 設定時什麼都不連');
 });
 
 test('官網：sitemap 也失敗時改爬分類頁連結', async () => {

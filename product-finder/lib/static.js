@@ -9,9 +9,8 @@ const STYLES = path.join(__dirname, '..', 'public', 'styles.css');
 /**
  * 把商品資料打包成不需要伺服器的網頁。兩種產物共用同一份版面與程式：
  *  - buildStaticHtml(data)：單一 HTML 檔，樣式／程式／資料全內嵌，雙擊即開。
- *  - buildHosted(data)：發布到 claude.ai 用的檔案（index.html、app.js、styles.css、data.json）。
- *    線上版開啟時會去讀資料分支上的 data.json（GitHub Actions 抓完推上去的），
- *    所以頁面本身不用重新發布就能看到最新資料；「重新搜尋」按鈕開 GitHub 的 Run workflow 分頁並等結果。
+ *  - buildSite(data)：GitHub Pages 網站版，「重新搜尋」直接呼叫 GitHub API 觸發抓取並顯示進度。
+ *  - buildHosted(data)：claude.ai 唯讀副本（沙箱不能連 GitHub），指向網站版。
  */
 
 function preparePayload(data) {
@@ -57,7 +56,13 @@ const EXTRA_CSS = `
   width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px;
   padding:10px 12px; font-family:var(--font-mono); font-size:12px; line-height:1.6; resize:vertical;
 }
-.copy-actions{ display:flex; gap:8px; justify-content:flex-end; }
+.copy-actions{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.refresh-banner #refresh-link{ margin-left:auto; white-space:nowrap; font-weight:700; }
+.gh-steps{ margin:0; padding-left:20px; font-size:13px; line-height:1.8; }
+.gh-panel input{ width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; padding:9px 12px; font-family:var(--font-mono); font-size:13px; }
+.gh-msg{ margin:0; font-size:13px; min-height:1.2em; }
+.gh-msg.bad{ color:var(--bad); }
+.gh-msg.good{ color:var(--good); }
 `;
 
 /** <body> 內的版面。兩種產物與線上版的自我更新都從這裡產生，只有這一份。 */
@@ -74,7 +79,7 @@ const MARKUP = `
       <button class="tab" data-source="alphaplus" role="tab">Alpha Plus 官網</button>
     </nav>
     <div class="actions">
-      <a class="btn" id="refresh-btn" target="_blank" rel="noopener noreferrer" hidden>重新搜尋</a>
+      <button class="btn" id="refresh-btn" hidden>重新搜尋</button>
       <div class="menu">
         <button class="btn btn-primary" id="export-btn" aria-haspopup="true" aria-expanded="false">一鍵輸出</button>
         <div class="menu-panel" id="export-menu" hidden>
@@ -110,6 +115,7 @@ const MARKUP = `
   <section class="panel refresh-banner" id="refresh-banner" hidden>
     <span class="spinner" aria-hidden="true"></span>
     <span id="refresh-text"></span>
+    <a id="refresh-link" target="_blank" rel="noopener noreferrer" hidden>查看 GitHub 紀錄</a>
   </section>
 
   <section class="status-row" id="status-row"></section>
@@ -118,6 +124,7 @@ const MARKUP = `
   <footer class="foot">
     <p id="generated"></p>
     <p id="auto-note" hidden></p>
+    <p id="gh-settings-row" hidden><button class="btn btn-quiet" id="gh-settings">GitHub 權杖設定</button></p>
     <p>資料由程式抓取 momo 與 Alpha Plus 官網商品頁；momo 商品列出商品頁上的促銷價、市售價與限時折後價（有限時活動時才有），排序與對帳以促銷價為準；上架狀態以各站台當下顯示為準。</p>
   </footer>
 </main>
@@ -133,12 +140,33 @@ const MARKUP = `
     </div>
   </div>
 </div>
+
+<div class="copy-overlay" id="gh-overlay" hidden>
+  <div class="panel copy-panel gh-panel">
+    <p class="copy-hint">第一次使用「重新搜尋」：設定 GitHub 權杖（只要做一次，存在這台電腦的瀏覽器裡）</p>
+    <ol class="gh-steps">
+      <li>按 <a id="gh-token-link" target="_blank" rel="noopener noreferrer">建立權杖</a>（會開 GitHub，需已登入）。</li>
+      <li>Repository access 選 <b>Only select repositories</b> → 選 <b>shamustseng/Momo</b>。</li>
+      <li>Permissions → Repository permissions：<b>Actions</b> 設 <b>Read and write</b>、<b>Contents</b> 設 <b>Read-only</b>。</li>
+      <li>按 Generate token，把產生的 <code>github_pat_…</code> 貼到下面，按「儲存並測試」。</li>
+    </ol>
+    <input type="password" id="gh-token" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+    <p class="gh-msg" id="gh-msg"></p>
+    <div class="copy-actions">
+      <button class="btn" id="gh-clear">清除權杖</button>
+      <button class="btn" id="gh-close">關閉</button>
+      <button class="btn btn-primary" id="gh-save">儲存並測試</button>
+    </div>
+  </div>
+</div>
 `;
 
 /** 頁面程式。\`MARKUP_JSON\` 與 \`HOSTED\` 兩個佔位符在打包時填入。 */
 const APP_JS = String.raw`'use strict';
 const HOSTED = __HOSTED__;
-const LIVE = __LIVE_JSON__;   // 線上版：{ dataUrl, workflowUrl }；單檔版：null
+// 網站版（GitHub Pages）：{ mode:'site', repo, workflow, ref, dataBranch, tokenUrl }
+// claude.ai 版：{ mode:'artifact', siteUrl }；單檔版：null
+const LIVE = __LIVE_JSON__;
 let DATA = JSON.parse(document.getElementById('data').textContent);
 const LABELS = { momo: 'momo 購物網', alphaplus: 'Alpha Plus 官網' };
 const ORDER = ['momo', 'alphaplus'];
@@ -256,30 +284,67 @@ function render() {
 
 /* ---------- 重新搜尋與狀態橫幅 ---------- */
 
-// 等待 GitHub Actions 抓完的狀態：null（沒在等）| { since, baseline, timer }
-let waiting = null;
-const WAIT_LIMIT_MS = 10 * 60 * 1000;
-const POLL_MS = 15 * 1000;
-
 /**
- * 橫幅只有三種情況會出現：
- *  - 正在等 GitHub Actions 抓取（使用者剛按了「重新搜尋」）
- *  - 等了 10 分鐘還沒有新資料：可能沒按 Run workflow，或抓取失敗
- *  - 上一次抓取整個失敗（refreshStatus === 'failed'），畫面上的是沿用的舊資料
+ * 網站版的「重新搜尋」直接呼叫 GitHub API 觸發抓取，再問 GitHub 這次跑到哪了，
+ * 橫幅顯示的是 GitHub 回報的真實狀態，不是猜的：
+ *   starting → queued（排隊）→ running（抓取中）→ 成功就換上新資料；失敗／逾時就停在紅色橫幅。
+ * 需要一把只開「Actions 讀寫、Contents 唯讀」的 GitHub 權杖，只存在這台電腦的瀏覽器（localStorage）。
  */
+const GH_API = 'https://api.github.com';
+const TOKEN_KEY = 'product-finder:github-token';
+const JOB_LIMIT_MS = 10 * 60 * 1000;
+const POLL_MS = 4000;
+let job = null;   // null | { phase, startedAt, baselineId, runId, runUrl, message }
+let jobTicker = null;
+
+function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } }
+function setToken(t) { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* 無痕模式存不了，只在這次開啟有效 */ } memToken = t; }
+let memToken = '';
+const token = () => getToken() || memToken;
+
+function ghMessage(status) {
+  if (status === 401) return 'GitHub 權杖無效或已過期，請按「GitHub 權杖設定」重新設定';
+  if (status === 403) return 'GitHub 權杖沒有足夠權限（Actions 要設 Read and write），或 GitHub 暫時限流';
+  if (status === 404) return 'GitHub 權杖看不到 ' + LIVE.repo + '（建立權杖時要在 Repository access 選它）';
+  if (status === 422) return 'GitHub 拒絕觸發這個 workflow（' + LIVE.workflow + '）';
+  return 'GitHub 回應 HTTP ' + status;
+}
+
+async function gh(path, opts = {}) {
+  const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', Authorization: 'Bearer ' + token() };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  if (opts.accept) headers.Accept = opts.accept;
+  const res = await fetch(GH_API + path, { method: opts.method || 'GET', headers, body: opts.body, cache: 'no-store' });
+  if (!res.ok) { const e = new Error(ghMessage(res.status)); e.status = res.status; throw e; }
+  if (res.status === 204) return null;
+  return opts.accept && opts.accept.includes('raw') ? res.text() : res.json();
+}
+
+const runsPath = () => '/repos/' + LIVE.repo + '/actions/workflows/' + encodeURIComponent(LIVE.workflow) + '/runs?per_page=10';
+
 function renderRefreshState() {
   const banner = $('refresh-banner');
   const text = $('refresh-text');
+  const link = $('refresh-link');
+  const btn = $('refresh-btn');
   banner.classList.remove('stale', 'failed');
-  if (waiting && waiting.timedOut) {
+  link.hidden = true;
+  const busy = job && ['starting', 'queued', 'running'].includes(job.phase);
+  btn.disabled = !!busy;
+  btn.textContent = busy ? '搜尋中…' : '重新搜尋';
+  if (job && job.runUrl) { link.href = job.runUrl; link.hidden = false; }
+  if (busy) {
+    const sec = Math.round((Date.now() - job.startedAt) / 1000);
     banner.hidden = false;
-    banner.classList.add('failed');
-    text.textContent = '等了 10 分鐘沒有收到新資料。可能是 GitHub 分頁上還沒按「Run workflow」，或這次抓取失敗了——請到 GitHub 的 Actions 頁查看，或再按一次「重新搜尋」。';
+    text.textContent = job.phase === 'starting' ? '正在通知 GitHub 開始抓取…'
+      : job.phase === 'queued' ? 'GitHub 已收到，排隊等機器中…（已 ' + sec + ' 秒）'
+      : '正在抓取 momo 與 Alpha Plus 官網…（已 ' + sec + ' 秒，通常 1 分鐘內完成）';
     return;
   }
-  if (waiting) {
+  if (job && job.phase === 'failed') {
     banner.hidden = false;
-    text.textContent = '已開啟 GitHub 分頁，請在那一頁按「Run workflow」→ 綠色「Run workflow」。抓取約 1 分鐘，完成後本頁會自動更新（每 15 秒檢查一次，最多等 10 分鐘）。';
+    banner.classList.add('failed');
+    text.textContent = '重新搜尋失敗：' + job.message + '。畫面上仍是 ' + fmtTime(DATA.generatedAt, true) + ' 的資料。';
     return;
   }
   if (DATA.refreshStatus === 'failed') {
@@ -291,76 +356,163 @@ function renderRefreshState() {
   banner.hidden = true;
 }
 
+function setJob(patch) {
+  job = patch === null ? null : { ...(job || {}), ...patch };
+  const busy = job && ['starting', 'queued', 'running'].includes(job.phase);
+  if (busy && !jobTicker) jobTicker = setInterval(renderRefreshState, 1000);
+  if (!busy && jobTicker) { clearInterval(jobTicker); jobTicker = null; }
+  renderRefreshState();
+}
+
+async function onRefresh() {
+  if (job && ['starting', 'queued', 'running'].includes(job.phase)) return;
+  if (!token()) { openTokenPanel('按「重新搜尋」之前，要先設定一次 GitHub 權杖。'); return; }
+  setJob({ phase: 'starting', startedAt: Date.now(), baselineId: 0, runId: null, runUrl: null, message: '' });
+  try {
+    // 先記下目前最新一次執行的 id；觸發後出現 id 比它大的，就是這次的
+    const before = await gh(runsPath());
+    job.baselineId = Math.max(0, ...before.workflow_runs.map((r) => r.id));
+    await gh('/repos/' + LIVE.repo + '/actions/workflows/' + encodeURIComponent(LIVE.workflow) + '/dispatches', {
+      method: 'POST', body: JSON.stringify({ ref: LIVE.ref }),
+    });
+    setJob({ phase: 'queued' });
+    pollRun();
+  } catch (err) {
+    failJob(err.message || String(err), err.status);
+  }
+}
+
+function failJob(message, status) {
+  setJob({ phase: 'failed', message });
+  if (status === 401 || status === 404) openTokenPanel(message);
+}
+
+async function pollRun() {
+  while (job && ['queued', 'running'].includes(job.phase)) {
+    if (Date.now() - job.startedAt > JOB_LIMIT_MS) { failJob('等了 10 分鐘 GitHub 還沒跑完，請按「查看 GitHub 紀錄」確認'); return; }
+    await new Promise((r) => setTimeout(r, POLL_MS));
+    let run;
+    try {
+      const d = await gh(runsPath());
+      run = d.workflow_runs.find((r) => (job.runId ? r.id === job.runId : r.id > job.baselineId));
+    } catch (err) {
+      if (err.status === 401 || err.status === 403 || err.status === 404) { failJob(err.message, err.status); return; }
+      continue;   // 網路一時不穩，下一輪再問
+    }
+    if (!run) continue;   // GitHub 還沒把這次排進列表
+    setJob({ runId: run.id, runUrl: run.html_url, phase: run.status === 'completed' ? job.phase : run.status === 'in_progress' ? 'running' : 'queued' });
+    if (run.status !== 'completed') continue;
+    const fresh = await loadLatestData();
+    if (run.conclusion === 'success' && fresh) {
+      setJob(null);
+      toast('已更新：' + fmtTime(DATA.generatedAt) + ' 抓到 ' + ORDER.reduce((n, k) => n + ((DATA.sources[k] || { products: [] }).products.length), 0) + ' 件商品');
+    } else if (run.conclusion === 'success') {
+      failJob('抓取成功，但讀不到新資料，請重新整理本頁');
+    } else {
+      failJob('GitHub 這次抓取沒有成功（' + (run.conclusion || '未知') + '），按「查看 GitHub 紀錄」可看原因');
+    }
+    return;
+  }
+}
+
+/**
+ * 讀最新的 data.json。有權杖就走 GitHub API（沒有 CDN 快取，剛推上去就讀得到）；
+ * 沒有權杖就讀網站上同一份（GitHub Pages 最多會快取幾分鐘）。讀到新的就換上並重畫。
+ */
+async function loadLatestData() {
+  let fresh = null;
+  if (token()) {
+    try {
+      const raw = await gh('/repos/' + LIVE.repo + '/contents/data.json?ref=' + encodeURIComponent(LIVE.dataBranch), { accept: 'application/vnd.github.raw+json' });
+      fresh = JSON.parse(raw);
+    } catch { fresh = null; }
+  }
+  if (!fresh) {
+    try {
+      const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) fresh = await res.json();
+    } catch { fresh = null; }
+  }
+  if (!fresh || !fresh.sources) return null;
+  if (fresh.generatedAt !== DATA.generatedAt) {
+    DATA = fresh;
+    $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
+    render();
+  }
+  return fresh;
+}
+
+/* ---------- GitHub 權杖設定 ---------- */
+
+function openTokenPanel(msg) {
+  $('gh-overlay').hidden = false;
+  $('gh-token').value = '';
+  const m = $('gh-msg');
+  m.className = 'gh-msg' + (msg ? ' bad' : '');
+  m.textContent = msg || (token() ? '已設定權杖。要換新的就貼上後按「儲存並測試」。' : '');
+  $('gh-token').focus();
+}
+
+async function saveToken() {
+  const value = $('gh-token').value.trim();
+  const m = $('gh-msg');
+  if (!value) { m.className = 'gh-msg bad'; m.textContent = '請先貼上權杖'; return; }
+  const previous = token();
+  setToken(value);
+  m.className = 'gh-msg'; m.textContent = '測試中…';
+  try {
+    await gh('/repos/' + LIVE.repo + '/actions/workflows/' + encodeURIComponent(LIVE.workflow));
+    m.className = 'gh-msg good'; m.textContent = '可以用了！之後按「重新搜尋」就會直接開始抓取。';
+    setTimeout(() => { $('gh-overlay').hidden = true; }, 1200);
+  } catch (err) {
+    setToken(previous);
+    m.className = 'gh-msg bad'; m.textContent = '這把權杖不能用：' + (err.message || err);
+  }
+}
+
+function setupSite() {
+  const btn = $('refresh-btn');
+  btn.hidden = false;
+  btn.addEventListener('click', onRefresh);
+  $('gh-token-link').href = LIVE.tokenUrl;
+  $('gh-settings-row').hidden = false;
+  $('gh-settings').addEventListener('click', () => openTokenPanel());
+  $('gh-save').addEventListener('click', saveToken);
+  $('gh-token').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveToken(); });
+  $('gh-close').addEventListener('click', () => { $('gh-overlay').hidden = true; });
+  $('gh-clear').addEventListener('click', () => { setToken(''); $('gh-msg').className = 'gh-msg'; $('gh-msg').textContent = '已清除。'; });
+  const note = $('auto-note');
+  note.hidden = false;
+  note.textContent = '按「重新搜尋」會立刻請 GitHub 重新抓取 momo 與官網（約 1 分鐘），狀態直接顯示在上方；開啟本頁會自動載入最近一次抓取的結果。';
+}
+
+function setupArtifactNote() {
+  const note = $('auto-note');
+  note.hidden = false;
+  note.textContent = '';
+  note.append(document.createTextNode('這是 claude.ai 上的唯讀副本，資料不會自動更新。要重新搜尋請開正式網站：'));
+  const a = el('a', null, LIVE.siteUrl);
+  a.href = LIVE.siteUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  note.append(a);
+}
+
 let downloadsApi = null;
 
 /**
- * 線上版才有的東西：
- *  - 最新資料：GitHub Actions 抓完會把 data.json 推到資料分支；頁面開啟時直接讀那份，
- *    不用重新發布這個頁面。讀不到就用內嵌的那份（發布當時的資料）。
- *  - 重新搜尋：GitHub 沒有「不登入就能觸發」的方式，所以按鈕會開 GitHub 的 Run workflow 分頁
- *    讓有權限的人按一下，本頁同時開始輪詢 data.json，抓完自動換上新資料。
- *  - downloads：把產生的檔案交給使用者存檔（檢視器不允許頁面自行下載，一定要走這個）
- * 單檔版沒有 window.claude 也沒有 LIVE，全部退回原本的做法。
+ * 三種版本：
+ *  - 網站版（GitHub Pages）：一般網頁，可以直接呼叫 GitHub API，「重新搜尋」在這裡。
+ *  - claude.ai 版：沙箱裡不能連 GitHub，只顯示發布當時的資料，並指向網站版。
+ *    downloads 能力用來存 CSV（檢視器不允許頁面自行下載）。
+ *  - 單檔版：什麼都不連，內嵌的資料就是全部。
  */
 async function setupCapabilities() {
-  if (LIVE && LIVE.dataUrl) {
-    setupLiveData();
-    await loadLiveData();
+  if (LIVE && LIVE.mode === 'site') {
+    setupSite();
+    await loadLatestData();
   }
+  if (LIVE && LIVE.mode === 'artifact' && LIVE.siteUrl) setupArtifactNote();
   if (!HOSTED || !window.claude || typeof window.claude.use !== 'function') return;
   downloadsApi = await window.claude.use('downloads').catch(() => null);
-}
-
-function setupLiveData() {
-  const btn = $('refresh-btn');
-  if (LIVE.workflowUrl) {
-    btn.href = LIVE.workflowUrl;
-    btn.hidden = false;
-    btn.addEventListener('click', startWaiting);   // 不擋預設行為：連結照常在新分頁開 GitHub
-  }
-  const note = $('auto-note');
-  note.hidden = false;
-  note.textContent = '資料只在按「重新搜尋」時重新抓取（透過 GitHub Actions，約 1 分鐘）；開啟本頁會自動載入最近一次抓取的結果。';
-}
-
-function startWaiting() {
-  if (waiting && waiting.timer) clearInterval(waiting.timer);
-  waiting = { since: Date.now(), baseline: DATA.generatedAt, timedOut: false, timer: null };
-  renderRefreshState();
-  waiting.timer = setInterval(async () => {
-    const fresh = await loadLiveData();
-    if (fresh && fresh.generatedAt !== waiting.baseline) {
-      clearInterval(waiting.timer);
-      waiting = null;
-      renderRefreshState();
-      toast('已更新為 ' + fmtTime(fresh.generatedAt) + ' 抓取的資料');
-      return;
-    }
-    if (Date.now() - waiting.since > WAIT_LIMIT_MS) {
-      clearInterval(waiting.timer);
-      waiting.timedOut = true;
-      renderRefreshState();
-    }
-  }, POLL_MS);
-}
-
-/** 讀資料分支上最新的 data.json；成功就換上並重畫，回傳新資料；失敗回傳 null（沿用目前畫面）。 */
-async function loadLiveData() {
-  try {
-    // 加時間戳避開 CDN 快取，確保拿到剛推上去的那一份
-    const res = await fetch(LIVE.dataUrl + (LIVE.dataUrl.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const fresh = await res.json();
-    if (!fresh || !fresh.sources) throw new Error('資料格式不對');
-    if (fresh.generatedAt !== DATA.generatedAt) {
-      DATA = fresh;
-      $('generated').textContent = '資料產出時間：' + fmtTime(DATA.generatedAt, true);
-      render();
-    }
-    return fresh;
-  } catch {
-    return null;
-  }
 }
 
 /* ---------- 輸出 ---------- */
@@ -497,7 +649,8 @@ document.addEventListener('click', (e) => { if (!e.target.closest('.menu')) { $(
 $('export-menu').addEventListener('click', (e) => { const k = e.target.dataset.export; if (!k) return; $('export-menu').hidden = true; exportAction(k); });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('copy-overlay').hidden) { $('copy-overlay').hidden = true; return; }
-  if (e.key === '/' && document.activeElement !== $('q') && document.activeElement !== $('copy-area')) { e.preventDefault(); $('q').focus(); }
+  if (e.key === 'Escape' && !$('gh-overlay').hidden) { $('gh-overlay').hidden = true; return; }
+  if (e.key === '/' && document.activeElement !== $('q') && document.activeElement !== $('copy-area') && document.activeElement !== $('gh-token')) { e.preventDefault(); $('q').focus(); }
 });
 $('copy-close').addEventListener('click', () => { $('copy-overlay').hidden = true; });
 $('copy-overlay').addEventListener('click', (e) => { if (e.target === $('copy-overlay')) $('copy-overlay').hidden = true; });
@@ -551,10 +704,9 @@ ${appJs(false)}
 }
 
 /**
- * 發布到 claude.ai 用的檔案。index.html 不含 doctype/html/head/body 外殼（發布工具會自己包）。
- * data.json 是同一份資料的純 JSON，給 GitHub Actions 推到資料分支、讓頁面開啟時讀最新的用；
- * index.html 內嵌的那份只是讀不到時的備援。
- * live = { dataUrl, workflowUrl }，來自 config.json 的 hosted 區塊；沒有就不啟用自動載入。
+ * 發布到 claude.ai 用的檔案（唯讀副本）。index.html 不含 doctype/html/head/body 外殼（發布工具會自己包）。
+ * claude.ai 的沙箱不能連 GitHub，所以這一版不做重新搜尋，只顯示資料並指向網站版。
+ * live = { siteUrl }，來自 config.json 的 hosted 區塊。
  */
 function buildHosted(data, payloadOverrides = {}, live = null) {
   const payload = { ...preparePayload(data), ...payloadOverrides };
@@ -564,12 +716,45 @@ ${MARKUP}
 ${dataScript(payload)}
 <script src="app.js"></script>
 `;
+  const artifactLive = live && live.siteUrl ? { mode: 'artifact', siteUrl: live.siteUrl } : null;
   return {
     'index.html': index,
-    'app.js': appJs(true, live),
+    'app.js': appJs(true, artifactLive),
     'styles.css': css(),
     'data.json': JSON.stringify(payload) + '\n',
   };
 }
 
-module.exports = { buildStaticHtml, buildHosted, preparePayload };
+/**
+ * 網站版（GitHub Pages）：一般網頁，不在沙箱裡，可以直接呼叫 GitHub API 觸發抓取、讀取結果。
+ * 由 GitHub Actions 抓完後推到資料分支，GitHub Pages 從那個分支的根目錄提供。
+ * live = { repo, workflow, ref, dataBranch, tokenUrl }。
+ */
+function buildSite(data, payloadOverrides = {}, live = null) {
+  const payload = { ...preparePayload(data), ...payloadOverrides };
+  const siteLive = live ? { mode: 'site', repo: live.repo, workflow: live.workflow, ref: live.ref, dataBranch: live.dataBranch, tokenUrl: live.tokenUrl } : null;
+  const index = `<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>阿爾法產品清單</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>${MARKUP}
+${dataScript(payload)}
+<script src="app.js"></script>
+</body>
+</html>
+`;
+  return {
+    'index.html': index,
+    'app.js': appJs(false, siteLive),
+    'styles.css': css(),
+    'data.json': JSON.stringify(payload) + '\n',
+    '.nojekyll': '',
+  };
+}
+
+module.exports = { buildStaticHtml, buildHosted, buildSite, preparePayload };
