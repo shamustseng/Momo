@@ -231,6 +231,22 @@
   .warnline{ margin:6px 0 0; color:var(--warn-ink); background:var(--warn-soft);
              border-radius:5px; padding:8px 10px; line-height:1.55; }
 
+  .pxcard{ background:var(--surface); border:1px solid var(--border); border-radius:4px;
+           padding:16px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; }
+  .pxform{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px 14px; }
+  .pxf{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-muted); }
+  .pxf input{ font:inherit; font-family:var(--font-num); font-variant-numeric:tabular-nums;
+              font-size:15px; color:var(--ink); background:var(--surface);
+              border:1px solid var(--border-strong); border-radius:5px; padding:6px 9px; width:100%; }
+  .pxf input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .pxstats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+            background:var(--border); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .pxstat{ background:var(--surface-2); padding:10px 14px; display:flex; flex-direction:column; gap:3px; }
+  .pxstat b{ font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:20px;
+             font-weight:600; letter-spacing:-.02em; }
+  .pxstat span{ font-size:11.5px; color:var(--ink-muted); }
+  .pxstat small{ font-family:var(--font-num); font-size:11px; color:var(--ink-faint); }
+
   .method,.howto{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:16px 20px; }
   .howto{ background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent); }
   .method h3,.howto h3{ font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:10px; }
@@ -401,6 +417,28 @@
     </div>
   </section>
 
+  <section id="secPx">
+    <div class="sechead">
+      <h2>龍鳳 × 全聯 鋪貨</h2>
+      <span class="hint">這幾個數字不在銷售紀錄裡，要自己填；填了會記在這台電腦，也會一起進「複製簡易數字」</span>
+    </div>
+    <div class="pxcard">
+      <div class="pxform">
+        <label class="pxf"><span>資料日期</span>
+          <input type="date" id="pxDate" class="num"></label>
+        <label class="pxf"><span>全聯總店數</span>
+          <input type="number" id="pxStores" class="num" min="0" step="1" inputmode="numeric"></label>
+        <label class="pxf"><span>鋪貨店數</span>
+          <input type="number" id="pxListed" class="num" min="0" step="1" inputmode="numeric"></label>
+        <label class="pxf"><span>進貨包數</span>
+          <input type="number" id="pxShipped" class="num" min="0" step="1" inputmode="numeric"></label>
+        <label class="pxf"><span>銷售包數</span>
+          <input type="number" id="pxSold" class="num" min="0" step="1" inputmode="numeric"></label>
+      </div>
+      <div class="pxstats" id="pxStats"></div>
+    </div>
+  </section>
+
   <section>
     <div class="howto">
       <h3>每天要做的三件事</h3>
@@ -435,6 +473,9 @@
         <li><b>「複製簡易數字」的制表日期＝按下按鈕的當天，前日銷售＝前一天</b>，回報區間與
           累積也都結束在昨天，所以檔案裡若已經有今天的半天資料不會被算進去。萬一資料還沒
           進到昨天，回報區間會註明實際到哪一天。</li>
+        <li><b>龍鳳 × 全聯</b>那幾個數字不在銷售紀錄裡，是人工填的，只存在這台電腦的瀏覽器，
+          換電腦要重填。填了就會一起進「複製簡易數字」；四格都清空就不會出現那一段。
+          全聯是包數、不是金額，所以不進上面的銷售額與累計。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
     </div>
@@ -841,6 +882,48 @@
   if (!CAMP) CAMP = DATA.meta.campaign_start || "";
 
   var metric = "gmv", rangeDays = 30, tableFrom = "camp";
+
+  /* 龍鳳 × 全聯的鋪貨數字：銷售紀錄裡沒有，由人工填，存在這台電腦的瀏覽器 */
+  var PX_KEY = STORE_KEY + ":px";
+  var PX_FIELDS = ["date", "stores", "listed", "shipped", "sold"];
+  var PX = { date:"", stores:1299, listed:707, shipped:4492, sold:136 };
+  try {
+    var pxSaved = JSON.parse(localStorage.getItem(PX_KEY) || "null");
+    if (pxSaved) PX_FIELDS.forEach(function(k){ if (pxSaved[k] != null) PX[k] = pxSaved[k]; });
+  } catch (e) {}
+
+  function pxInput(k){
+    return $("px" + k.charAt(0).toUpperCase() + k.slice(1));
+  }
+  function pxSave(){
+    PX_FIELDS.forEach(function(k){
+      var el = pxInput(k);
+      PX[k] = k === "date" ? el.value : (el.value === "" ? "" : Math.max(0, Math.round(+el.value || 0)));
+    });
+    try { localStorage.setItem(PX_KEY, JSON.stringify(PX)); } catch (e) {}
+    renderPx();
+  }
+  function pxHas(){
+    return ["stores","listed","shipped","sold"].some(function(k){ return PX[k] !== "" && PX[k] != null; });
+  }
+  function renderPx(){
+    PX_FIELDS.forEach(function(k){ pxInput(k).value = PX[k] == null ? "" : PX[k]; });
+    var stores = +PX.stores || 0, listed = +PX.listed || 0;
+    var shipped = +PX.shipped || 0, sold = +PX.sold || 0;
+    var stat = function(label, value, note){
+      return '<div class="pxstat"><span>' + label + '</span><b>' + value + '</b>' +
+             (note ? '<small>' + note + '</small>' : '') + '</div>';
+    };
+    $("pxStats").innerHTML =
+      stat("鋪貨率", stores ? (listed / stores * 100).toFixed(1) + "%" : "–",
+           fmtInt(listed) + " / " + fmtInt(stores) + " 店") +
+      stat("售出率", shipped ? (sold / shipped * 100).toFixed(1) + "%" : "–",
+           fmtInt(sold) + " / " + fmtInt(shipped) + " 包") +
+      stat("店均售出", listed ? (sold / listed).toFixed(2) + " 包" : "–",
+           "每家鋪貨店") +
+      stat("店內庫存", fmtInt(Math.max(0, shipped - sold)) + " 包",
+           "進貨減銷售");
+  }
   var days, LAST, camp, prev, prevStart, prevEnd, nCamp;
 
   function slice(a, b){ return days.filter(function(d){ return d.date >= a && d.date <= b; }); }
@@ -1429,7 +1512,18 @@
       "前日銷售：" + fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件\n" +
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       "MOMO：" + fmtInt(cM) + "元\n" +
-      "CYBERBIZ：" + fmtInt(cW) + "元";
+      "CYBERBIZ：" + fmtInt(cW) + "元" + pxBlock();
+  }
+
+  /* 龍鳳 × 全聯：有填才附上，沒填就不要多出一段空的 */
+  function pxBlock(){
+    if (!pxHas()) return "";
+    var n = function(v, unit){ return (v === "" || v == null) ? "—" : fmtInt(v) + unit; };
+    return "\n【龍鳳 × 全聯】" + (PX.date ? "（截至 " + PX.date.slice(5).replace("-", "/") + "）" : "") + "\n" +
+      "全聯總店數：" + n(PX.stores, "店") + "\n" +
+      "鋪貨店數：" + n(PX.listed, "店") + "\n" +
+      "進貨包數：" + n(PX.shipped, "包") + "\n" +
+      "銷售包數：" + n(PX.sold, "包");
   }
 
   function toStandaloneHtml(){
@@ -1562,6 +1656,8 @@
   });
 
   /* ══════════ 8. 其他控制項 ══════════ */
+  PX_FIELDS.forEach(function(k){ pxInput(k).addEventListener("change", pxSave); });
+
   $("campInput").addEventListener("change", function(){
     if (!this.value) return;
     CAMP = this.value;
@@ -1608,6 +1704,7 @@
     }, 150);
   });
 
+  renderPx();
   renderAll();
   window.__DAILY__ = { get data(){ return DATA; }, aggregate: aggregate, readXlsx: readXlsx };
 })();
