@@ -504,7 +504,8 @@
           進到昨天，回報區間會註明實際到哪一天。</li>
         <li><b>龍鳳 × 全聯</b>那幾個數字不在銷售紀錄裡，是人工填的，只存在這台電腦的瀏覽器，
           換電腦要重填。<b>每個回報日期存成一筆</b>：改日期再填數字就是新增一筆，同一天再填就是
-          覆蓋，所以下面看得到售出率的走勢。上面幾格與「複製簡易數字」都取最新那一筆。
+          覆蓋，所以下面看得到售出率的走勢。統計從 <span class="num">2026-09-24</span> 那筆開始，
+          更早的不列入。上面幾格與「複製簡易數字」都取最新那一筆。
           全聯算的是包數（有填單價才換算金額），不進上面的銷售額與累計。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
@@ -915,19 +916,17 @@
 
   /* 龍鳳 × 全聯：銷售紀錄裡沒有這些數字，由人工填。每個回報日期存成一筆，
      留著才看得出售出率的走勢；只存在這台電腦的瀏覽器。 */
-  var PX_KEY = STORE_KEY + ":px";
+  // 統計從 9/24 這筆開始，更早的不算。儲存位置帶起算日，舊版存過的資料不會跑回來。
+  var PX_START = "2026-09-24";
+  var PX_KEY = STORE_KEY + ":px:" + PX_START;
   var PX_NUM = ["stores", "listed", "shipped", "sold", "price"];
   var PX_ROWS = [];
   (function(){
-    var raw = null;
-    try { raw = JSON.parse(localStorage.getItem(PX_KEY) || "null"); } catch (e) {}
-    if (raw && raw.rows) PX_ROWS = raw.rows;
-    else if (raw && (raw.stores != null || raw.sold != null)){
-      // 舊版只存一筆、日期可能留白，沒有日期就沒辦法排進走勢，丟掉也不可惜
-      if (raw.date) PX_ROWS = [{ d: raw.date, stores: raw.stores, listed: raw.listed,
-                                 shipped: raw.shipped, sold: raw.sold, price: "" }];
-    }
-    if (!PX_ROWS.length) PX_ROWS = [{ d:"2026-09-24", stores:1299, listed:901,
+    try {
+      var raw = JSON.parse(localStorage.getItem(PX_KEY) || "null");
+      if (raw && raw.rows) PX_ROWS = raw.rows;
+    } catch (e) {}
+    if (!PX_ROWS.length) PX_ROWS = [{ d: PX_START, stores:1299, listed:901,
                                       shipped:4492, sold:136, price:135 }];
     pxSort();
   })();
