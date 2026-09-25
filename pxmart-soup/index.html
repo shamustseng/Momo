@@ -1,0 +1,1009 @@
+<title>雞湯大叔全聯測算器</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#F7F4EE; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E4DECE;
+    --border:#DDD6C7; --ink:#26221D; --ink-muted:#6B6355; --ink-faint:#948C7A;
+    --accent:#0E8F62; --accent-hover:#0B7350; --accent-soft:#DCF0E7; --accent-ink:#0B4A34;
+    --cost:#B5730A; --cost-soft:#F6E8D2; --cost-ink:#6B4507;
+    --good:#2F9E44; --good-soft:#DFF1E3; --bad:#C4362F; --bad-soft:#F7E0DE;
+    --shadow:0 1px 2px rgba(38,34,29,.06), 0 6px 20px rgba(38,34,29,.06);
+    --font-ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+      --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+      --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+      --cost:#B67F2E; --cost-soft:#3A2D16; --cost-ink:#F0D19C;
+      --good:#4CAF6B; --good-soft:#1E3324; --bad:#E2665F; --bad-soft:#3D2120;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#14120D; --surface:#1C1914; --surface-2:#25211A; --surface-3:#2E2921;
+    --border:#3A3428; --ink:#F2EDE2; --ink-muted:#B3AB98; --ink-faint:#7E7666;
+    --accent:#279270; --accent-hover:#37AD86; --accent-soft:#1C3A2E; --accent-ink:#B7ECD6;
+    --cost:#B67F2E; --cost-soft:#3A2D16; --cost-ink:#F0D19C;
+    --good:#4CAF6B; --good-soft:#1E3324; --bad:#E2665F; --bad-soft:#3D2120;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.35);
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+    font-size:14.5px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; scroll-behavior:auto !important; } }
+  h1,h2,h3{ text-wrap:balance; font-weight:800; letter-spacing:-0.01em; margin:0; }
+  .num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  button, input, select{ font:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .topbar{
+    position:sticky; top:env(safe-area-inset-top, 0px); z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .topbar-inner{ max-width:1180px; margin:0 auto; padding:14px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; }
+  .brand{ display:flex; flex-direction:column; gap:2px; margin-right:auto; }
+  .brand .eyebrow{ font-size:11px; letter-spacing:.09em; color:var(--ink-faint); font-weight:700; }
+  .brand h1{ font-size:19px; }
+  .tabs{ display:flex; gap:4px; overflow-x:auto; padding-bottom:2px; max-width:100%; }
+  .tabs a{
+    flex:0 0 auto; text-decoration:none; color:var(--ink-muted); font-size:13px; font-weight:600;
+    padding:7px 12px; border-radius:999px; white-space:nowrap;
+  }
+  .tabs a:hover{ background:var(--surface-2); color:var(--ink); }
+  .icon-btn{
+    border:1px solid var(--border); background:var(--surface); color:var(--ink-muted);
+    border-radius:999px; height:32px; padding:0 12px; cursor:pointer; flex:0 0 auto; font-size:12.5px; font-weight:700;
+  }
+  .icon-btn:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+  .page{ max-width:1180px; margin:0 auto; padding-inline:20px; padding-block:24px 90px; display:flex; flex-direction:column; gap:22px; }
+  @media (max-width:520px){ .page, .topbar-inner{ padding-inline:16px; } .card{ padding:18px 16px; } }
+
+  .hero{ display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:18px; }
+  @media (max-width:860px){ .hero{ grid-template-columns:1fr; } }
+  .verdict{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .verdict .label{ font-size:12px; letter-spacing:.06em; color:var(--ink-faint); font-weight:700; }
+  .verdict .big{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:44px; font-weight:700; line-height:1.1; letter-spacing:-0.02em; }
+  .verdict .big.pos{ color:var(--good); } .verdict .big.neg{ color:var(--bad); }
+  .verdict .under{ color:var(--ink-muted); font-size:13.5px; }
+  .verdict .narr{ font-size:14px; line-height:1.85; border-top:1px solid var(--border); padding-top:12px; margin:4px 0 0; }
+  .verdict .narr b{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .sell-ctl{ display:flex; flex-direction:column; gap:8px; }
+  .sell-ctl .range-row{ display:flex; align-items:center; gap:12px; }
+  .sell-ctl input[type="range"]{ flex:1; accent-color:var(--accent); }
+  .sell-ctl output{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:18px; font-weight:700; min-width:72px; text-align:right; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ border:1px solid var(--border); background:var(--surface-2); color:var(--ink-muted); border-radius:999px; padding:3px 11px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .chip:hover{ color:var(--ink); border-color:var(--ink-faint); }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; align-content:start; }
+  .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow); }
+  .kpi .label{ font-size:11.5px; letter-spacing:.05em; color:var(--ink-faint); font-weight:700; }
+  .kpi .value{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:22px; font-weight:700; margin-top:4px; }
+  .kpi .note{ font-size:12px; margin-top:2px; color:var(--ink-muted); }
+  .kpi .value.neg{ color:var(--bad); }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow); scroll-margin-top:90px; }
+  .card-head{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 16px; }
+  .card-head > div{ margin-right:auto; }
+  .card h2{ font-size:17px; }
+  .card .sub{ color:var(--ink-muted); font-size:13px; margin:4px 0 0; max-width:74ch; }
+  .card-body{ margin-top:18px; display:flex; flex-direction:column; gap:18px; }
+
+  .group-title{ font-size:12px; letter-spacing:.06em; color:var(--ink-faint); font-weight:800; margin:0 0 10px; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px 18px; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12.5px; font-weight:700; color:var(--ink-muted); }
+  .field .hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; }
+  .field input[type="number"], .field input[type="text"], input.cell{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:7px 10px; color:var(--ink); width:100%; font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  }
+  input.cell{ padding:5px 8px; text-align:right; font-size:13px; min-width:90px; }
+  input.cell.name{ text-align:left; font-family:var(--font-ui); min-width:160px; }
+  .seg{ display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--surface-2); }
+  .seg button{ border:0; background:transparent; color:var(--ink-muted); padding:5px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .seg button[aria-pressed="true"]{ background:var(--ink); color:var(--bg); }
+
+  .btn-row{ display:flex; flex-wrap:wrap; gap:10px; }
+  .btn{
+    border:1px solid var(--border); background:var(--surface-2); color:var(--ink);
+    padding:7px 14px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600;
+  }
+  .btn:hover{ border-color:var(--ink-faint); }
+  .btn.ghost{ background:transparent; }
+  .btn.small{ padding:3px 10px; font-size:12px; }
+
+  .scrollwrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:separate; border-spacing:0; }
+  th,td{ padding:8px 12px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; font-size:13.3px; }
+  th:first-child, td:first-child{ text-align:left; }
+  thead th{ background:var(--surface-2); color:var(--ink-muted); font-size:12px; letter-spacing:.03em; }
+  td.num, th.num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  tr.sub-row td:first-child{ padding-left:26px; color:var(--ink-muted); }
+  tr.total td{ font-weight:700; background:var(--surface-2); }
+  tr.net td{ font-weight:800; background:var(--accent-soft); color:var(--accent-ink); border-bottom:none; }
+  tr.net.neg td{ background:var(--bad-soft); color:var(--bad); }
+  tr.section td{ font-size:12px; color:var(--ink-faint); font-weight:800; letter-spacing:.05em; background:transparent; }
+  td.neg{ color:var(--bad); }
+  td.pos{ color:var(--good); }
+  th.cur, td.cur{ background:var(--accent-soft); }
+  tr.net td.cur{ background:var(--accent-soft); }
+  .heat td{ text-align:center; font-size:12.5px; padding:7px 8px; }
+  .heat td.p1{ background:color-mix(in srgb, var(--good) 14%, transparent); }
+  .heat td.p2{ background:color-mix(in srgb, var(--good) 28%, transparent); }
+  .heat td.p3{ background:color-mix(in srgb, var(--good) 42%, transparent); }
+  .heat td.n1{ background:color-mix(in srgb, var(--bad) 14%, transparent); }
+  .heat td.n2{ background:color-mix(in srgb, var(--bad) 28%, transparent); }
+  .heat td.n3{ background:color-mix(in srgb, var(--bad) 42%, transparent); }
+  .heat td.here{ outline:2px solid var(--ink); outline-offset:-2px; font-weight:800; }
+  .heat th{ text-align:center; }
+
+  svg.chart{ width:100%; height:auto; display:block; }
+  .chart-shell{ min-width:600px; }
+  .legend{ display:flex; flex-wrap:wrap; gap:12px 18px; font-size:12.5px; color:var(--ink-muted); }
+  .legend .item{ display:flex; align-items:center; gap:6px; }
+  .swatch{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+
+  .two-col{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; }
+  @media (max-width:900px){ .two-col{ grid-template-columns:1fr; } }
+  .stack{ display:flex; flex-direction:column; gap:22px; }
+  .callout{ background:var(--surface-2); border-radius:12px; padding:12px 16px; font-size:13px; color:var(--ink-muted); }
+  .callout b{ color:var(--ink); font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  footer{ color:var(--ink-faint); font-size:12px; max-width:90ch; line-height:1.8; }
+  footer p{ margin:0 0 6px; }
+</style>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="eyebrow">阿爾法餐飲集團　內部工具　·　數字以 V7 為準</span>
+      <h1>雞湯大叔　全聯常溫湯包　整體損益測算器</h1>
+    </div>
+    <nav class="tabs" aria-label="區塊">
+      <a href="#inputs">參數</a>
+      <a href="#pl">損益表</a>
+      <a href="#sku">單支拆解</a>
+      <a href="#cash">現金流</a>
+      <a href="#sens">敏感度</a>
+      <a href="#scale">規模比較</a>
+    </nav>
+    <div class="seg" role="group" aria-label="金額顯示">
+      <button type="button" id="taxEx" aria-pressed="true">未稅</button>
+      <button type="button" id="taxIn" aria-pressed="false">含稅</button>
+    </div>
+    <button class="icon-btn" id="themeToggle" type="button" aria-label="切換深色／淺色主題">◐</button>
+  </div>
+</header>
+
+<main class="page">
+
+  <section class="hero" aria-live="polite">
+    <div class="verdict">
+      <span class="label" id="vLabel">整體營業淨利（未稅）</span>
+      <div class="big" id="vBig">—</div>
+      <div class="under" id="vUnder"></div>
+      <div class="sell-ctl">
+        <label for="in-sell" class="label">售罄率（占交貨量）</label>
+        <div class="range-row">
+          <input type="range" id="in-sell" min="40" max="100" step="0.5">
+          <output id="out-sell" for="in-sell">90%</output>
+        </div>
+        <div class="chips" id="sellChips">
+          <button type="button" class="chip" data-sell="100">樂觀 100%</button>
+          <button type="button" class="chip" data-sell="90">中性 90%</button>
+          <button type="button" class="chip" data-sell="80">保守 80%</button>
+          <button type="button" class="chip" data-sell="be">損益兩平</button>
+        </div>
+      </div>
+      <p class="narr" id="vNarr"></p>
+    </div>
+    <div class="kpi-grid" id="kpis"></div>
+  </section>
+
+  <section class="card" id="inputs">
+    <div class="card-head">
+      <div>
+        <h2>參數設定</h2>
+        <p class="sub">預設值全部取自《雞湯大叔_兩支18000_常溫_V7》（含稅）。改任一格，全頁即時重算；設定存在這台電腦的瀏覽器。</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btnReset" type="button">還原 V7 預設</button>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div>
+        <p class="group-title">品項與數量</p>
+        <div class="scrollwrap">
+          <table id="tblSkuIn">
+            <thead><tr>
+              <th>品項</th><th class="num">交貨量（包）</th><th class="num">破損備量（包）</th>
+              <th class="num">建議成本／包（含稅）</th><th class="num">DM 檔期費／檔（未稅）</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <p class="group-title">售價</p>
+        <div class="field-grid">
+          <div class="field">
+            <label>均價計算方式</label>
+            <div class="seg" role="group" aria-label="均價計算方式">
+              <button type="button" id="pmDirect" aria-pressed="true">直接輸入</button>
+              <button type="button" id="pmMix" aria-pressed="false">價格帶組合</button>
+            </div>
+            <span class="hint">價格帶組合：依正常價／DM 價／DM 最低價的銷量占比加權</span>
+          </div>
+          <div class="field" id="fPriceDirect">
+            <label for="in-price">全聯末售價・全期均價（含稅）</label>
+            <input type="number" id="in-price" step="0.5" min="0">
+            <span class="hint">V7：$160</span>
+          </div>
+        </div>
+        <div class="scrollwrap" id="mixWrap" hidden style="margin-top:12px;">
+          <table id="tblMix">
+            <thead><tr><th>價格帶</th><th class="num">售價（含稅）</th><th class="num">銷量占比 %</th></tr></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <p class="group-title">全聯通路條件（每包，依售價／進價計）</p>
+        <div class="field-grid">
+          <div class="field">
+            <label for="in-inRate">全聯進價率（占售價 %）</label>
+            <input type="number" id="in-inRate" step="0.01">
+            <span class="hint" id="h-inRate"></span>
+          </div>
+          <div class="field">
+            <label for="in-logi">物流費率（占售價 %，未稅）</label>
+            <input type="number" id="in-logi" step="0.1">
+            <span class="hint">×1.05 換含稅</span>
+          </div>
+          <div class="field">
+            <label for="in-wh">前進倉／其他（占進價 %，未稅）</label>
+            <input type="number" id="in-wh" step="0.1">
+            <span class="hint">×1.05 換含稅</span>
+          </div>
+          <div class="field">
+            <label for="in-svc">德明服務費（占進價 %，未稅）</label>
+            <input type="number" id="in-svc" step="0.1">
+            <span class="hint" id="h-fee"></span>
+          </div>
+          <div class="field">
+            <label for="in-inbound">進倉運費／交貨包（含稅）</label>
+            <input type="number" id="in-inbound" step="0.01">
+            <span class="hint">按交貨量計，不論售出與否</span>
+          </div>
+          <div class="field">
+            <label for="in-reverse">逆物流費／退貨包（含稅）</label>
+            <input type="number" id="in-reverse" step="0.01">
+            <span class="hint">未售出退回的每一包</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="group-title">固定費用（含稅，不隨銷量變動）</p>
+        <div class="field-grid">
+          <div class="field">
+            <label for="in-dmCount">DM 檔數</label>
+            <input type="number" id="in-dmCount" step="1" min="0">
+            <span class="hint" id="h-dm"></span>
+          </div>
+          <div class="field">
+            <label for="in-marketing">行銷費用</label>
+            <input type="number" id="in-marketing" step="1000" min="0">
+            <span class="hint">V7：50,000</span>
+          </div>
+          <div class="field">
+            <label for="in-test">一次性檢驗費（2 支）</label>
+            <input type="number" id="in-test" step="100" min="0">
+            <span class="hint">V7：37,800</span>
+          </div>
+          <div class="field">
+            <label for="in-plate">一次性印刷版費（2 支×8 版）</label>
+            <input type="number" id="in-plate" step="100" min="0">
+            <span class="hint">御田報價未稅 102,400＝含稅 107,520</span>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="scrollwrap">
+            <table id="tblExtra">
+              <thead><tr><th>額外費用（V7 未列，自行加入）</th><th class="num">金額（含稅）</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="btn-row" style="margin-top:10px;">
+            <button class="btn small" id="btnAddExtra" type="button">＋ 新增一項</button>
+            <button class="btn small ghost" id="btnPptExtra" type="button">帶入簡報行銷預算（主視覺、社群 KOC、數位廣告、公關，共 280,000）</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="group-title">付款與回款</p>
+        <div class="field-grid">
+          <div class="field">
+            <label for="in-pay1">貨款第一段（7/30，含稅）</label>
+            <input type="number" id="in-pay1" step="100" min="0">
+            <span class="hint">剩餘產品成本 8/31、11/1 各付 50%</span>
+          </div>
+          <div class="field">
+            <label for="in-r1">回款 11 月底（%）</label>
+            <input type="number" id="in-r1" step="1" min="0">
+          </div>
+          <div class="field">
+            <label for="in-r2">回款 12 月（%）</label>
+            <input type="number" id="in-r2" step="1" min="0">
+          </div>
+          <div class="field">
+            <label for="in-r3">回款 2027/1 月（%）</label>
+            <input type="number" id="in-r3" step="1" min="0">
+            <span class="hint" id="h-split"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="pl">
+    <div class="card-head">
+      <div>
+        <h2>損益表　四情境</h2>
+        <p class="sub">欄位同 V7：樂觀 100%、損益兩平、中性 90%、保守 80%，最右欄是上方滑桿選的售罄率。存貨損耗＝全部生產成本減去已售出那部分的成本（含破損備量與未售品）。</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="scrollwrap"><table id="tblPL"></table></div>
+    </div>
+  </section>
+
+  <section class="card" id="sku">
+    <div class="card-head">
+      <div>
+        <h2>單支拆解</h2>
+        <p class="sub">各支自己的收入、成本、通路費與 DM 檔期費算到「單支貢獻」；行銷、檢驗、印刷版費等共同費用不分攤，最後一次扣。售罄率同滑桿。</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="stack">
+        <div class="scrollwrap"><table id="tblUnit"></table></div>
+        <div class="scrollwrap"><table id="tblSku"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="cash">
+    <div class="card-head">
+      <div>
+        <h2>現金流　月度實際收付（含稅）</h2>
+        <p class="sub">DM 檔期費、物流三費、德明服務費與逆物流費都由全聯貨款後扣，已反映在回款淨額裡，不佔前期現金。最後一個月的累計現金＝含稅淨利。</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="legend">
+        <span class="item"><span class="swatch" style="background:var(--bad)"></span>累計現金為負（資金佔用）</span>
+        <span class="item"><span class="swatch" style="background:var(--good)"></span>累計現金為正</span>
+      </div>
+      <div class="scrollwrap"><div class="chart-shell"><svg class="chart" id="chartCash" viewBox="0 0 900 300" role="img" aria-label="累計現金部位長條圖"></svg></div></div>
+      <div class="scrollwrap"><table id="tblCash"></table></div>
+      <div class="callout" id="cashNote"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sens">
+    <div class="card-head">
+      <div>
+        <h2>敏感度</h2>
+        <p class="sub">左圖：售罄率每變動一格淨利怎麼走，虛線是損益兩平點。右表：均價與售罄率一起變，格內為營業淨利（萬元），外框為目前設定最接近的格子。</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="two-col">
+        <div class="scrollwrap"><div class="chart-shell" style="min-width:420px"><svg class="chart" id="chartSens" viewBox="0 0 560 320" role="img" aria-label="淨利對售罄率折線圖"></svg></div></div>
+        <div class="scrollwrap"><table class="heat" id="tblHeat"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="scale">
+    <div class="card-head">
+      <div>
+        <h2>規模比較</h2>
+        <p class="sub">其他條件不變，只改每支交貨量（破損備量維持目前設定）。13,000 與 18,000 兩列可直接對 V7「13000 vs 18000 對照」頁。售罄率同滑桿。</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="scrollwrap"><table id="tblScale"></table></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>資料來源：《雞湯大叔_兩支18000_常溫_V7》損益表、現金流量表與 13k／18k 對照頁；價格帶（$179／$169／$149）與額外行銷項目參考《全聯三支常溫湯品》簡報與報告。簡報為三支、均價 $155 的較早版本，數字一律以 V7 為準。</p>
+    <p>通路費拆解：V7 每包全聯通路費 20.46576（含稅）＝ 物流 售價×4.5%×1.05 ＋ 前進倉／其他 進價×4%×1.05 ＋ 德明服務費 進價×6%×1.05，改售價時三項同步變動。未稅＝含稅÷1.05，與 V7 未稅頁相同；淨營業稅（含稅與未稅淨利的差額）需另繳。德明另撥營業額 1% 的行銷回饋不回流阿爾法，不列入本損益。</p>
+    <p>預設值核對：18,000／支 100% 售罄含稅淨利 742,532、未稅 707,173；損益兩平 82.46%；資金需求峰值 (2,888,570) 於 2026/11/1，皆與 V7 相同。</p>
+  </footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "alpha_pxmart_soup_v7";
+  var TAX = 1.05;
+
+  var DEFAULTS = {
+    skus: [
+      { name:"老火花膠雞白湯", qty:18000, broken:200, cost:73.5,  dm:14250 },
+      { name:"北海道干貝雞白湯", qty:18000, broken:200, cost:68.25, dm:40000 }
+    ],
+    priceMode: "direct",
+    price: 160,
+    mix: [
+      { name:"正常售價（開賣兩個月）", price:179, share:30 },
+      { name:"DM 價", price:169, share:10 },
+      { name:"DM 最低價", price:149, share:60 }
+    ],
+    inRate: 76.82, logi: 4.5, wh: 4.0, svc: 6.0,
+    inbound: 3.15, reverse: 15.12,
+    dmCount: 1, marketing: 50000, test: 37800, plate: 107520,
+    extras: [],
+    pay1: 308700, split: [30, 35, 35],
+    sell: 90,
+    showTax: false
+  };
+  var PPT_EXTRAS = [
+    { name:"主視覺／包裝／攝影", amt:100000 },
+    { name:"社群＋KOC 體驗", amt:90000 },
+    { name:"數位廣告導購（Meta／LINE）", amt:60000 },
+    { name:"公關／機動", amt:30000 }
+  ];
+
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function loadState(){
+    var s = clone(DEFAULTS);
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var p = JSON.parse(raw);
+        for (var k in DEFAULTS){ if (p[k] !== undefined) s[k] = p[k]; }
+      }
+    }catch(e){}
+    return s;
+  }
+  function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+  var state = loadState();
+
+  // ---------- model ----------
+  function avgPrice(st){
+    if (st.priceMode !== "mix") return +st.price || 0;
+    var w = 0, sum = 0;
+    st.mix.forEach(function(m){ w += +m.share || 0; sum += (+m.price || 0) * (+m.share || 0); });
+    return w > 0 ? sum / w : 0;
+  }
+
+  // Everything below is 含稅, matching the V7 含稅 sheet line for line.
+  function model(st, sellPct, opt){
+    opt = opt || {};
+    var s = sellPct / 100;
+    var P = opt.price != null ? opt.price : avgPrice(st);
+    var Pin = P * st.inRate / 100;
+    var feeLogi = P * st.logi / 100 * TAX;
+    var feeWh = Pin * st.wh / 100 * TAX;
+    var feeSvc = Pin * st.svc / 100 * TAX;
+    var skus = st.skus.map(function(k){
+      var qty = opt.qty != null ? opt.qty : (+k.qty || 0);
+      var prod = qty + (+k.broken || 0);
+      var sold = qty * s;
+      var rev = sold * Pin;
+      var cogs = sold * k.cost;
+      var fees = sold * (feeLogi + feeWh + feeSvc);
+      var inbound = qty * st.inbound;
+      var reverse = (qty - sold) * st.reverse;
+      var shrink = prod * k.cost - cogs;
+      var dm = (+st.dmCount || 0) * (+k.dm || 0) * TAX;
+      return { name:k.name, qty:qty, prod:prod, sold:sold, rev:rev, cogs:cogs, fees:fees,
+               inbound:inbound, reverse:reverse, shrink:shrink, dm:dm, prodCost:prod * k.cost,
+               contrib: rev - cogs - fees - inbound - reverse - shrink - dm };
+    });
+    function tot(key){ return skus.reduce(function(a, k){ return a + k[key]; }, 0); }
+    var D = tot("qty"), sold = tot("sold");
+    var extras = st.extras.reduce(function(a, x){ return a + (+x.amt || 0); }, 0);
+    var r = {
+      price:P, pin:Pin, feeLogi:feeLogi, feeWh:feeWh, feeSvc:feeSvc, skus:skus,
+      delivered:D, produced:tot("prod"), sold:sold,
+      rev: tot("rev"), cogs: tot("cogs"),
+      logiWh: sold * (feeLogi + feeWh), svc: sold * feeSvc,
+      inbound: tot("inbound"), reverse: tot("reverse"), shrink: tot("shrink"),
+      marketing: +st.marketing || 0, dm: tot("dm"), test: +st.test || 0, plate: +st.plate || 0,
+      extras: extras, prodCost: tot("prodCost")
+    };
+    r.gross = r.rev - r.cogs;
+    r.opex = r.logiWh + r.svc + r.inbound + r.reverse + r.shrink + r.marketing + r.dm + r.test + r.plate + r.extras;
+    r.net = r.gross - r.opex;
+    r.margin = r.rev ? r.net / r.rev : 0;
+    r.fixed = r.marketing + r.dm + r.test + r.plate + r.extras;
+    return r;
+  }
+
+  // Net profit is linear in sell-through, so two points give the break-even exactly.
+  function breakEven(st, opt){
+    var a = model(st, 0, opt).net, b = model(st, 100, opt).net;
+    if (b === a) return null;
+    return -a / (b - a) * 100;
+  }
+
+  function cashflow(st, r){
+    var rem = r.prodCost - st.pay1;
+    var receipt = r.rev - r.logiWh - r.svc - r.dm - r.reverse;
+    var sp = st.split.map(function(x){ return +x || 0; });
+    var spSum = sp[0] + sp[1] + sp[2] || 1;
+    var rows = [
+      { date:"2026/7/30", ev:"貨款第一段＋一次性檢驗費", out: st.pay1 + r.test, inn:0 },
+      { date:"2026/8/31", ev:"貨款第二段（剩餘產品成本 50%）＋印刷版費", out: rem / 2 + r.plate, inn:0 },
+      { date:"2026/9", ev:"—", out:0, inn:0 },
+      { date:"2026/10", ev:"上架銷售（火鍋季）", out:0, inn:0 },
+      { date:"2026/11/1", ev:"貨款第三段（剩餘產品成本 50%）＋進倉運費＋行銷" + (r.extras ? "＋額外費用" : ""), out: rem / 2 + r.inbound + r.marketing + r.extras, inn:0 },
+      { date:"2026/11 月底", ev:"首筆回款（10 月銷售，淨額）", out:0, inn: receipt * sp[0] / spSum },
+      { date:"2026/12", ev:"回款（11 月銷售）", out:0, inn: receipt * sp[1] / spSum },
+      { date:"2027/1", ev:"回款（12 月銷售）", out:0, inn: receipt * sp[2] / spSum }
+    ];
+    var cum = 0, peak = 0, peakAt = rows[0].date;
+    rows.forEach(function(x){ cum += x.inn - x.out; x.cum = cum; if (cum < peak){ peak = cum; peakAt = x.date; } });
+    var positiveAt = null;
+    for (var i = 0; i < rows.length; i++){ if (rows[i].cum >= 0 && i > 0 && rows[i-1].cum < 0){ positiveAt = rows[i].date; } }
+    return { rows:rows, peak:peak, peakAt:peakAt, receipt:receipt, positiveAt:positiveAt, final:cum };
+  }
+
+  // ---------- formatting ----------
+  var nf0 = new Intl.NumberFormat("zh-Hant-TW", { maximumFractionDigits:0 });
+  var nf2 = new Intl.NumberFormat("zh-Hant-TW", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  function tx(v){ return state.showTax ? v : v / TAX; }
+  function acct(v){ // accounting style: negatives in parentheses
+    var n = Math.round(v);
+    if (n === 0) return "—";
+    return n < 0 ? "(" + nf0.format(-n) + ")" : nf0.format(n);
+  }
+  function money(v){ return (v < 0 ? "−" : "") + nf0.format(Math.abs(Math.round(v))); }
+  function wan(v){ return (v < 0 ? "−" : "") + (Math.abs(v) / 10000).toFixed(1) + " 萬"; }
+  function pct(v, d){ return (v * 100).toFixed(d == null ? 1 : d) + "%"; }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+  function cls(v){ return v < -0.5 ? "neg" : ""; }
+  function taxLabel(){ return state.showTax ? "含稅" : "未稅"; }
+
+  // ---------- inputs ----------
+  var simple = ["price","inRate","logi","wh","svc","inbound","reverse","dmCount","marketing","test","plate","pay1"];
+  function $(id){ return document.getElementById(id); }
+
+  function renderSkuInputs(){
+    $("tblSkuIn").querySelector("tbody").innerHTML = state.skus.map(function(k, i){
+      return "<tr>" +
+        "<td><input class='cell name' type='text' id='sku-name-" + i + "' value='" + esc(k.name) + "' aria-label='品項名稱'></td>" +
+        "<td><input class='cell' type='number' step='500' id='sku-qty-" + i + "' value='" + k.qty + "' aria-label='交貨量'></td>" +
+        "<td><input class='cell' type='number' step='50' id='sku-broken-" + i + "' value='" + k.broken + "' aria-label='破損備量'></td>" +
+        "<td><input class='cell' type='number' step='0.25' id='sku-cost-" + i + "' value='" + k.cost + "' aria-label='建議成本'></td>" +
+        "<td><input class='cell' type='number' step='250' id='sku-dm-" + i + "' value='" + k.dm + "' aria-label='DM 檔期費'></td>" +
+      "</tr>";
+    }).join("");
+    state.skus.forEach(function(k, i){
+      ["name","qty","broken","cost","dm"].forEach(function(f){
+        $("sku-" + f + "-" + i).addEventListener("input", function(e){
+          k[f] = f === "name" ? e.target.value : parseFloat(e.target.value) || 0;
+          update();
+        });
+      });
+    });
+  }
+
+  function renderMixInputs(){
+    $("tblMix").querySelector("tbody").innerHTML = state.mix.map(function(m, i){
+      return "<tr><td>" + esc(m.name) + "</td>" +
+        "<td><input class='cell' type='number' step='1' id='mix-price-" + i + "' value='" + m.price + "' aria-label='" + esc(m.name) + " 售價'></td>" +
+        "<td><input class='cell' type='number' step='1' id='mix-share-" + i + "' value='" + m.share + "' aria-label='" + esc(m.name) + " 占比'></td></tr>";
+    }).join("");
+    state.mix.forEach(function(m, i){
+      ["price","share"].forEach(function(f){
+        $("mix-" + f + "-" + i).addEventListener("input", function(e){ m[f] = parseFloat(e.target.value) || 0; update(); });
+      });
+    });
+  }
+
+  function renderExtras(){
+    var tb = $("tblExtra").querySelector("tbody");
+    if (!state.extras.length){
+      tb.innerHTML = "<tr><td colspan='3' style='color:var(--ink-faint)'>目前沒有額外費用（V7 只列行銷 50,000）。</td></tr>";
+      return;
+    }
+    tb.innerHTML = state.extras.map(function(x, i){
+      return "<tr><td><input class='cell name' type='text' id='ex-name-" + i + "' value='" + esc(x.name) + "' aria-label='費用名稱'></td>" +
+        "<td><input class='cell' type='number' step='1000' id='ex-amt-" + i + "' value='" + x.amt + "' aria-label='金額'></td>" +
+        "<td><button class='btn small ghost' type='button' data-del='" + i + "'>移除</button></td></tr>";
+    }).join("");
+    state.extras.forEach(function(x, i){
+      $("ex-name-" + i).addEventListener("input", function(e){ x.name = e.target.value; update(); });
+      $("ex-amt-" + i).addEventListener("input", function(e){ x.amt = parseFloat(e.target.value) || 0; update(); });
+    });
+    tb.querySelectorAll("[data-del]").forEach(function(b){
+      b.addEventListener("click", function(){ state.extras.splice(+b.dataset.del, 1); renderExtras(); update(); });
+    });
+  }
+
+  function syncInputs(){
+    simple.forEach(function(k){ $("in-" + k).value = state[k]; });
+    $("in-r1").value = state.split[0]; $("in-r2").value = state.split[1]; $("in-r3").value = state.split[2];
+    $("in-sell").value = state.sell;
+    renderSkuInputs(); renderMixInputs(); renderExtras(); syncModes();
+  }
+  function syncModes(){
+    var mix = state.priceMode === "mix";
+    $("pmDirect").setAttribute("aria-pressed", String(!mix));
+    $("pmMix").setAttribute("aria-pressed", String(mix));
+    $("mixWrap").hidden = !mix;
+    $("in-price").disabled = mix;
+    $("taxEx").setAttribute("aria-pressed", String(!state.showTax));
+    $("taxIn").setAttribute("aria-pressed", String(state.showTax));
+  }
+
+  function bind(){
+    simple.forEach(function(k){
+      $("in-" + k).addEventListener("input", function(e){ state[k] = parseFloat(e.target.value) || 0; update(); });
+    });
+    [1,2,3].forEach(function(n){
+      $("in-r" + n).addEventListener("input", function(e){ state.split[n-1] = parseFloat(e.target.value) || 0; update(); });
+    });
+    $("in-sell").addEventListener("input", function(e){ state.sell = parseFloat(e.target.value); update(); });
+    $("sellChips").addEventListener("click", function(e){
+      var b = e.target.closest("[data-sell]"); if (!b) return;
+      var v = b.dataset.sell === "be" ? breakEven(state) : parseFloat(b.dataset.sell);
+      if (v == null || !isFinite(v)) return;
+      state.sell = Math.max(0, Math.min(100, Math.round(v * 100) / 100));
+      $("in-sell").value = state.sell; update();
+    });
+    $("pmDirect").addEventListener("click", function(){ state.priceMode = "direct"; syncModes(); update(); });
+    $("pmMix").addEventListener("click", function(){ state.priceMode = "mix"; syncModes(); update(); });
+    $("taxEx").addEventListener("click", function(){ state.showTax = false; syncModes(); update(); });
+    $("taxIn").addEventListener("click", function(){ state.showTax = true; syncModes(); update(); });
+    $("btnAddExtra").addEventListener("click", function(){ state.extras.push({ name:"其他費用", amt:0 }); renderExtras(); update(); });
+    $("btnPptExtra").addEventListener("click", function(){
+      PPT_EXTRAS.forEach(function(p){
+        if (!state.extras.some(function(x){ return x.name === p.name; })) state.extras.push(clone(p));
+      });
+      renderExtras(); update();
+    });
+    var armed = false, resetBtn = $("btnReset");
+    resetBtn.addEventListener("click", function(){
+      if (!armed){ armed = true; resetBtn.textContent = "再按一次確認還原"; setTimeout(function(){ armed = false; resetBtn.textContent = "還原 V7 預設"; }, 3000); return; }
+      armed = false; resetBtn.textContent = "還原 V7 預設";
+      var keepTax = state.showTax;
+      state = clone(DEFAULTS); state.showTax = keepTax;
+      syncInputs(); update();
+    });
+
+    var saved = null;
+    try{ saved = localStorage.getItem("alpha_calc_theme"); }catch(e){}
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+    $("themeToggle").addEventListener("click", function(){
+      var dark = document.documentElement.getAttribute("data-theme") === "dark" ||
+        (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+      var next = dark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try{ localStorage.setItem("alpha_calc_theme", next); }catch(e){}
+    });
+  }
+
+  // ---------- render ----------
+  function renderHero(r, be, cf){
+    var net = tx(r.net);
+    $("vLabel").textContent = "整體營業淨利（" + taxLabel() + "）・售罄 " + state.sell + "%";
+    var big = $("vBig");
+    big.textContent = (net < 0 ? "−" : "") + "NT$" + nf0.format(Math.abs(Math.round(net)));
+    big.className = "big " + (net >= 0 ? "pos" : "neg");
+    $("vUnder").textContent = (state.showTax ? "未稅 " + money(r.net / TAX) : "含稅 " + money(r.net)) +
+      "　·　淨利率 " + pct(r.margin) + "　·　售出 " + nf0.format(Math.round(r.sold)) + " 包／交貨 " + nf0.format(r.delivered) + " 包";
+    $("out-sell").textContent = state.sell + "%";
+    document.querySelectorAll("#sellChips [data-sell]").forEach(function(b){
+      var v = b.dataset.sell === "be" ? (be != null ? Math.round(be * 100) / 100 : null) : parseFloat(b.dataset.sell);
+      b.setAttribute("aria-pressed", String(v != null && Math.abs(v - state.sell) < 0.01));
+      if (b.dataset.sell === "be" && be != null) b.textContent = "損益兩平 " + be.toFixed(1) + "%";
+    });
+    var cushion = be != null ? state.sell - be : null;
+    var n = [];
+    n.push("以均價 <b>$" + nf2.format(r.price) + "</b>、兩支合計交貨 <b>" + nf0.format(r.delivered) + "</b> 包、售罄 <b>" + state.sell + "%</b> 測算，本案" +
+      (r.net >= 0 ? "賺 " : "虧 ") + "<b>" + wan(Math.abs(tx(r.net))) + "</b>（" + taxLabel() + "）。");
+    if (be != null){
+      n.push("損益兩平售罄率 <b>" + be.toFixed(1) + "%</b>（約 " + nf0.format(Math.round(be / 100 * r.delivered)) + " 包）" +
+        (cushion >= 0 ? "，目前設定還有 <b>" + cushion.toFixed(1) + "</b> 個百分點的緩衝。" : "，目前設定低於兩平 <b>" + (-cushion).toFixed(1) + "</b> 個百分點。"));
+    }
+    n.push("資金需求峰值 <b>" + wan(-cf.peak) + "</b>，落在 " + cf.peakAt + "；售罄率每多 1 個百分點，淨利約多 <b>" +
+      wan(tx(model(state, 1).net - model(state, 0).net)) + "</b>。");
+    $("vNarr").innerHTML = n.join("");
+
+    var k100 = model(state, 100);
+    var roi = cf.peak < 0 ? r.net / -cf.peak : 0;
+    var tiles = [
+      { l:"100% 售罄淨利（" + taxLabel() + "）", v: money(tx(k100.net)), note:"淨利率 " + pct(k100.margin), neg:k100.net < 0 },
+      { l:"損益兩平售罄率", v: be != null ? be.toFixed(2) + "%" : "—", note: be != null ? "約 " + nf0.format(Math.round(be / 100 * r.delivered)) + " 包" : "" },
+      { l:"資金需求峰值（含稅）", v: money(cf.peak), note:"於 " + cf.peakAt + "，首筆回款前", neg:true },
+      { l:"淨利 ÷ 峰值資金（含稅）", v: pct(roi), note:"資金佔用約 7/30 → 2027/1 月底", neg:roi < 0 },
+      { l:"廠商營收（進價・" + taxLabel() + "）", v: money(tx(r.rev)), note:"全聯端銷售額 " + money(tx(r.sold * r.price)) },
+      { l:"淨營業稅（另繳）", v: money(r.net - r.net / TAX), note:"含稅淨利 − 未稅淨利" }
+    ];
+    $("kpis").innerHTML = tiles.map(function(t){
+      return "<div class='kpi'><div class='label'>" + t.l + "</div><div class='value" + (t.neg ? " neg" : "") + "'>" + t.v + "</div><div class='note'>" + t.note + "</div></div>";
+    }).join("");
+  }
+
+  function renderHints(r){
+    $("h-inRate").textContent = "進價 " + nf2.format(r.pin) + "／包（含稅）";
+    $("h-fee").textContent = "三項合計 " + nf2.format(r.feeLogi + r.feeWh + r.feeSvc) + "／包（含稅）";
+    var dmOne = state.skus.reduce(function(a, k){ return a + (+k.dm || 0); }, 0) * TAX;
+    $("h-dm").textContent = "每檔 " + nf2.format(dmOne) + "（含稅）＝各支 DM 費合計×1.05";
+    var sp = state.split.reduce(function(a, b){ return a + (+b || 0); }, 0);
+    $("h-split").textContent = sp === 100 ? "合計 100%" : "合計 " + sp + "%，會自動等比換算成 100%";
+    var ft = $("tblMix").querySelector("tfoot");
+    ft.innerHTML = "<tr class='total'><td>加權均價</td><td class='num'>" + nf2.format(avgPrice(state)) + "</td><td class='num'>" +
+      state.mix.reduce(function(a, m){ return a + (+m.share || 0); }, 0) + "%</td></tr>";
+  }
+
+  function renderPL(be){
+    var cols = [
+      { h:"樂觀", s:100 }, { h:"損益兩平", s: be != null ? Math.max(0, Math.min(100, be)) : 0 },
+      { h:"中性", s:90 }, { h:"保守", s:80 }, { h:"目前設定", s: state.sell, cur:true }
+    ];
+    var ms = cols.map(function(c){ return model(state, c.s); });
+    var lines = [
+      ["售罄率（占交貨量）", function(m, c){ return c.s.toFixed(c.s % 1 ? 2 : 0) + "%"; }, "raw"],
+      ["售出量（包）", function(m){ return nf0.format(Math.round(m.sold)); }, "raw"],
+      ["營業收入", "rev", 1],
+      ["（－）營業成本 COGS", "cogs", -1],
+      ["＝營業毛利", "gross", 1, "total"],
+      ["營業費用", null],
+      ["全聯物流／前進倉／其他", "logiWh", -1, "sub-row"],
+      ["德明服務費（進價×6%含稅）", "svc", -1, "sub-row"],
+      ["進倉運費", "inbound", -1, "sub-row"],
+      ["逆物流費（未售退貨）", "reverse", -1, "sub-row"],
+      ["存貨損耗（破損＋未售）", "shrink", -1, "sub-row"],
+      ["行銷費用", "marketing", -1, "sub-row"],
+      ["DM 檔期費（" + state.dmCount + " 檔全聯）", "dm", -1, "sub-row"],
+      ["一次性檢驗費", "test", -1, "sub-row"],
+      ["一次性印刷版費（2 支×8 版）", "plate", -1, "sub-row"]
+    ];
+    if (state.extras.length) lines.push(["額外費用（V7 未列）", "extras", -1, "sub-row"]);
+    lines.push(["營業費用合計", "opex", -1, "total"]);
+    lines.push(["＝營業淨利", "net", 1, "net"]);
+    lines.push(["淨利率（對營收）", function(m){ return pct(m.margin); }, "raw"]);
+
+    var html = "<thead><tr><th>項目（" + taxLabel() + "）</th>" + cols.map(function(c){ return "<th class='num" + (c.cur ? " cur" : "") + "'>" + c.h + "</th>"; }).join("") + "</tr></thead><tbody>";
+    lines.forEach(function(L){
+      if (!L[1]){ html += "<tr class='section'><td colspan='" + (cols.length + 1) + "'>" + L[0] + "</td></tr>"; return; }
+      var rowCls = L[3] || "";
+      if (L[1] === "net" && ms[cols.length - 1].net < 0) rowCls += " neg";
+      html += "<tr class='" + rowCls + "'><td>" + L[0] + "</td>";
+      cols.forEach(function(c, i){
+        var m = ms[i], txt, cellCls = "num" + (c.cur ? " cur" : "");
+        if (typeof L[1] === "function") txt = L[1](m, c);
+        else {
+          var v = tx(m[L[1]]) * L[2];
+          txt = acct(v);
+          if (L[1] === "net") cellCls += v < -0.5 ? " neg" : "";
+        }
+        html += "<td class='" + cellCls + "'>" + txt + "</td>";
+      });
+      html += "</tr>";
+    });
+    $("tblPL").innerHTML = html + "</tbody>";
+  }
+
+  function renderUnit(r){
+    var rows = [
+      ["全聯售價（均價）", r.price],
+      ["全聯進價（售價×" + state.inRate + "%）", r.pin],
+      ["物流（售價×" + state.logi + "%×1.05）", -r.feeLogi],
+      ["前進倉／其他（進價×" + state.wh + "%×1.05）", -r.feeWh],
+      ["德明服務費（進價×" + state.svc + "%×1.05）", -r.feeSvc]
+    ];
+    var html = "<thead><tr><th>每售出一包（含稅）</th>" + state.skus.map(function(k){ return "<th class='num'>" + esc(k.name) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    rows.forEach(function(x){
+      html += "<tr><td>" + x[0] + "</td>" + state.skus.map(function(){ return "<td class='num'>" + (x[1] < 0 ? "(" + nf2.format(-x[1]) + ")" : nf2.format(x[1])) + "</td>"; }).join("") + "</tr>";
+    });
+    html += "<tr><td>建議成本</td>" + state.skus.map(function(k){ return "<td class='num'>(" + nf2.format(k.cost) + ")</td>"; }).join("") + "</tr>";
+    html += "<tr class='net'><td>每售出一包淨利</td>" + state.skus.map(function(k){
+      var u = r.pin - r.feeLogi - r.feeWh - r.feeSvc - k.cost;
+      return "<td class='num'>" + nf2.format(u) + "</td>";
+    }).join("") + "</tr>";
+    html += "<tr><td>淨利率（對進價）</td>" + state.skus.map(function(k){
+      var u = r.pin - r.feeLogi - r.feeWh - r.feeSvc - k.cost;
+      return "<td class='num'>" + pct(r.pin ? u / r.pin : 0) + "</td>";
+    }).join("") + "</tr>";
+    $("tblUnit").innerHTML = html + "</tbody>";
+
+    var common = r.marketing + r.test + r.plate + r.extras;
+    var h2 = "<thead><tr><th>整季（" + taxLabel() + "）</th>" + r.skus.map(function(k){ return "<th class='num'>" + esc(k.name) + "</th>"; }).join("") + "<th class='num'>合計</th></tr></thead><tbody>";
+    var L = [
+      ["營業收入", "rev", 1], ["產品成本（已售）", "cogs", -1], ["通路費（物流＋前進倉＋德明）", "fees", -1],
+      ["進倉＋逆物流", null, -1, function(k){ return k.inbound + k.reverse; }],
+      ["存貨損耗", "shrink", -1], ["DM 檔期費", "dm", -1]
+    ];
+    L.forEach(function(x){
+      var vals = r.skus.map(function(k){ return x[3] ? x[3](k) : k[x[1]]; });
+      var sum = vals.reduce(function(a, b){ return a + b; }, 0);
+      h2 += "<tr><td>" + x[0] + "</td>" + vals.map(function(v){ return "<td class='num'>" + acct(tx(v) * x[2]) + "</td>"; }).join("") + "<td class='num'>" + acct(tx(sum) * x[2]) + "</td></tr>";
+    });
+    var cs = r.skus.map(function(k){ return k.contrib; });
+    var csum = cs.reduce(function(a, b){ return a + b; }, 0);
+    h2 += "<tr class='total'><td>單支貢獻</td>" + cs.map(function(v){ return "<td class='num " + cls(v) + "'>" + acct(tx(v)) + "</td>"; }).join("") + "<td class='num " + cls(csum) + "'>" + acct(tx(csum)) + "</td></tr>";
+    h2 += "<tr><td>共同費用（行銷＋檢驗＋印刷版" + (r.extras ? "＋額外" : "") + "）</td>" + r.skus.map(function(){ return "<td class='num'></td>"; }).join("") + "<td class='num'>" + acct(-tx(common)) + "</td></tr>";
+    h2 += "<tr class='net" + (r.net < 0 ? " neg" : "") + "'><td>＝營業淨利</td>" + r.skus.map(function(){ return "<td class='num'></td>"; }).join("") + "<td class='num'>" + acct(tx(r.net)) + "</td></tr>";
+    $("tblSku").innerHTML = h2 + "</tbody>";
+  }
+
+  function renderCash(cf){
+    var html = "<thead><tr><th>時間</th><th style='text-align:left'>事件</th><th class='num'>現金流出</th><th class='num'>回款（淨額）</th><th class='num'>當月淨現金</th><th class='num'>累計現金部位</th></tr></thead><tbody>";
+    cf.rows.forEach(function(x){
+      var isPeak = x.date === cf.peakAt;
+      html += "<tr" + (isPeak ? " class='total'" : "") + "><td>" + x.date + "</td><td style='text-align:left'>" + esc(x.ev) + "</td>" +
+        "<td class='num'>" + (x.out ? acct(-x.out) : "—") + "</td><td class='num'>" + (x.inn ? acct(x.inn) : "—") + "</td>" +
+        "<td class='num " + cls(x.inn - x.out) + "'>" + acct(x.inn - x.out) + "</td><td class='num " + cls(x.cum) + "'>" + acct(x.cum) + "</td></tr>";
+    });
+    var tout = cf.rows.reduce(function(a, x){ return a + x.out; }, 0), tin = cf.rows.reduce(function(a, x){ return a + x.inn; }, 0);
+    html += "<tr class='net" + (cf.final < 0 ? " neg" : "") + "'><td>合計</td><td style='text-align:left'>總現金流出／回款淨額</td><td class='num'>" + acct(-tout) + "</td><td class='num'>" + acct(tin) + "</td><td class='num'>" + acct(tin - tout) + "</td><td class='num'>" + acct(cf.final) + "</td></tr>";
+    $("tblCash").innerHTML = html + "</tbody>";
+
+    var after = cf.rows[5].cum;
+    $("cashNote").innerHTML = "資金需求峰值 <b>" + acct(cf.peak) + "</b>，於 " + cf.peakAt + " 達到（第三段貨款＋進倉＋行銷付出、首筆回款前）；11 月底首筆回款後回升至 <b>" + acct(after) + "</b>。" +
+      (cf.final >= 0 ? "2027/1 月底累計翻正為 <b>" + acct(cf.final) + "</b>，等於含稅淨利。" : "到 2027/1 月底累計仍為 <b>" + acct(cf.final) + "</b>，本案虧損。") +
+      " 三段貨款合計 <b>" + nf0.format(Math.round(state.pay1 + (cf.rows[1].out - state.plate) + (cf.rows[1].out - state.plate))) + "</b>＝全部生產成本。";
+
+    // chart
+    var svg = $("chartCash"), W = 900, H = 300, L = 86, R = 16, T = 18, B = 44;
+    var vals = cf.rows.map(function(x){ return x.cum; });
+    var max = Math.max(0, Math.max.apply(null, vals)), min = Math.min(0, Math.min.apply(null, vals));
+    var step = niceStep((max - min) / 5);
+    max = Math.ceil(max / step) * step; min = Math.floor(min / step) * step;
+    if (max === min) max = min + step;
+    function y(v){ return T + (max - v) / (max - min) * (H - T - B); }
+    var bw = (W - L - R) / vals.length;
+    var g = "";
+    for (var t = min; t <= max + 1e-6; t += step){
+      g += "<line x1='" + L + "' x2='" + (W - R) + "' y1='" + y(t) + "' y2='" + y(t) + "' stroke='var(--border)' stroke-width='1'" + (t === 0 ? "" : " stroke-dasharray='3 4'") + "/>";
+      g += "<text x='" + (L - 8) + "' y='" + (y(t) + 4) + "' text-anchor='end' font-size='11' fill='var(--ink-faint)' font-family='var(--font-mono)'>" + (t / 10000).toFixed(0) + " 萬</text>";
+    }
+    cf.rows.forEach(function(x, i){
+      var cx = L + bw * i + bw / 2, y0 = y(0), y1 = y(x.cum);
+      var top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
+      g += "<rect x='" + (cx - bw * 0.3) + "' y='" + top + "' width='" + (bw * 0.6) + "' height='" + h + "' rx='3' fill='" + (x.cum < 0 ? "var(--bad)" : "var(--good)") + "' opacity='" + (x.date === cf.peakAt ? 1 : 0.72) + "'/>";
+      var ly = x.cum < 0 ? y1 + 14 : y1 - 6;
+      if (x.cum < 0 && ly > H - B - 2) ly = y1 - 6;
+      g += "<text x='" + cx + "' y='" + ly + "' text-anchor='middle' font-size='11' font-weight='700' fill='var(--ink)' font-family='var(--font-mono)'>" + (x.cum / 10000).toFixed(1) + "</text>";
+      g += "<text x='" + cx + "' y='" + (H - B + 18) + "' text-anchor='middle' font-size='11.5' fill='var(--ink-muted)'>" + x.date + "</text>";
+    });
+    svg.innerHTML = g;
+  }
+
+  function niceStep(raw){
+    if (raw <= 0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+  }
+
+  function renderSens(be){
+    var svg = $("chartSens"), W = 560, H = 320, L = 64, R = 16, T = 16, B = 40;
+    var xs = [], lo = 60, hi = 100;
+    for (var s = lo; s <= hi; s += 1) xs.push({ s:s, v: tx(model(state, s).net) });
+    var vmin = Math.min(0, xs[0].v), vmax = Math.max(0, xs[xs.length - 1].v);
+    var step = niceStep((vmax - vmin) / 5);
+    vmin = Math.floor(vmin / step) * step; vmax = Math.ceil(vmax / step) * step;
+    function X(s){ return L + (s - lo) / (hi - lo) * (W - L - R); }
+    function Y(v){ return T + (vmax - v) / (vmax - vmin) * (H - T - B); }
+    var g = "";
+    for (var t = vmin; t <= vmax + 1e-6; t += step){
+      g += "<line x1='" + L + "' x2='" + (W - R) + "' y1='" + Y(t) + "' y2='" + Y(t) + "' stroke='var(--border)'" + (Math.abs(t) < 1e-6 ? " stroke-width='1.5'" : " stroke-dasharray='3 4'") + "/>";
+      g += "<text x='" + (L - 8) + "' y='" + (Y(t) + 4) + "' text-anchor='end' font-size='11' fill='var(--ink-faint)' font-family='var(--font-mono)'>" + (t / 10000).toFixed(0) + " 萬</text>";
+    }
+    for (var s2 = lo; s2 <= hi; s2 += 10){
+      g += "<text x='" + X(s2) + "' y='" + (H - B + 18) + "' text-anchor='middle' font-size='11' fill='var(--ink-muted)'>" + s2 + "%</text>";
+    }
+    var y0 = Y(0);
+    var area = "M" + X(lo) + "," + y0 + xs.map(function(p){ return " L" + X(p.s) + "," + Y(p.v); }).join("") + " L" + X(hi) + "," + y0 + " Z";
+    g += "<clipPath id='clipPos'><rect x='" + L + "' y='" + T + "' width='" + (W - L - R) + "' height='" + Math.max(0, y0 - T) + "'/></clipPath>";
+    g += "<clipPath id='clipNeg'><rect x='" + L + "' y='" + y0 + "' width='" + (W - L - R) + "' height='" + Math.max(0, H - B - y0) + "'/></clipPath>";
+    g += "<path d='" + area + "' fill='var(--good)' opacity='.16' clip-path='url(#clipPos)'/>";
+    g += "<path d='" + area + "' fill='var(--bad)' opacity='.16' clip-path='url(#clipNeg)'/>";
+    g += "<path d='" + xs.map(function(p, i){ return (i ? "L" : "M") + X(p.s) + "," + Y(p.v); }).join(" ") + "' fill='none' stroke='var(--ink)' stroke-width='2'/>";
+    if (be != null && be >= lo && be <= hi){
+      g += "<line x1='" + X(be) + "' x2='" + X(be) + "' y1='" + T + "' y2='" + (H - B) + "' stroke='var(--ink-muted)' stroke-dasharray='4 4'/>";
+      g += "<text x='" + (X(be) + 6) + "' y='" + (T + 12) + "' font-size='11.5' font-weight='700' fill='var(--ink-muted)'>兩平 " + be.toFixed(1) + "%</text>";
+    }
+    if (state.sell >= lo){
+      var cv = tx(model(state, state.sell).net);
+      g += "<circle cx='" + X(state.sell) + "' cy='" + Y(cv) + "' r='5.5' fill='var(--accent)' stroke='var(--surface)' stroke-width='2'/>";
+      var anchor = state.sell > 90 ? "end" : "start", dx = state.sell > 90 ? -10 : 10;
+      g += "<text x='" + (X(state.sell) + dx) + "' y='" + (Y(cv) - 10) + "' text-anchor='" + anchor + "' font-size='12' font-weight='800' fill='var(--ink)' font-family='var(--font-mono)'>" + (cv / 10000).toFixed(1) + " 萬</text>";
+    }
+    svg.innerHTML = g;
+
+    // heat table
+    var P0 = avgPrice(state);
+    var prices = [145, 150, 155, 160, 165, 170, 175, 180];
+    var sells = [100, 95, 90, 85, 80, 75, 70];
+    var nearP = prices.reduce(function(a, b){ return Math.abs(b - P0) < Math.abs(a - P0) ? b : a; });
+    var nearS = sells.reduce(function(a, b){ return Math.abs(b - state.sell) < Math.abs(a - state.sell) ? b : a; });
+    var scale = Math.max.apply(null, prices.map(function(p){ return Math.abs(tx(model(state, 100, { price:p }).net)); })) || 1;
+    var html = "<thead><tr><th>售罄率＼均價</th>" + prices.map(function(p){ return "<th class='num'>$" + p + "</th>"; }).join("") + "</tr></thead><tbody>";
+    sells.forEach(function(s){
+      html += "<tr><th class='num'>" + s + "%</th>";
+      prices.forEach(function(p){
+        var v = tx(model(state, s, { price:p }).net);
+        var k = Math.min(3, Math.ceil(Math.abs(v) / scale * 3)) || 1;
+        var c = (v >= 0 ? "p" : "n") + k + (p === nearP && s === nearS ? " here" : "");
+        html += "<td class='num " + c + "'>" + (v / 10000).toFixed(1) + "</td>";
+      });
+      html += "</tr>";
+    });
+    $("tblHeat").innerHTML = html + "</tbody>";
+  }
+
+  function renderScale(){
+    var cur = state.skus.length ? +state.skus[0].qty : 0;
+    var qs = [13000, 15000, 18000, 20000, 25000];
+    if (qs.indexOf(cur) < 0 && state.skus.every(function(k){ return +k.qty === cur; })) qs.push(cur);
+    qs.sort(function(a, b){ return a - b; });
+    var html = "<thead><tr><th>每支交貨量</th><th class='num'>交貨（" + state.skus.length + " 支）</th><th class='num'>100% 淨利（" + taxLabel() + "）</th><th class='num'>售罄 " + state.sell + "% 淨利</th><th class='num'>淨利率</th><th class='num'>損益兩平</th><th class='num'>資金峰值（含稅）</th></tr></thead><tbody>";
+    qs.forEach(function(q){
+      var opt = { qty:q };
+      var m = model(state, state.sell, opt), m100 = model(state, 100, opt);
+      var be = breakEven(state, opt);
+      var st2 = clone(state); st2.skus.forEach(function(k){ k.qty = q; });
+      var cf = cashflow(st2, m);
+      var isCur = state.skus.every(function(k){ return +k.qty === q; });
+      html += "<tr" + (isCur ? " class='total'" : "") + "><td>" + nf0.format(q) + (isCur ? "　目前" : "") + "</td>" +
+        "<td class='num'>" + nf0.format(m.delivered) + "</td>" +
+        "<td class='num " + cls(m100.net) + "'>" + acct(tx(m100.net)) + "</td>" +
+        "<td class='num " + cls(m.net) + "'>" + acct(tx(m.net)) + "</td>" +
+        "<td class='num'>" + pct(m.margin) + "</td>" +
+        "<td class='num'>" + (be != null ? be.toFixed(1) + "%" : "—") + "</td>" +
+        "<td class='num'>" + acct(cf.peak) + "</td></tr>";
+    });
+    $("tblScale").innerHTML = html + "</tbody>";
+  }
+
+  function update(){
+    var r = model(state, state.sell);
+    var be = breakEven(state);
+    var cf = cashflow(state, r);
+    renderHints(r);
+    renderHero(r, be, cf);
+    renderPL(be);
+    renderUnit(r);
+    renderCash(cf);
+    renderSens(be);
+    renderScale();
+    save();
+  }
+
+  syncInputs();
+  bind();
+  update();
+})();
+</script>
