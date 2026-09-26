@@ -190,6 +190,9 @@
   .spec{ font-size:12.5px; color:var(--ink-muted); line-height:1.8; }
   .spec b{ color:var(--ink); }
   details.spec summary{ cursor:pointer; font-weight:700; color:var(--ink); }
+  .ai-review{ display:flex; flex-direction:column; gap:12px; }
+  .ai-item{ border:1px solid var(--accent); background:var(--surface); border-radius:12px; padding:14px 16px; }
+  .ai-item a, #fileList a{ color:var(--accent); }
   .actual-kpis{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
   @media (max-width:760px){ .actual-kpis{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
   td.src{ font-size:11.5px; color:var(--ink-faint); text-align:left; }
@@ -263,26 +266,29 @@
       <label class="drop" id="dropZone" for="fileInput">
         <div>
           <div class="drop-main">把檔案拖到這裡，或點一下選擇檔案</div>
-          <div class="drop-sub">支援 .xlsx／.xls／.csv，可一次選多個檔案。一本 Excel 裡的「生產」「銷售」「費用」工作表會依欄位名稱自動分類。</div>
+          <div class="drop-sub">Excel、CSV、Word、PowerPoint、PDF、照片或掃描檔都可以，一次可選多個。有表格的檔案直接依欄位名稱匯入；沒有表格的（掃描 PDF、單據照片、文字說明）交給 Claude 判讀，讀完先給你確認。</div>
         </div>
         <span class="btn primary">選擇檔案</span>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt" multiple hidden>
+        <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.ods,.csv,.tsv,.txt,.md,.json,.docx,.pptx,.pdf,.png,.jpg,.jpeg,.webp,.gif,.heic,image/*" multiple hidden>
       </label>
       <div class="status-line">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="appendMode"> 附加到現有資料（不勾選＝同類資料整份取代）</label>
         <span id="storeStatus" class="pill"><span class="dot"></span>連線中…</span>
       </div>
       <div id="importMsg" class="msg" hidden></div>
+      <div id="aiReview" class="ai-review" hidden></div>
       <div id="demoBanner" class="demo-banner" hidden>目前顯示的是範例資料，只在這個畫面上，沒有儲存。上傳實際檔案後會取代；要清掉請按「清除全部實際資料」。</div>
 
       <details class="spec">
         <summary>檔案要有哪些欄位</summary>
         <p><b>生產資料</b>：品項、生產量、單位成本（含稅）。選填：批次／日期、交貨量、破損量。沒有交貨量時以「生產量－破損量」計；成本欄名含「未稅」會自動×1.05；只有總成本時以「總成本÷生產量」換算。</p>
         <p><b>銷售資料</b>：月份（或日期）、品項、銷量，加上「售價」（全聯末售價，含稅）或「銷售額」其中之一。選填：退貨量。若給的是「進價」，會以進價率換回末售價。每日、每店明細可直接上傳，匯入時會按「月份＋品項＋售價」彙總。</p>
+        <p><b>Word／PowerPoint／PDF</b>：文件裡的表格會先照上面的欄位規則直接讀；讀不到表格（純文字、掃描檔）或是照片，會請 Claude 判讀，結果先列給你核對，按「確認匯入」才會寫入。文件沒標明含稅或未稅時當作含稅。</p>
         <p><b>費用資料</b>：項目、金額（含稅）。選填：日期、類別（行銷／DM／檢驗／印刷版費／進倉運費／其他）；沒有類別時依項目名稱判斷。<b>有上傳的類別用實際金額，沒上傳的類別沿用參數設定</b>，損益表會標示每一行的來源。</p>
       </details>
 
       <div id="actualResult"></div>
+      <details class="spec" id="fileList" hidden></details>
 
       <div>
         <div class="card-head" style="margin-bottom:10px">
@@ -1094,7 +1100,8 @@
     { k:"marketing", h:"行銷" }, { k:"dm", h:"DM" }, { k:"test", h:"檢驗" },
     { k:"plate", h:"印刷版費" }, { k:"inbound", h:"進倉運費" }, { k:"other", h:"其他" }
   ];
-  var act = { production:null, sales:null, expenses:null }; // {rows, fileName, updatedAt}
+  var act = { production:null, sales:null, expenses:null, files:null }; // {rows, fileName, updatedAt}
+  var DOCS = ["production", "sales", "expenses", "files"];
   var actDemo = false;
   var actTab = "production";
   var db = null, dbReady = false;
@@ -1107,7 +1114,7 @@
   function loadLocal(){
     try{
       var raw = localStorage.getItem(ACT_KEY);
-      if (raw){ var p = JSON.parse(raw); Object.keys(TYPES).forEach(function(t){ if (p[t]) act[t] = p[t]; }); }
+      if (raw){ var p = JSON.parse(raw); DOCS.forEach(function(t){ if (p[t]) act[t] = p[t]; }); }
     }catch(e){}
   }
   function saveLocal(){ try{ localStorage.setItem(ACT_KEY, JSON.stringify(act)); }catch(e){} }
@@ -1119,7 +1126,7 @@
   }
 
   function persist(t, immediate){
-    if (actDemo) return;
+    if (actDemo && t !== "files") return;
     clearTimeout(saveTimers[t]);
     var run = function(){
       if (db){
@@ -1127,7 +1134,7 @@
           setStore("ok", "已存到共享資料：有權限的同事打開會看到同一份");
         }).catch(function(e){
           if (e && e.code === "invalid_argument" && JSON.stringify(docOf(t)).length > 250000){
-            showMsg("err", TYPES[t].label + "太大，存不進共享資料（上限約 256KB）。請先把銷售明細彙總成每月每品項再上傳。");
+            showMsg("err", (TYPES[t] ? TYPES[t].label : "檔案紀錄") + "太大，存不進共享資料（上限約 256KB）。請先把銷售明細彙總成每月每品項再上傳。");
           } else if (e && e.code === "invalid_argument"){
             setStore("warn", "你只有檢視權限，改動不會儲存");
           } else {
@@ -1151,15 +1158,15 @@
       if (!d){ setStore("warn", "資料只存在這台電腦的瀏覽器"); return; }
       db = d;
       var firstSeen = {};
-      Object.keys(TYPES).forEach(function(t){
+      DOCS.forEach(function(t){
         db.doc("actuals/" + t).onSnapshot(function(snap){
           if (snap.metadata && snap.metadata.hasPendingWrites) return;
           var incoming = snap.exists ? snap.data() : null;
           if (!firstSeen[t]){ firstSeen[t] = true; }
           if (incoming && JSON.stringify(incoming) === JSON.stringify(act[t])) return;
-          if (actDemo && !incoming) return;
+          if (actDemo && !incoming && t !== "files") return;
           act[t] = incoming ? clone(incoming) : null;
-          if (incoming) actDemo = false;
+          if (incoming && t !== "files") actDemo = false;
           renderActualAll(document.activeElement && $("tblData").contains(document.activeElement) && t === actTab);
         }, function(){ setStore("warn", "共享資料連線中斷，重新整理頁面可恢復"); });
       });
@@ -1327,76 +1334,402 @@
     return order.map(function(k){ return map[k]; });
   }
 
-  var xlsxLoading = null;
-  function loadXLSX(){
-    if (window.XLSX) return Promise.resolve(window.XLSX);
-    if (xlsxLoading) return xlsxLoading;
-    xlsxLoading = new Promise(function(res, rej){
+  // ---------- file readers ----------
+  var LIBS = {
+    xlsx:  ["https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"],
+    mammoth: ["https://cdn.jsdelivr.net/npm/mammoth@1.11.0/mammoth.browser.min.js"],
+    jszip: ["https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"],
+    // The worker script loads first so pdf.js runs on the main thread (a cross-origin Worker is not allowed here).
+    pdf:   ["https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+            "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"]
+  };
+  var libLoading = {};
+  function loadScript(src){
+    return new Promise(function(res, rej){
       var sc = document.createElement("script");
-      sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-      sc.onload = function(){ res(window.XLSX); };
-      sc.onerror = function(){ xlsxLoading = null; rej(new Error("Excel 解析元件載入失敗，請檢查網路，或改存成 CSV 上傳")); };
+      sc.src = src; sc.onload = res;
+      sc.onerror = function(){ rej(new Error("解析元件載入失敗，請檢查網路後再試")); };
       document.head.appendChild(sc);
     });
-    return xlsxLoading;
+  }
+  function loadLib(name){
+    if (!libLoading[name]){
+      libLoading[name] = LIBS[name].reduce(function(p, src){ return p.then(function(){ return loadScript(src); }); }, Promise.resolve())
+        .catch(function(e){ libLoading[name] = null; throw e; });
+    }
+    return libLoading[name].then(function(){
+      return { xlsx:window.XLSX, mammoth:window.mammoth, jszip:window.JSZip, pdf:window.pdfjsLib }[name];
+    });
+  }
+  function loadXLSX(){ return loadLib("xlsx"); }
+
+  function ext(name){ var m = /\.([a-z0-9]+)$/i.exec(name || ""); return m ? m[1].toLowerCase() : ""; }
+  function decodeText(buf){
+    var text = new TextDecoder("utf-8").decode(buf);
+    if (text.indexOf("�") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
+    return text;
+  }
+  function tableGrids(root, label){
+    return Array.prototype.map.call(root.querySelectorAll("table"), function(t, i){
+      return { name:label + "／表格" + (i + 1), grid:Array.prototype.map.call(t.querySelectorAll("tr"), function(tr){
+        return Array.prototype.map.call(tr.querySelectorAll("td,th"), function(c){ return c.textContent.trim(); });
+      }) };
+    });
   }
 
+  // Rebuilds rows from positioned PDF text: same baseline = same row, a wide gap = a new cell.
+  function pdfPageGrid(items){
+    var lines = [];
+    items.forEach(function(it){
+      if (!it.str || !it.str.trim()) return;
+      var y = it.transform[5], x = it.transform[4];
+      var line = lines.filter(function(l){ return Math.abs(l.y - y) < 3; })[0];
+      if (!line){ line = { y:y, parts:[] }; lines.push(line); }
+      line.parts.push({ x:x, w:it.width || 0, s:it.str });
+    });
+    lines.sort(function(a, b){ return b.y - a.y; });
+    return lines.map(function(l){
+      l.parts.sort(function(a, b){ return a.x - b.x; });
+      var cells = [], end = -1e9;
+      l.parts.forEach(function(p){
+        if (!cells.length || p.x - end > 8) cells.push(p.s.trim()); else cells[cells.length - 1] += p.s;
+        end = p.x + p.w;
+      });
+      return cells;
+    });
+  }
+
+  // Every reader resolves {grids:[{name, grid}], text, images:[Blob]}: grids are tried by rule first,
+  // text and images go to Claude only when no grid yields rows.
   function readFile(file){
-    var isCsv = /\.(csv|txt)$/i.test(file.name);
-    if (isCsv){
+    var e = ext(file.name), label = file.name;
+    if (/^(csv|tsv|txt|md)$/.test(e)){
       return file.arrayBuffer().then(function(buf){
-        var text = new TextDecoder("utf-8").decode(buf);
-        if (text.indexOf("\uFFFD") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
-        return [{ name:file.name, grid:parseCSV(text) }];
+        var text = decodeText(buf);
+        return { grids:[{ name:label, grid:parseCSV(text) }], text:text, images:[] };
       });
     }
-    return Promise.all([loadXLSX(), file.arrayBuffer()]).then(function(x){
-      var wb = x[0].read(x[1], { type:"array" });
-      return wb.SheetNames.map(function(n){
-        return { name:file.name + "／" + n, grid:x[0].utils.sheet_to_json(wb.Sheets[n], { header:1, raw:true, defval:"" }) };
+    if (/^(xlsx|xlsm|xls|ods)$/.test(e)){
+      return Promise.all([loadXLSX(), file.arrayBuffer()]).then(function(x){
+        var wb = x[0].read(x[1], { type:"array", cellDates:true });
+        var grids = wb.SheetNames.map(function(n){
+          return { name:label + "／" + n, grid:x[0].utils.sheet_to_json(wb.Sheets[n], { header:1, raw:true, defval:"" }) };
+        });
+        var text = wb.SheetNames.map(function(n){ return "【" + n + "】\n" + x[0].utils.sheet_to_csv(wb.Sheets[n]); }).join("\n");
+        return { grids:grids, text:text, images:[] };
       });
+    }
+    if (e === "docx"){
+      return Promise.all([loadLib("mammoth"), file.arrayBuffer()]).then(function(x){
+        return Promise.all([x[0].convertToHtml({ arrayBuffer:x[1].slice(0) }), x[0].extractRawText({ arrayBuffer:x[1].slice(0) })]);
+      }).then(function(r){
+        var doc = new DOMParser().parseFromString(r[0].value, "text/html");
+        return { grids:tableGrids(doc, label), text:r[1].value, images:[] };
+      });
+    }
+    if (e === "pptx"){
+      return Promise.all([loadLib("jszip"), file.arrayBuffer()]).then(function(x){ return x[0].loadAsync(x[1]); }).then(function(zip){
+        var names = Object.keys(zip.files).filter(function(n){ return /^ppt\/slides\/slide\d+\.xml$/.test(n); })
+          .sort(function(a, b){ return parseInt(a.replace(/\D/g, ""), 10) - parseInt(b.replace(/\D/g, ""), 10); });
+        return Promise.all(names.map(function(n){ return zip.file(n).async("string"); })).then(function(xmls){
+          var grids = [], texts = [];
+          xmls.forEach(function(xml, si){
+            var d = new DOMParser().parseFromString(xml, "application/xml");
+            Array.prototype.forEach.call(d.getElementsByTagName("a:tbl"), function(tbl, ti){
+              grids.push({ name:label + "／投影片" + (si + 1) + "表格" + (ti + 1), grid:Array.prototype.map.call(tbl.getElementsByTagName("a:tr"), function(tr){
+                return Array.prototype.map.call(tr.getElementsByTagName("a:tc"), function(tc){
+                  return Array.prototype.map.call(tc.getElementsByTagName("a:t"), function(t){ return t.textContent; }).join("").trim();
+                });
+              }) });
+            });
+            texts.push("【投影片 " + (si + 1) + "】\n" + Array.prototype.map.call(d.getElementsByTagName("a:p"), function(p){
+              return Array.prototype.map.call(p.getElementsByTagName("a:t"), function(t){ return t.textContent; }).join("");
+            }).filter(Boolean).join("\n"));
+          });
+          return { grids:grids, text:texts.join("\n"), images:[] };
+        });
+      });
+    }
+    if (e === "pdf"){
+      return Promise.all([loadLib("pdf"), file.arrayBuffer()]).then(function(x){
+        var lib = x[0];
+        lib.GlobalWorkerOptions.workerSrc = LIBS.pdf[0];
+        return lib.getDocument({ data:new Uint8Array(x[1]) }).promise;
+      }).then(function(pdf){
+        var pages = [];
+        for (var i = 1; i <= pdf.numPages; i++) pages.push(i);
+        return Promise.all(pages.map(function(n){
+          return pdf.getPage(n).then(function(pg){ return pg.getTextContent().then(function(tc){ return { pg:pg, items:tc.items }; }); });
+        })).then(function(ps){
+          var grids = ps.map(function(p, i){ return { name:label + "／第" + (i + 1) + "頁", grid:pdfPageGrid(p.items) }; });
+          var text = grids.map(function(g){ return "【" + g.name.split("／").pop() + "】\n" + g.grid.map(function(r){ return r.join("\t"); }).join("\n"); }).join("\n");
+          var hasText = text.replace(/【[^】]*】|\s/g, "").length > 40;
+          if (hasText) return { grids:grids, text:text, images:[] };
+          // Scanned PDF: render pages so Claude can read them as images.
+          return Promise.all(ps.slice(0, 6).map(function(p){
+            var vp = p.pg.getViewport({ scale:2 }), cv = document.createElement("canvas");
+            cv.width = vp.width; cv.height = vp.height;
+            return p.pg.render({ canvasContext:cv.getContext("2d"), viewport:vp }).promise.then(function(){
+              return new Promise(function(res){ cv.toBlob(res, "image/jpeg", 0.85); });
+            });
+          })).then(function(imgs){ return { grids:[], text:"", images:imgs.filter(Boolean), scanned:true, pages:ps.length }; });
+        });
+      });
+    }
+    if (/^(png|jpe?g|webp|gif|heic|heif|bmp)$/.test(e) || /^image\//.test(file.type)){
+      return Promise.resolve({ grids:[], text:"", images:[file] });
+    }
+    if (e === "json"){
+      return file.text().then(function(t){ return { grids:[], text:t, images:[] }; });
+    }
+    if (/^(doc|ppt|pages|numbers|key)$/.test(e)){
+      return Promise.reject(new Error("「" + file.name + "」是舊版或 Apple 格式，請另存成 .docx／.pptx／.xlsx 或 PDF 再上傳"));
+    }
+    return file.arrayBuffer().then(function(buf){ return { grids:[], text:decodeText(buf).slice(0, 60000), images:[] }; });
+  }
+
+  // ---------- Claude reads documents that have no usable table ----------
+  var sampleP = null, assetsP = null, aiQueue = [], aiBusy = null;
+  function getCap(name){
+    return window.claude && typeof window.claude.use === "function" ? window.claude.use(name).catch(function(){ return null; }) : Promise.resolve(null);
+  }
+  function getSample(){ return sampleP || (sampleP = getCap("sample")); }
+  function getAssets(){ return assetsP || (assetsP = getCap("assets")); }
+
+  function aiPrompt(name, text, isImage){
+    var skus = state.skus.map(function(k){ return k.name; }).join("、");
+    return [
+      "你是資料擷取工具，替阿爾法餐飲整理「雞湯大叔常溫湯包上架全聯」案的實際數據。本案品項：" + skus + "。",
+      "下面" + (isImage ? "的圖片" : "的文字") + "來自檔案「" + name + "」，可能是生產單、出貨／交貨單、對帳單、銷售報表、發票、收據或報價單。",
+      "只擷取文件裡實際寫出的數字，不要推算、不要補值、不要四捨五入。合計／小計列不要列入。數字不要千分位。",
+      "只回傳一個 JSON 物件，格式：",
+      '{"production":[{"batch":"批次或日期","sku":"品項","produced":生產量,"broken":破損量或null,"delivered":交貨量或null,"unitCost":每包成本或null,"totalCost":總成本或null,"taxIncluded":true|false|null}],',
+      ' "sales":[{"month":"YYYY-MM","sku":"品項","qty":銷量,"returns":退貨量或0,"price":每包價格或null,"amount":金額或null,"priceType":"retail"|"purchase"|null,"taxIncluded":true|false|null}],',
+      ' "expenses":[{"date":"YYYY-MM或空字串","item":"項目","category":"行銷|DM|檢驗|印刷版費|進倉運費|其他","amount":金額,"taxIncluded":true|false|null}],',
+      ' "notes":"一到兩句：讀到了什麼、哪些數字不確定或看不清楚"}',
+      "priceType：retail＝全聯末售價（消費者付的價格）；purchase＝全聯進價或廠商實收單價。taxIncluded：文件標明含稅為 true、未稅為 false、沒寫為 null。",
+      "跟本案無關的類別給空陣列。整份文件都無關就三個陣列都給空的，並在 notes 說明。",
+      isImage ? "" : "\n=== 檔案內容開始 ===\n" + text + "\n=== 檔案內容結束 ==="
+    ].join("\n");
+  }
+
+  function fromAI(out){
+    var inRate = state.inRate / 100, notes = [];
+    function num(v){ return parseNum(v); }
+    function taxed(v, flag){ return v == null ? null : (flag === false ? v * TAX : v); }
+    var production = (out && Array.isArray(out.production) ? out.production : []).map(function(r){
+      var produced = num(r.produced), broken = num(r.broken), delivered = num(r.delivered);
+      if (produced == null && delivered == null) return null;
+      if (produced == null) produced = (delivered || 0) + (broken || 0);
+      if (delivered == null) delivered = produced - (broken || 0);
+      if (broken == null) broken = Math.max(0, produced - delivered);
+      var cost = num(r.unitCost);
+      if (cost == null && num(r.totalCost) != null && produced) cost = num(r.totalCost) / produced;
+      cost = taxed(cost, r.taxIncluded);
+      return { batch:String(r.batch || ""), sku:String(r.sku || ""), produced:produced, broken:broken, delivered:delivered,
+               cost:cost == null ? null : Math.round(cost * 10000) / 10000 };
+    }).filter(Boolean);
+    var sales = (out && Array.isArray(out.sales) ? out.sales : []).map(function(r){
+      var qty = num(r.qty); if (qty == null) return null;
+      var price = num(r.price);
+      if (price == null && num(r.amount) != null && qty) price = num(r.amount) / qty;
+      price = taxed(price, r.taxIncluded);
+      if (price != null && r.priceType === "purchase") price = price / inRate;
+      return { month:excelMonth(r.month), sku:String(r.sku || ""), qty:qty, ret:num(r.returns) || 0, price:price };
+    }).filter(Boolean);
+    var catMap = { "行銷":"marketing", "DM":"dm", "檢驗":"test", "印刷版費":"plate", "進倉運費":"inbound", "其他":"other" };
+    var expenses = (out && Array.isArray(out.expenses) ? out.expenses : []).map(function(r){
+      var amt = num(r.amount); if (amt == null) return null;
+      return { date:String(r.date || ""), item:String(r.item || ""), cat:catMap[r.category] || guessCat(String(r.item || "")), amt:Math.abs(taxed(amt, r.taxIncluded)) };
+    }).filter(Boolean);
+    var untaxedNull = []
+      .concat(out && out.production || [], out && out.sales || [], out && out.expenses || [])
+      .some(function(r){ return r && r.taxIncluded == null; });
+    if (untaxedNull) notes.push("有些數字文件沒標明含稅或未稅，已當作含稅處理。");
+    return { production:production, sales:aggregateSales(sales), expenses:expenses,
+             notes:[String(out && out.notes || "")].concat(notes).filter(Boolean).join(" ") };
+  }
+
+  function queueAI(item){ aiQueue.push(item); renderAIReview(); runAI(); }
+
+  function runAI(){
+    if (aiBusy) return;
+    var next = aiQueue.filter(function(q){ return q.status === "waiting"; })[0];
+    if (!next) return;
+    getSample().then(function(sample){
+      if (!sample){
+        next.status = "error";
+        next.error = "這個畫面不能請 Claude 讀檔（例如直接開本機 HTML 檔）。Excel、CSV 和 Word／PDF 裡的表格仍可直接匯入；其他檔案請在線上版上傳。";
+        renderAIReview(); runAI(); return;
+      }
+      next.status = "reading"; next.ctrl = new AbortController(); aiBusy = next; renderAIReview();
+      var go = next.src.images.length
+        ? sample.limits().then(function(lim){
+            if (!lim || !lim.images) throw { code:"images_unavailable" };
+            var imgs = next.src.images.slice(0, lim.images.maxCount);
+            var bad = imgs.filter(function(b){ return lim.images.mediaTypes.indexOf(b.type) < 0; });
+            if (bad.length) throw { code:"image_rejected" };
+            return sample.json(aiPrompt(next.name, "", true), { images:imgs, signal:next.ctrl.signal });
+          })
+        : sample.json(aiPrompt(next.name, next.src.text.slice(0, 50000), false), { signal:next.ctrl.signal });
+      go.then(function(out){
+        next.result = fromAI(out);
+        if (next.src.text && next.src.text.length > 50000) next.result.notes += " 檔案很長，只讀了前 50,000 字。";
+        next.status = next.result.production.length + next.result.sales.length + next.result.expenses.length ? "review" : "empty";
+      }).catch(function(e){
+        next.status = e && e.code === "cancelled" ? "cancelled" : "error";
+        next.error = aiError(e && e.code);
+      }).then(function(){ aiBusy = null; renderAIReview(); runAI(); });
     });
+  }
+
+  function aiError(code){
+    return ({
+      not_granted:"需要你同意讓這個頁面請 Claude 讀檔，才能讀 PDF／Word／圖片。",
+      rate_limited:"Claude 目前太忙，請過一分鐘再上傳一次。",
+      prompt_too_large:"檔案文字太多，請拆成較小的檔案再上傳。",
+      images_unavailable:"這個畫面不能傳圖片給 Claude，請改傳 PDF 文字檔或 Excel。",
+      image_rejected:"這種圖片格式讀不了，請轉成 JPG 或 PNG 再上傳。",
+      invalid_json:"Claude 的回覆格式不對，請再上傳一次。",
+      refused:"Claude 無法處理這份檔案。",
+      empty_completion:"Claude 沒有回覆內容，請再上傳一次。",
+      sampling_disabled:"你的帳號目前不能在頁面裡使用 Claude。",
+      session_expired:"登入已過期，請重新整理頁面。"
+    })[code] || "讀取失敗，請再上傳一次，或改用 Excel／CSV。";
+  }
+
+  function previewRows(t, rows){
+    if (!rows.length) return "";
+    var cols = TYPES[t].cols;
+    return "<p class='group-title' style='margin:12px 0 6px'>" + TYPES[t].label + "（" + rows.length + " 列）</p><div class='scrollwrap'><table><thead><tr>" +
+      cols.map(function(c){ return "<th" + (c.t === "num" ? " class='num'" : " style='text-align:left'") + ">" + c.h + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      rows.slice(0, 40).map(function(r){
+        return "<tr>" + cols.map(function(c){
+          var v = r[c.k];
+          if (c.t === "cat") v = (CATS.filter(function(o){ return o.k === v; })[0] || {}).h || v;
+          else if (c.t === "num") v = v == null ? "—" : (Math.round(v * 100) / 100).toLocaleString("zh-TW");
+          return "<td" + (c.t === "num" ? " class='num'" : " style='text-align:left'") + ">" + esc(v == null ? "" : v) + "</td>";
+        }).join("") + "</tr>";
+      }).join("") + (rows.length > 40 ? "<tr><td colspan='" + cols.length + "' class='src'>…另有 " + (rows.length - 40) + " 列</td></tr>" : "") +
+      "</tbody></table></div>";
+  }
+
+  function renderAIReview(){
+    var box = $("aiReview");
+    var items = aiQueue.filter(function(q){ return q.status !== "done" && q.status !== "dismissed"; });
+    if (!items.length){ box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = items.map(function(q){
+      var head = "<div class='card-head'><div><h3 style='font-size:14.5px'>" + esc(q.name) + "</h3>";
+      var body = "", btns = "";
+      if (q.status === "waiting"){ head += "<p class='sub'>排隊中，等前一份讀完。</p>"; }
+      else if (q.status === "reading"){
+        head += "<p class='sub'>Claude 讀取中" + (q.src.scanned ? "（掃描檔，共 " + q.src.pages + " 頁" + (q.src.pages > 6 ? "，只讀前 6 頁" : "") + "）" : "") + "，通常 10–60 秒。</p>";
+        btns = "<button class='btn small ghost' type='button' data-ai='cancel' data-q='" + q.id + "'>取消</button>";
+      } else if (q.status === "review"){
+        head += "<p class='sub'>Claude 讀到下面這些數字。請對照原檔確認，沒問題再按「確認匯入」；匯入後仍可在下方表格修改。</p>";
+        body = (q.result.notes ? "<div class='msg' style='margin-top:10px'>" + esc(q.result.notes) + "</div>" : "") +
+          previewRows("production", q.result.production) + previewRows("sales", q.result.sales) + previewRows("expenses", q.result.expenses);
+        btns = "<button class='btn small primary' type='button' data-ai='accept' data-q='" + q.id + "'>確認匯入</button>" +
+               "<button class='btn small ghost' type='button' data-ai='dismiss' data-q='" + q.id + "'>捨棄</button>";
+      } else if (q.status === "empty"){
+        head += "<p class='sub'>這份檔案裡沒有找到生產、銷售或費用數字。</p>";
+        body = q.result && q.result.notes ? "<div class='msg' style='margin-top:10px'>" + esc(q.result.notes) + "</div>" : "";
+        btns = "<button class='btn small ghost' type='button' data-ai='dismiss' data-q='" + q.id + "'>關閉</button>";
+      } else {
+        head += "<p class='sub' style='color:var(--bad)'>" + esc(q.error || (q.status === "cancelled" ? "已取消。" : "讀取失敗。")) + "</p>";
+        btns = "<button class='btn small ghost' type='button' data-ai='dismiss' data-q='" + q.id + "'>關閉</button>";
+      }
+      return "<div class='ai-item'>" + head + "</div><div class='btn-row'>" + btns + "</div></div>" + body + "</div>";
+    }).join("");
+  }
+
+  function applyRows(got, sourceName){
+    var append = $("appendMode").checked, lines = [];
+    if (actDemo){ Object.keys(TYPES).forEach(function(t){ act[t] = null; }); actDemo = false; }
+    Object.keys(got).forEach(function(t){
+      if (!got[t].rows.length) return;
+      var prev = append && act[t] ? act[t].rows : [];
+      var rows = prev.concat(got[t].rows);
+      if (t === "sales") rows = aggregateSales(rows);
+      var names = got[t].names || [sourceName];
+      act[t] = { rows:rows, fileName:(append && act[t] && act[t].fileName ? act[t].fileName + "、" : "") + names.join("、"), updatedAt:new Date().toISOString() };
+      persist(t, true);
+      lines.push(TYPES[t].label + "：" + got[t].rows.length + " 列（" + names.join("、") + "）" + (append ? "，已附加" : "，已取代舊資料"));
+      actTab = t;
+    });
+    return lines;
   }
 
   function handleFiles(files){
     if (!files || !files.length) return;
-    var append = $("appendMode").checked;
+    files = Array.prototype.slice.call(files);
     showMsg("", "讀取中…");
-    Promise.all(Array.prototype.map.call(files, readFile)).then(function(all){
-      var sheets = [].concat.apply([], all), got = {}, skipped = [];
-      sheets.forEach(function(sh){
-        var c = classify(sh.grid);
-        if (!c){ skipped.push(sh.name); return; }
-        var rows = toRows(c.type, sh.grid, c);
-        if (!rows.length){ skipped.push(sh.name); return; }
-        got[c.type] = got[c.type] || { rows:[], names:[] };
-        got[c.type].rows = got[c.type].rows.concat(rows);
-        got[c.type].names.push(sh.name);
+    var direct = {}, skipped = [], failed = [], toAI = 0;
+    Promise.all(files.map(function(f){
+      return readFile(f).then(function(src){ return { file:f, src:src }; }, function(e){ failed.push(e && e.message ? e.message : f.name + " 讀取失敗"); return null; });
+    })).then(function(list){
+      list.filter(Boolean).forEach(function(x){
+        var usedAny = false;
+        x.src.grids.forEach(function(sh){
+          var c = classify(sh.grid);
+          if (!c) return;
+          var rows = toRows(c.type, sh.grid, c);
+          if (!rows.length) return;
+          usedAny = true;
+          direct[c.type] = direct[c.type] || { rows:[], names:[] };
+          direct[c.type].rows = direct[c.type].rows.concat(rows);
+          direct[c.type].names.push(sh.name);
+        });
+        archive(x.file, usedAny ? "直接匯入" : "Claude 判讀");
+        if (usedAny) return;
+        if (!x.src.text.trim() && !x.src.images.length){ skipped.push(x.file.name); return; }
+        toAI++;
+        queueAI({ id:"q" + Date.now() + Math.random().toString(36).slice(2, 6), name:x.file.name, src:x.src, status:"waiting" });
       });
-      var types = Object.keys(got);
-      if (!types.length){
-        showMsg("err", "沒有讀到可用的資料。請確認第一列（或標題下方）是欄位名稱，例如「品項、生產量、單位成本」或「月份、品項、銷量、售價」。" + (skipped.length ? "\n略過：" + skipped.join("、") : ""));
-        return;
+      var lines = Object.keys(direct).length ? applyRows(direct) : [];
+      if (direct.sales){
+        var mp = direct.sales.rows.filter(function(r){ return r.price == null; }).length;
+        if (mp) lines.push("注意：" + mp + " 列銷售沒有售價，暫以參數均價 $" + nf2.format(avgPrice(state)) + " 計算，可在下表補上。");
       }
-      if (actDemo){ Object.keys(TYPES).forEach(function(t){ act[t] = null; }); actDemo = false; }
-      var lines = [];
-      types.forEach(function(t){
-        var prev = append && act[t] ? act[t].rows : [];
-        var rows = prev.concat(got[t].rows);
-        if (t === "sales") rows = aggregateSales(rows);
-        act[t] = { rows:rows, fileName:got[t].names.join("、"), updatedAt:new Date().toISOString() };
-        persist(t, true);
-        lines.push(TYPES[t].label + "：" + got[t].rows.length + " 列（" + got[t].names.join("、") + "）" + (append ? "，已附加" : "，已取代舊資料"));
-      });
-      var missingPrice = (got.sales ? got.sales.rows.filter(function(r){ return r.price == null; }).length : 0);
-      var missingCost = (got.production ? got.production.rows.filter(function(r){ return r.cost == null; }).length : 0);
-      if (missingPrice) lines.push("注意：" + missingPrice + " 列銷售沒有售價，暫以參數均價 $" + nf2.format(avgPrice(state)) + " 計算，可在下表補上。");
-      if (missingCost) lines.push("注意：" + missingCost + " 列生產沒有單位成本，暫以參數的建議成本計算，可在下表補上。");
-      if (skipped.length) lines.push("略過（認不出欄位或沒有資料）：" + skipped.join("、"));
-      actTab = types[0];
-      showMsg(missingPrice || missingCost ? "" : "ok", lines.join("\n"));
+      if (direct.production){
+        var mc = direct.production.rows.filter(function(r){ return r.cost == null; }).length;
+        if (mc) lines.push("注意：" + mc + " 列生產沒有單位成本，暫以參數的建議成本計算，可在下表補上。");
+      }
+      if (toAI) lines.push(toAI + " 份檔案沒有可直接讀的表格，交給 Claude 判讀，讀完會在上方列出請你確認。");
+      if (skipped.length) lines.push("沒有讀到內容：" + skipped.join("、"));
+      if (failed.length) lines.push(failed.join("\n"));
+      showMsg(failed.length && !lines.length ? "err" : (Object.keys(direct).length && !failed.length ? "ok" : ""), lines.join("\n") || "沒有讀到可用的資料。");
       renderActualAll();
-    }).catch(function(e){ showMsg("err", "讀檔失敗：" + (e && e.message ? e.message : e)); });
+    });
+  }
+
+  // ---------- original files, kept as supporting records ----------
+  var ASSET_TYPES = { pdf:"application/pdf", png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", webp:"image/webp", gif:"image/gif", csv:"text/csv", txt:"text/plain", md:"text/markdown", json:"application/json" };
+  function archive(file, how){
+    var rec = { name:file.name, size:file.size, at:new Date().toISOString(), how:how, id:null };
+    var doc = act.files || (act.files = { rows:[] });
+    var type = ASSET_TYPES[ext(file.name)];
+    var done = function(){ doc.rows.unshift(rec); doc.rows = doc.rows.slice(0, 200); persist("files", true); renderFiles(); };
+    if (!type){ done(); return; }
+    getAssets().then(function(assets){
+      if (!assets){ done(); return; }
+      var upload = type.indexOf("text/") === 0 || type === "application/json"
+        ? file.arrayBuffer().then(function(buf){ return assets.upload(new Blob([decodeText(buf)], { type:type }), { type:type }); })
+        : assets.upload(file, { type:type });
+      upload.then(function(r){ rec.id = r.id; done(); }, function(){ done(); });
+    });
+  }
+  function renderFiles(){
+    var box = $("fileList"), rows = (act.files && act.files.rows) || [];
+    if (!rows.length){ box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = "<summary>已上傳的原始檔案（" + rows.length + "）</summary><div class='scrollwrap'><table><thead><tr><th>檔名</th><th class='num'>大小</th><th>上傳時間</th><th>讀取方式</th></tr></thead><tbody>" +
+      rows.map(function(r){
+        var nm = r.id ? "<a href='/_blob/" + esc(r.id) + "' target='_blank' rel='noopener'>" + esc(r.name) + "</a>" : esc(r.name);
+        return "<tr><td>" + nm + (r.id ? "" : " <span class='src'>（未保存原檔）</span>") + "</td><td class='num'>" + (r.size / 1024).toFixed(0) + " KB</td><td>" +
+          new Date(r.at).toLocaleString("zh-TW") + "</td><td>" + esc(r.how || "") + "</td></tr>";
+      }).join("") + "</tbody></table></div><p class='spec' style='margin:8px 0 0'>PDF、圖片、CSV 會保存原檔供日後查核；Excel、Word、PowerPoint 只記錄檔名，原檔請自行留存。</p>";
   }
 
   function showMsg(kind, text){
@@ -1630,6 +1963,7 @@
     $("demoBanner").hidden = !actDemo;
     if (!keepTable) renderDataTable();
     renderActualResult();
+    renderFiles();
   }
 
   function touch(t){
@@ -1686,10 +2020,23 @@
     $("btnDemo").addEventListener("click", function(){
       if (hasAnyActual() && !actDemo){ showMsg("err", "已經有實際資料，範例不會覆蓋。要看範例請先「清除全部實際資料」。"); return; }
       actDemo = true;
-      act = demoData();
+      var keepFiles = act.files; act = demoData(); act.files = keepFiles;
       actTab = "sales"; showMsg("", ""); renderActualAll();
     });
     $("btnTemplate").addEventListener("click", downloadTemplate);
+    $("aiReview").addEventListener("click", function(e){
+      var b = e.target.closest("[data-ai]"); if (!b) return;
+      var q = aiQueue.filter(function(x){ return x.id === b.dataset.q; })[0]; if (!q) return;
+      if (b.dataset.ai === "cancel"){ if (q.ctrl) q.ctrl.abort(); return; }
+      if (b.dataset.ai === "accept"){
+        var got = {};
+        ["production","sales","expenses"].forEach(function(t){ if (q.result[t].length) got[t] = { rows:q.result[t], names:[q.name + "（Claude 判讀）"] }; });
+        var lines = applyRows(got);
+        showMsg("ok", lines.join("\n"));
+        q.status = "done"; renderAIReview(); renderActualAll(); return;
+      }
+      q.status = "dismissed"; renderAIReview();
+    });
   }
 
   function demoData(){
