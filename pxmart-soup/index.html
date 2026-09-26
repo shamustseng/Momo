@@ -1366,7 +1366,7 @@
   function ext(name){ var m = /\.([a-z0-9]+)$/i.exec(name || ""); return m ? m[1].toLowerCase() : ""; }
   function decodeText(buf){
     var text = new TextDecoder("utf-8").decode(buf);
-    if (text.indexOf("�") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
+    if (text.indexOf("\uFFFD") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
     return text;
   }
   function tableGrids(root, label){
