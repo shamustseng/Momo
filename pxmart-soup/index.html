@@ -163,6 +163,36 @@
   .two-col{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; }
   @media (max-width:900px){ .two-col{ grid-template-columns:1fr; } }
   .stack{ display:flex; flex-direction:column; gap:22px; }
+  .drop{
+    border:1.5px dashed var(--ink-faint); border-radius:14px; background:var(--surface-2);
+    padding:20px; display:flex; flex-wrap:wrap; align-items:center; gap:12px 18px; cursor:pointer;
+  }
+  .drop:hover, .drop.over{ border-color:var(--accent); background:var(--accent-soft); }
+  .drop .drop-main{ font-weight:800; font-size:14.5px; }
+  .drop .drop-sub{ font-size:12.5px; color:var(--ink-muted); }
+  .drop > div{ margin-right:auto; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+  .status-line{ display:flex; flex-wrap:wrap; gap:8px 14px; font-size:12.5px; color:var(--ink-muted); align-items:center; }
+  .pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700; background:var(--surface-2); color:var(--ink-muted); }
+  .pill.ok{ background:var(--good-soft); color:var(--good); }
+  .pill.warn{ background:var(--cost-soft); color:var(--cost-ink); }
+  .pill .dot{ width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .msg{ font-size:13px; border-radius:10px; padding:10px 14px; background:var(--surface-2); color:var(--ink); white-space:pre-line; }
+  .msg.err{ background:var(--bad-soft); color:var(--bad); }
+  .msg.ok{ background:var(--good-soft); color:var(--ink); }
+  .demo-banner{ background:var(--cost-soft); color:var(--cost-ink); border-radius:10px; padding:10px 14px; font-size:13px; font-weight:600; }
+  .subtabs{ display:flex; flex-wrap:wrap; gap:6px; }
+  .data-table td{ padding:5px 8px; }
+  .data-table input.cell{ min-width:80px; }
+  .data-table select.cell{ background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:5px 8px; color:var(--ink); }
+  .empty{ color:var(--ink-faint); font-size:13px; padding:10px 2px; }
+  .spec{ font-size:12.5px; color:var(--ink-muted); line-height:1.8; }
+  .spec b{ color:var(--ink); }
+  details.spec summary{ cursor:pointer; font-weight:700; color:var(--ink); }
+  .actual-kpis{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
+  @media (max-width:760px){ .actual-kpis{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  td.src{ font-size:11.5px; color:var(--ink-faint); text-align:left; }
   .callout{ background:var(--surface-2); border-radius:12px; padding:12px 16px; font-size:13px; color:var(--ink-muted); }
   .callout b{ color:var(--ink); font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
   .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
@@ -177,6 +207,7 @@
       <h1>雞湯大叔　全聯常溫湯包　整體損益測算器</h1>
     </div>
     <nav class="tabs" aria-label="區塊">
+      <a href="#actual">實際結算</a>
       <a href="#inputs">參數</a>
       <a href="#pl">損益表</a>
       <a href="#sku">單支拆解</a>
@@ -215,6 +246,60 @@
       <p class="narr" id="vNarr"></p>
     </div>
     <div class="kpi-grid" id="kpis"></div>
+  </section>
+
+  <section class="card" id="actual">
+    <div class="card-head">
+      <div>
+        <h2>實際結算　上傳實際數據</h2>
+        <p class="sub">上傳實際的生產、銷售、費用資料（Excel 或 CSV），算出本案真正賺多少，並逐項對照 V7 預估。通路費率、進價率等條件沿用下方「參數設定」。</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btnTemplate" type="button">下載 Excel 範本</button>
+        <button class="btn ghost" id="btnDemo" type="button">載入範例資料</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <label class="drop" id="dropZone" for="fileInput">
+        <div>
+          <div class="drop-main">把檔案拖到這裡，或點一下選擇檔案</div>
+          <div class="drop-sub">支援 .xlsx／.xls／.csv，可一次選多個檔案。一本 Excel 裡的「生產」「銷售」「費用」工作表會依欄位名稱自動分類。</div>
+        </div>
+        <span class="btn primary">選擇檔案</span>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt" multiple hidden>
+      </label>
+      <div class="status-line">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="appendMode"> 附加到現有資料（不勾選＝同類資料整份取代）</label>
+        <span id="storeStatus" class="pill"><span class="dot"></span>連線中…</span>
+      </div>
+      <div id="importMsg" class="msg" hidden></div>
+      <div id="demoBanner" class="demo-banner" hidden>目前顯示的是範例資料，只在這個畫面上，沒有儲存。上傳實際檔案後會取代；要清掉請按「清除全部實際資料」。</div>
+
+      <details class="spec">
+        <summary>檔案要有哪些欄位</summary>
+        <p><b>生產資料</b>：品項、生產量、單位成本（含稅）。選填：批次／日期、交貨量、破損量。沒有交貨量時以「生產量－破損量」計；成本欄名含「未稅」會自動×1.05；只有總成本時以「總成本÷生產量」換算。</p>
+        <p><b>銷售資料</b>：月份（或日期）、品項、銷量，加上「售價」（全聯末售價，含稅）或「銷售額」其中之一。選填：退貨量。若給的是「進價」，會以進價率換回末售價。每日、每店明細可直接上傳，匯入時會按「月份＋品項＋售價」彙總。</p>
+        <p><b>費用資料</b>：項目、金額（含稅）。選填：日期、類別（行銷／DM／檢驗／印刷版費／進倉運費／其他）；沒有類別時依項目名稱判斷。<b>有上傳的類別用實際金額，沒上傳的類別沿用參數設定</b>，損益表會標示每一行的來源。</p>
+      </details>
+
+      <div id="actualResult"></div>
+
+      <div>
+        <div class="card-head" style="margin-bottom:10px">
+          <div class="subtabs" role="tablist" aria-label="資料類別">
+            <button type="button" class="chip" data-dt="production" aria-pressed="true">生產資料</button>
+            <button type="button" class="chip" data-dt="sales" aria-pressed="false">銷售資料</button>
+            <button type="button" class="chip" data-dt="expenses" aria-pressed="false">費用資料</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn small" id="btnAddRow" type="button">＋ 新增一列</button>
+            <button class="btn small ghost" id="btnClearType" type="button">清除這類資料</button>
+            <button class="btn small ghost" id="btnClearAll" type="button">清除全部實際資料</button>
+          </div>
+        </div>
+        <div class="scrollwrap"><table class="data-table" id="tblData"></table></div>
+      </div>
+    </div>
   </section>
 
   <section class="card" id="inputs">
@@ -988,6 +1073,683 @@
     $("tblScale").innerHTML = html + "</tbody>";
   }
 
+  // =====================================================================
+  // 實際結算：上傳實際生產／銷售／費用資料
+  // =====================================================================
+  var ACT_KEY = "alpha_pxmart_soup_actuals";
+  var TYPES = {
+    production: { label:"生產資料", cols:[
+      { k:"batch", h:"批次／日期", t:"text" }, { k:"sku", h:"品項", t:"text" },
+      { k:"produced", h:"生產量", t:"num" }, { k:"broken", h:"破損量", t:"num" },
+      { k:"delivered", h:"交貨量", t:"num" }, { k:"cost", h:"單位成本（含稅）", t:"num" } ] },
+    sales: { label:"銷售資料", cols:[
+      { k:"month", h:"月份", t:"text" }, { k:"sku", h:"品項", t:"text" },
+      { k:"qty", h:"銷量", t:"num" }, { k:"ret", h:"退貨量", t:"num" },
+      { k:"price", h:"末售價（含稅）", t:"num" } ] },
+    expenses: { label:"費用資料", cols:[
+      { k:"date", h:"日期", t:"text" }, { k:"item", h:"項目", t:"text" },
+      { k:"cat", h:"類別", t:"cat" }, { k:"amt", h:"金額（含稅）", t:"num" } ] }
+  };
+  var CATS = [
+    { k:"marketing", h:"行銷" }, { k:"dm", h:"DM" }, { k:"test", h:"檢驗" },
+    { k:"plate", h:"印刷版費" }, { k:"inbound", h:"進倉運費" }, { k:"other", h:"其他" }
+  ];
+  var act = { production:null, sales:null, expenses:null }; // {rows, fileName, updatedAt}
+  var actDemo = false;
+  var actTab = "production";
+  var db = null, dbReady = false;
+  var saveTimers = {};
+
+  function emptyDoc(){ return { rows:[], fileName:"", updatedAt:"" }; }
+  function docOf(t){ return act[t] || emptyDoc(); }
+
+  // ---------- storage: shared db in the artifact, localStorage otherwise ----------
+  function loadLocal(){
+    try{
+      var raw = localStorage.getItem(ACT_KEY);
+      if (raw){ var p = JSON.parse(raw); Object.keys(TYPES).forEach(function(t){ if (p[t]) act[t] = p[t]; }); }
+    }catch(e){}
+  }
+  function saveLocal(){ try{ localStorage.setItem(ACT_KEY, JSON.stringify(act)); }catch(e){} }
+
+  function setStore(kind, text){
+    var el = $("storeStatus");
+    el.className = "pill " + (kind || "");
+    el.innerHTML = "<span class='dot'></span>" + esc(text);
+  }
+
+  function persist(t, immediate){
+    if (actDemo) return;
+    clearTimeout(saveTimers[t]);
+    var run = function(){
+      if (db){
+        db.doc("actuals/" + t).set(clone(docOf(t))).then(function(){
+          setStore("ok", "已存到共享資料：有權限的同事打開會看到同一份");
+        }).catch(function(e){
+          if (e && e.code === "invalid_argument" && JSON.stringify(docOf(t)).length > 250000){
+            showMsg("err", TYPES[t].label + "太大，存不進共享資料（上限約 256KB）。請先把銷售明細彙總成每月每品項再上傳。");
+          } else if (e && e.code === "invalid_argument"){
+            setStore("warn", "你只有檢視權限，改動不會儲存");
+          } else {
+            setStore("warn", "暫時存不進去，稍後再改一次會重試");
+          }
+        });
+      } else {
+        saveLocal();
+      }
+    };
+    if (immediate) run(); else saveTimers[t] = setTimeout(run, 700);
+  }
+
+  function initStore(){
+    loadLocal();
+    var use = window.claude && typeof window.claude.use === "function" ? window.claude.use("db") : null;
+    if (!use){ setStore("warn", "資料只存在這台電腦的瀏覽器"); renderActualAll(); return; }
+    setStore("", "連線中…");
+    renderActualAll();
+    use.then(function(d){
+      if (!d){ setStore("warn", "資料只存在這台電腦的瀏覽器"); return; }
+      db = d;
+      var firstSeen = {};
+      Object.keys(TYPES).forEach(function(t){
+        db.doc("actuals/" + t).onSnapshot(function(snap){
+          if (snap.metadata && snap.metadata.hasPendingWrites) return;
+          var incoming = snap.exists ? snap.data() : null;
+          if (!firstSeen[t]){ firstSeen[t] = true; }
+          if (incoming && JSON.stringify(incoming) === JSON.stringify(act[t])) return;
+          if (actDemo && !incoming) return;
+          act[t] = incoming ? clone(incoming) : null;
+          if (incoming) actDemo = false;
+          renderActualAll(document.activeElement && $("tblData").contains(document.activeElement) && t === actTab);
+        }, function(){ setStore("warn", "共享資料連線中斷，重新整理頁面可恢復"); });
+      });
+      dbReady = true;
+      setStore("ok", "已連上共享資料：有權限的同事打開會看到同一份");
+    }).catch(function(){ setStore("warn", "資料只存在這台電腦的瀏覽器"); });
+  }
+
+  // ---------- parsing ----------
+  function parseNum(v){
+    if (v == null || v === "") return null;
+    if (typeof v === "number") return isFinite(v) ? v : null;
+    var s = String(v).trim().replace(/[,\s，]/g, "").replace(/^NT\$|^\$|元$|包$/g, "");
+    var neg = /^\(.*\)$/.test(s);
+    s = s.replace(/[()]/g, "");
+    if (/%$/.test(s)) s = String(parseFloat(s) / 100);
+    var n = parseFloat(s);
+    return isFinite(n) ? (neg ? -n : n) : null;
+  }
+
+  function parseCSV(text){
+    text = text.replace(/^﻿/, "");
+    var first = text.split(/\r?\n/)[0] || "";
+    var delim = (first.match(/\t/g) || []).length > (first.match(/,/g) || []).length ? "\t" : ",";
+    var rows = [], row = [], cur = "", q = false;
+    for (var i = 0; i < text.length; i++){
+      var c = text[i];
+      if (q){
+        if (c === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+        else cur += c;
+      } else if (c === '"') q = true;
+      else if (c === delim){ row.push(cur); cur = ""; }
+      else if (c === "\n" || c === "\r"){
+        if (c === "\r" && text[i+1] === "\n") i++;
+        row.push(cur); rows.push(row); row = []; cur = "";
+      } else cur += c;
+    }
+    if (cur !== "" || row.length){ row.push(cur); rows.push(row); }
+    return rows.filter(function(r){ return r.some(function(x){ return String(x).trim() !== ""; }); });
+  }
+
+  // Order matters: quantity fields are tested before money fields so 「銷售量」 never reads as 「銷售額」.
+  var FIELD_RULES = [
+    { f:"broken",    kw:["破損","損耗量","報廢"] },
+    { f:"delivered", kw:["交貨","出貨量","進貨量","入倉"] },
+    { f:"produced",  kw:["生產量","生產數","產量","製作量","製造量","生產"] },
+    { f:"ret",       kw:["退貨"] },
+    { f:"qty",       kw:["銷量","銷售量","銷售數","售出","數量"] },
+    { f:"unitCost",  kw:["單位成本","單包成本","每包成本","建議成本","成本單價"] },
+    { f:"totalCost", kw:["總成本","成本合計","成本金額"] },
+    { f:"cost",      kw:["成本"] },
+    { f:"inPrice",   kw:["進價"] },
+    { f:"amount",    kw:["銷售額","營業額","銷售金額","業績"] },
+    { f:"price",     kw:["售價","零售價","單價","均價","價格"] },
+    { f:"amt",       kw:["金額","費用","支出"] },
+    { f:"cat",       kw:["類別","分類","科目"] },
+    { f:"item",      kw:["項目","說明","摘要","內容"] },
+    { f:"month",     kw:["月份","月別","年月","銷售月","日期","期間","月"] },
+    { f:"batch",     kw:["批次","批號","工單"] },
+    { f:"sku",       kw:["品項","品名","商品","產品","口味","sku","品號"] }
+  ];
+  function mapHeader(h){
+    var s = String(h == null ? "" : h).replace(/\s/g, "").toLowerCase();
+    if (!s) return null;
+    for (var i = 0; i < FIELD_RULES.length; i++){
+      if (FIELD_RULES[i].kw.some(function(k){ return s.indexOf(k) >= 0; })){
+        return { f:FIELD_RULES[i].f, untaxed: /未稅/.test(s) };
+      }
+    }
+    return null;
+  }
+
+  // Finds the header row (title rows above it are common in Excel), then classifies the table.
+  function classify(grid){
+    for (var r = 0; r < Math.min(grid.length, 12); r++){
+      var map = {}, hits = 0;
+      grid[r].forEach(function(h, c){
+        var m = mapHeader(h);
+        if (m && map[m.f] == null){ map[m.f] = { c:c, untaxed:m.untaxed }; hits++; }
+      });
+      if (hits < 2) continue;
+      var type = null;
+      if (map.qty && (map.price || map.amount || map.inPrice)) type = "sales";
+      else if (map.produced || map.delivered) type = "production";
+      else if (map.amt && !map.qty) type = "expenses";
+      else if (map.qty) type = "sales";
+      if (type) return { type:type, map:map, start:r + 1 };
+    }
+    return null;
+  }
+
+  function cell(row, m){ return m ? row[m.c] : undefined; }
+
+  function excelMonth(v){
+    if (typeof v === "number" && v > 20000 && v < 80000){ // Excel serial date
+      var d = new Date(Math.round((v - 25569) * 86400000));
+      return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0");
+    }
+    if (v instanceof Date) return v.getFullYear() + "-" + String(v.getMonth() + 1).padStart(2, "0");
+    var s = String(v == null ? "" : v).trim();
+    var m = s.match(/^(\d{4})[\/\-.年](\d{1,2})/);
+    if (m) return m[1] + "-" + m[2].padStart(2, "0");
+    var m2 = s.match(/^(\d{1,2})\s*月/);
+    if (m2){ var mm = +m2[1]; return (mm >= 7 ? "2026" : "2027") + "-" + String(mm).padStart(2, "0"); }
+    return s;
+  }
+
+  function toRows(type, grid, cls){
+    var mp = cls.map, out = [];
+    for (var r = cls.start; r < grid.length; r++){
+      var row = grid[r];
+      if (!row || !row.some(function(x){ return String(x == null ? "" : x).trim() !== ""; })) continue;
+      var sku = String(cell(row, mp.sku) == null ? "" : cell(row, mp.sku)).trim();
+      if (row.slice(0, 3).some(function(x){ return /^\s*(合計|總計|小計|total)/i.test(String(x == null ? "" : x)); })) continue;
+      if (type === "production"){
+        var produced = parseNum(cell(row, mp.produced)), broken = parseNum(cell(row, mp.broken)), delivered = parseNum(cell(row, mp.delivered));
+        if (produced == null && delivered == null) continue;
+        if (produced == null) produced = (delivered || 0) + (broken || 0);
+        if (delivered == null) delivered = produced - (broken || 0);
+        if (broken == null) broken = Math.max(0, produced - delivered);
+        var cm = mp.unitCost || mp.cost, cost = parseNum(cell(row, cm));
+        if (cost == null && mp.totalCost){ var tc = parseNum(cell(row, mp.totalCost)); if (tc != null && produced) cost = tc / produced; }
+        var untaxed = (cm && cm.untaxed) || (!cm && mp.totalCost && mp.totalCost.untaxed);
+        if (cost != null && untaxed) cost = cost * TAX;
+        out.push({ batch:String(cell(row, mp.batch) == null ? (cell(row, mp.month) == null ? "" : excelMonth(cell(row, mp.month))) : cell(row, mp.batch)),
+                   sku:sku, produced:produced, broken:broken, delivered:delivered, cost:cost == null ? null : Math.round(cost * 10000) / 10000 });
+      } else if (type === "sales"){
+        var qty = parseNum(cell(row, mp.qty));
+        if (qty == null) continue;
+        var price = parseNum(cell(row, mp.price));
+        if (price != null && mp.price.untaxed) price *= TAX;
+        if (price == null && mp.amount){ var a = parseNum(cell(row, mp.amount)); if (a != null && qty) price = (mp.amount.untaxed ? a * TAX : a) / qty; }
+        if (price == null && mp.inPrice){ var ip = parseNum(cell(row, mp.inPrice)); if (ip != null){ if (mp.inPrice.untaxed) ip *= TAX; price = ip / (state.inRate / 100); } }
+        out.push({ month:excelMonth(cell(row, mp.month)), sku:sku, qty:qty, ret:parseNum(cell(row, mp.ret)) || 0, price:price });
+      } else {
+        var amt = parseNum(cell(row, mp.amt));
+        if (amt == null) continue;
+        if (mp.amt.untaxed) amt *= TAX;
+        var item = String(cell(row, mp.item) == null ? sku : cell(row, mp.item)).trim();
+        out.push({ date:String(cell(row, mp.month) == null ? "" : excelMonth(cell(row, mp.month))), item:item,
+                   cat:guessCat(String(cell(row, mp.cat) == null ? "" : cell(row, mp.cat)) + " " + item), amt:Math.abs(amt) });
+      }
+    }
+    if (type === "sales") out = aggregateSales(out);
+    return out;
+  }
+
+  function guessCat(s){
+    if (/DM|檔期|dm/.test(s)) return "dm";
+    if (/檢驗|SGS|檢測/.test(s)) return "test";
+    if (/印刷|版費|製版/.test(s)) return "plate";
+    if (/進倉|運費|物流/.test(s)) return "inbound";
+    if (/行銷|廣告|KOL|KOC|社群|試吃|公關|主視覺|攝影|Meta|LINE/i.test(s)) return "marketing";
+    return "other";
+  }
+
+  // Daily or per-store detail collapses to one row per month + SKU + price.
+  function aggregateSales(rows){
+    var map = {}, order = [];
+    rows.forEach(function(r){
+      var key = r.month + "|" + r.sku + "|" + (r.price == null ? "" : r.price.toFixed(2));
+      if (!map[key]){ map[key] = { month:r.month, sku:r.sku, qty:0, ret:0, price:r.price == null ? null : Math.round(r.price * 100) / 100 }; order.push(key); }
+      map[key].qty += r.qty; map[key].ret += r.ret || 0;
+    });
+    return order.map(function(k){ return map[k]; });
+  }
+
+  var xlsxLoading = null;
+  function loadXLSX(){
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (xlsxLoading) return xlsxLoading;
+    xlsxLoading = new Promise(function(res, rej){
+      var sc = document.createElement("script");
+      sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      sc.onload = function(){ res(window.XLSX); };
+      sc.onerror = function(){ xlsxLoading = null; rej(new Error("Excel 解析元件載入失敗，請檢查網路，或改存成 CSV 上傳")); };
+      document.head.appendChild(sc);
+    });
+    return xlsxLoading;
+  }
+
+  function readFile(file){
+    var isCsv = /\.(csv|txt)$/i.test(file.name);
+    if (isCsv){
+      return file.arrayBuffer().then(function(buf){
+        var text = new TextDecoder("utf-8").decode(buf);
+        if (text.indexOf("�") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
+        return [{ name:file.name, grid:parseCSV(text) }];
+      });
+    }
+    return Promise.all([loadXLSX(), file.arrayBuffer()]).then(function(x){
+      var wb = x[0].read(x[1], { type:"array" });
+      return wb.SheetNames.map(function(n){
+        return { name:file.name + "／" + n, grid:x[0].utils.sheet_to_json(wb.Sheets[n], { header:1, raw:true, defval:"" }) };
+      });
+    });
+  }
+
+  function handleFiles(files){
+    if (!files || !files.length) return;
+    var append = $("appendMode").checked;
+    showMsg("", "讀取中…");
+    Promise.all(Array.prototype.map.call(files, readFile)).then(function(all){
+      var sheets = [].concat.apply([], all), got = {}, skipped = [];
+      sheets.forEach(function(sh){
+        var c = classify(sh.grid);
+        if (!c){ skipped.push(sh.name); return; }
+        var rows = toRows(c.type, sh.grid, c);
+        if (!rows.length){ skipped.push(sh.name); return; }
+        got[c.type] = got[c.type] || { rows:[], names:[] };
+        got[c.type].rows = got[c.type].rows.concat(rows);
+        got[c.type].names.push(sh.name);
+      });
+      var types = Object.keys(got);
+      if (!types.length){
+        showMsg("err", "沒有讀到可用的資料。請確認第一列（或標題下方）是欄位名稱，例如「品項、生產量、單位成本」或「月份、品項、銷量、售價」。" + (skipped.length ? "\n略過：" + skipped.join("、") : ""));
+        return;
+      }
+      if (actDemo){ Object.keys(TYPES).forEach(function(t){ act[t] = null; }); actDemo = false; }
+      var lines = [];
+      types.forEach(function(t){
+        var prev = append && act[t] ? act[t].rows : [];
+        var rows = prev.concat(got[t].rows);
+        if (t === "sales") rows = aggregateSales(rows);
+        act[t] = { rows:rows, fileName:got[t].names.join("、"), updatedAt:new Date().toISOString() };
+        persist(t, true);
+        lines.push(TYPES[t].label + "：" + got[t].rows.length + " 列（" + got[t].names.join("、") + "）" + (append ? "，已附加" : "，已取代舊資料"));
+      });
+      var missingPrice = (got.sales ? got.sales.rows.filter(function(r){ return r.price == null; }).length : 0);
+      var missingCost = (got.production ? got.production.rows.filter(function(r){ return r.cost == null; }).length : 0);
+      if (missingPrice) lines.push("注意：" + missingPrice + " 列銷售沒有售價，暫以參數均價 $" + nf2.format(avgPrice(state)) + " 計算，可在下表補上。");
+      if (missingCost) lines.push("注意：" + missingCost + " 列生產沒有單位成本，暫以參數的建議成本計算，可在下表補上。");
+      if (skipped.length) lines.push("略過（認不出欄位或沒有資料）：" + skipped.join("、"));
+      actTab = types[0];
+      showMsg(missingPrice || missingCost ? "" : "ok", lines.join("\n"));
+      renderActualAll();
+    }).catch(function(e){ showMsg("err", "讀檔失敗：" + (e && e.message ? e.message : e)); });
+  }
+
+  function showMsg(kind, text){
+    var el = $("importMsg");
+    el.hidden = !text; el.className = "msg " + (kind || ""); el.textContent = text || "";
+  }
+
+  // ---------- SKU matching ----------
+  function lcs(a, b){
+    var best = 0;
+    for (var i = 0; i < a.length; i++) for (var j = 0; j < b.length; j++){
+      var k = 0; while (a[i+k] && a[i+k] === b[j+k]) k++;
+      if (k > best) best = k;
+    }
+    return best;
+  }
+  // Returns the plan SKU index an uploaded name refers to, or -1 when it is ambiguous or unknown.
+  function planIndex(name){
+    var n = String(name || "").replace(/\s/g, "");
+    if (!n) return state.skus.length === 1 ? 0 : -1;
+    var scores = state.skus.map(function(k){ return lcs(n, k.name.replace(/\s/g, "")); });
+    var best = Math.max.apply(null, scores);
+    if (best < 2 || scores.filter(function(x){ return x === best; }).length > 1) return -1;
+    return scores.indexOf(best);
+  }
+  function skuKey(name){ var i = planIndex(name); return i >= 0 ? "#" + i : "@" + String(name || "（未填品項）").trim(); }
+  function skuLabel(key){ return key[0] === "#" ? state.skus[+key.slice(1)].name : key.slice(1); }
+
+  // ---------- actual P&L ----------
+  function computeActual(){
+    var prod = docOf("production").rows, sales = docOf("sales").rows, exps = docOf("expenses").rows;
+    var groups = {}, order = [];
+    function g(key){
+      if (!groups[key]){ groups[key] = { key:key, produced:0, broken:0, delivered:0, costSum:0, costQty:0, sold:0, retail:0, rev:0, fees:0 }; order.push(key); }
+      return groups[key];
+    }
+    var fallbackP = avgPrice(state);
+    prod.forEach(function(r){
+      var x = g(skuKey(r.sku)), i = planIndex(r.sku);
+      var cost = r.cost != null ? +r.cost : (i >= 0 ? +state.skus[i].cost : null);
+      x.produced += +r.produced || 0; x.broken += +r.broken || 0; x.delivered += +r.delivered || 0;
+      if (cost != null){ x.costSum += cost * (+r.produced || 0); x.costQty += +r.produced || 0; }
+    });
+    var months = {}, monthOrder = [];
+    sales.forEach(function(r){
+      var x = g(skuKey(r.sku));
+      var q = (+r.qty || 0) - (+r.ret || 0);
+      var P = r.price != null && r.price !== "" ? +r.price : fallbackP;
+      var pin = P * state.inRate / 100;
+      var fee = P * state.logi / 100 * TAX + pin * (state.wh + state.svc) / 100 * TAX;
+      x.sold += q; x.retail += q * P; x.rev += q * pin; x.fees += q * fee;
+      var m = r.month || "（未填月份）";
+      if (!months[m]){ months[m] = { month:m, bySku:{}, qty:0, retail:0, rev:0 }; monthOrder.push(m); }
+      months[m].qty += q; months[m].retail += q * P; months[m].rev += q * pin;
+      months[m].bySku[x.key] = (months[m].bySku[x.key] || 0) + q;
+    });
+
+    var hasProd = prod.length > 0;
+    var skus = order.map(function(k){
+      var x = groups[k], i = k[0] === "#" ? +k.slice(1) : -1;
+      x.name = skuLabel(k);
+      x.cost = x.costQty ? x.costSum / x.costQty : (i >= 0 ? +state.skus[i].cost : 0);
+      x.costFromPlan = !x.costQty;
+      if (!x.produced && !x.delivered && i >= 0 && !hasProd){ // no production file yet: fall back to plan quantities
+        x.delivered = +state.skus[i].qty; x.broken = +state.skus[i].broken; x.produced = x.delivered + x.broken; x.qtyFromPlan = true;
+      }
+      x.unsold = Math.max(0, x.delivered - x.sold);
+      x.cogs = x.sold * x.cost;
+      x.prodCost = x.produced * x.cost;
+      x.sell = x.delivered ? x.sold / x.delivered : 0;
+      x.avgPrice = x.sold ? x.retail / x.sold : 0;
+      return x;
+    });
+    function sum(k){ return skus.reduce(function(a, x){ return a + x[k]; }, 0); }
+
+    var catAct = {}; CATS.forEach(function(c){ catAct[c.k] = null; });
+    exps.forEach(function(r){ var c = r.cat || "other"; catAct[c] = (catAct[c] || 0) + (+r.amt || 0); });
+
+    var delivered = sum("delivered"), sold = sum("sold");
+    var planFixed = model(state, 100);
+    var fixed = {
+      marketing: catAct.marketing != null ? { v:catAct.marketing, src:"實際" } : { v:planFixed.marketing + planFixed.extras, src:"參數" },
+      dm:        catAct.dm != null ? { v:catAct.dm, src:"實際" } : { v:planFixed.dm, src:"參數" },
+      test:      catAct.test != null ? { v:catAct.test, src:"實際" } : { v:planFixed.test, src:"參數" },
+      plate:     catAct.plate != null ? { v:catAct.plate, src:"實際" } : { v:planFixed.plate, src:"參數" },
+      inbound:   catAct.inbound != null ? { v:catAct.inbound, src:"實際" } : { v:delivered * state.inbound, src:"參數" },
+      other:     { v:catAct.other || 0, src: catAct.other != null ? "實際" : "—" }
+    };
+    var a = {
+      skus:skus, months:monthOrder.map(function(m){ return months[m]; }),
+      produced:sum("produced"), broken:sum("broken"), delivered:delivered, sold:sold, unsold:sum("unsold"),
+      retail:sum("retail"), rev:sum("rev"), fees:sum("fees"), cogs:sum("cogs"), prodCost:sum("prodCost"),
+      fixed:fixed, hasProd:hasProd, hasSales:sales.length > 0, hasExp:exps.length > 0,
+      qtyFromPlan: skus.some(function(x){ return x.qtyFromPlan; }),
+      costFromPlan: skus.some(function(x){ return x.costFromPlan && x.produced; }),
+      missingPrice: sales.filter(function(r){ return r.price == null || r.price === ""; }).length
+    };
+    a.sell = delivered ? sold / delivered : 0;
+    a.avgPrice = sold ? a.retail / sold : 0;
+    a.gross = a.rev - a.cogs;
+    var fixedSum = fixed.marketing.v + fixed.dm.v + fixed.test.v + fixed.plate.v + fixed.inbound.v + fixed.other.v;
+    // 至今：未售品仍是庫存（按成本留在帳上），只認破損損耗，不計逆物流。
+    var brokenCost = skus.reduce(function(s, x){ return s + Math.max(0, x.produced - x.delivered) * x.cost; }, 0);
+    a.now = { shrink:brokenCost, reverse:0, inventory:a.unsold ? skus.reduce(function(s, x){ return s + x.unsold * x.cost; }, 0) : 0 };
+    a.now.opex = a.fees + a.now.shrink + a.now.reverse + fixedSum;
+    a.now.net = a.gross - a.now.opex;
+    // 若現在結案：未售全數退回，成本認列為損耗並付逆物流。
+    a.close = { shrink:a.prodCost - a.cogs, reverse:a.unsold * state.reverse };
+    a.close.opex = a.fees + a.close.shrink + a.close.reverse + fixedSum;
+    a.close.net = a.gross - a.close.opex;
+    a.fixedSum = fixedSum;
+    return a;
+  }
+
+  function hasAnyActual(){ return Object.keys(TYPES).some(function(t){ return docOf(t).rows.length > 0; }); }
+
+  function renderActualResult(){
+    var box = $("actualResult");
+    if (!hasAnyActual()){
+      box.innerHTML = "<div class='empty'>還沒有實際資料。先按「下載 Excel 範本」照格式填好上傳，或按「載入範例資料」看算出來的樣子。</div>";
+      return;
+    }
+    var a = computeActual();
+    var plan = model(state, Math.min(100, a.sell * 100));
+    var plan90 = model(state, 90);
+    var tiles = [
+      { l:"若現在結案淨利（" + taxLabel() + "）", v:money(tx(a.close.net)), n:"未售品全數退回、認列損耗與逆物流", neg:a.close.net < 0 },
+      { l:"至今淨利（" + taxLabel() + "）", v:money(tx(a.now.net)), n:"未售 " + nf0.format(Math.round(a.unsold)) + " 包仍當庫存（成本 " + money(tx(a.now.inventory)) + "）", neg:a.now.net < 0 },
+      { l:"實際售罄率", v:pct(a.sell), n:"售出 " + nf0.format(Math.round(a.sold)) + "／交貨 " + nf0.format(Math.round(a.delivered)) + " 包" },
+      { l:"實際均價（含稅末售價）", v:a.avgPrice ? "$" + nf2.format(a.avgPrice) : "—", n:"V7 假設 $" + nf2.format(avgPrice(state)) },
+      { l:"對 V7 同售罄率預估", v:money(tx(a.close.net - plan.net)), n:"V7 在 " + pct(a.sell) + " 售罄時為 " + money(tx(plan.net)), neg:a.close.net - plan.net < 0 },
+      { l:"對 V7 中性 90%", v:money(tx(a.close.net - plan90.net)), n:"V7 中性淨利 " + money(tx(plan90.net)), neg:a.close.net - plan90.net < 0 }
+    ];
+    var h = "<div class='actual-kpis'>" + tiles.map(function(t){
+      return "<div class='kpi'><div class='label'>" + t.l + "</div><div class='value" + (t.neg ? " neg" : "") + "'>" + t.v + "</div><div class='note'>" + t.n + "</div></div>";
+    }).join("") + "</div>";
+
+    var warn = [];
+    if (!a.hasProd) warn.push("還沒上傳生產資料，生產量與交貨量暫用參數設定的數量。");
+    if (!a.hasSales) warn.push("還沒上傳銷售資料，售出量為 0。");
+    if (a.costFromPlan) warn.push("部分品項沒有實際單位成本，暫用參數的建議成本。");
+    if (a.missingPrice) warn.push(a.missingPrice + " 列銷售沒有售價，暫以參數均價計算。");
+    var unmatched = a.skus.filter(function(x){ return x.key[0] === "@"; }).map(function(x){ return x.name; });
+    if (unmatched.length) warn.push("這些品項名稱對不到參數裡的品項，已各自獨立計算：" + unmatched.join("、") + "。若是同一支，請把名稱改成一致。");
+    if (warn.length) h += "<div class='msg' style='margin-top:12px'>" + warn.map(esc).join("\n") + "</div>";
+
+    // P&L comparison
+    var rows = [
+      ["售出量（包）", a.sold, a.sold, plan.sold, "raw"],
+      ["營業收入（進價）", a.rev, a.rev, plan.rev, 1],
+      ["（－）營業成本 COGS", -a.cogs, -a.cogs, -plan.cogs, 1],
+      ["＝營業毛利", a.gross, a.gross, plan.gross, 1, "total"],
+      ["全聯通路費（物流＋前進倉＋德明）", -a.fees, -a.fees, -(plan.logiWh + plan.svc), 1, "sub-row"],
+      ["存貨損耗", -a.now.shrink, -a.close.shrink, -plan.shrink, 1, "sub-row", "至今只含破損"],
+      ["逆物流費", 0, -a.close.reverse, -plan.reverse, 1, "sub-row"],
+      ["進倉運費", -a.fixed.inbound.v, -a.fixed.inbound.v, -plan.inbound, 1, "sub-row", a.fixed.inbound.src],
+      ["行銷費用", -a.fixed.marketing.v, -a.fixed.marketing.v, -(plan.marketing + plan.extras), 1, "sub-row", a.fixed.marketing.src],
+      ["DM 檔期費", -a.fixed.dm.v, -a.fixed.dm.v, -plan.dm, 1, "sub-row", a.fixed.dm.src],
+      ["一次性檢驗費", -a.fixed.test.v, -a.fixed.test.v, -plan.test, 1, "sub-row", a.fixed.test.src],
+      ["一次性印刷版費", -a.fixed.plate.v, -a.fixed.plate.v, -plan.plate, 1, "sub-row", a.fixed.plate.src],
+      ["其他費用", -a.fixed.other.v, -a.fixed.other.v, 0, 1, "sub-row", a.fixed.other.src],
+      ["營業費用合計", -a.now.opex, -a.close.opex, -plan.opex, 1, "total"],
+      ["＝營業淨利", a.now.net, a.close.net, plan.net, 1, "net"]
+    ];
+    h += "<div class='scrollwrap' style='margin-top:16px'><table><thead><tr><th>實際損益（" + taxLabel() + "）</th><th class='num'>至今</th><th class='num cur'>若現在結案</th><th class='num'>V7 同售罄率 " + pct(a.sell) + "</th><th class='num'>結案 − V7</th><th>來源</th></tr></thead><tbody>";
+    rows.forEach(function(r){
+      var isRaw = r[4] === "raw";
+      var f = function(v){ return isRaw ? nf0.format(Math.round(v)) : acct(tx(v)); };
+      var diff = r[2] - r[3];
+      var trCls = (r[5] || "") + (r[5] === "net" && a.close.net < 0 ? " neg" : "");
+      h += "<tr class='" + trCls + "'><td>" + r[0] + "</td><td class='num'>" + f(r[1]) + "</td><td class='num cur'>" + f(r[2]) + "</td><td class='num'>" + f(r[3]) + "</td>" +
+        "<td class='num " + (Math.abs(diff) < 0.5 ? "" : diff < 0 ? "neg" : "pos") + "'>" + (isRaw ? (diff >= 0 ? "+" : "−") + nf0.format(Math.abs(Math.round(diff))) : (Math.abs(diff) < 0.5 ? "—" : (diff > 0 ? "+" : "") + acct(tx(diff)))) + "</td>" +
+        "<td class='src'>" + esc(r[6] || (r[5] === "net" || r[5] === "total" ? "" : "實際")) + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+
+    // per SKU
+    h += "<div class='scrollwrap' style='margin-top:16px'><table><thead><tr><th>品項</th><th class='num'>生產</th><th class='num'>交貨</th><th class='num'>售出</th><th class='num'>售罄率</th><th class='num'>均價</th><th class='num'>單位成本</th><th class='num'>營收（" + taxLabel() + "）</th><th class='num'>未售庫存</th></tr></thead><tbody>";
+    a.skus.forEach(function(x){
+      h += "<tr><td>" + esc(x.name) + (x.qtyFromPlan ? "　<span class='pill warn'>數量用參數</span>" : "") + "</td>" +
+        "<td class='num'>" + nf0.format(Math.round(x.produced)) + "</td><td class='num'>" + nf0.format(Math.round(x.delivered)) + "</td>" +
+        "<td class='num'>" + nf0.format(Math.round(x.sold)) + "</td><td class='num'>" + pct(x.sell) + "</td>" +
+        "<td class='num'>" + (x.avgPrice ? nf2.format(x.avgPrice) : "—") + "</td><td class='num'>" + nf2.format(x.cost) + (x.costFromPlan ? "*" : "") + "</td>" +
+        "<td class='num'>" + acct(tx(x.rev)) + "</td><td class='num'>" + nf0.format(Math.round(x.unsold)) + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+
+    // monthly
+    if (a.months.length){
+      var keys = a.skus.map(function(x){ return x.key; });
+      h += "<div class='scrollwrap' style='margin-top:16px'><table><thead><tr><th>月份</th>" + a.skus.map(function(x){ return "<th class='num'>" + esc(x.name) + "</th>"; }).join("") +
+        "<th class='num'>合計銷量</th><th class='num'>全聯端銷售額</th><th class='num'>廠商營收（" + taxLabel() + "）</th><th class='num'>累計售罄率</th></tr></thead><tbody>";
+      var cum = 0;
+      a.months.slice().sort(function(p, q){ return p.month < q.month ? -1 : p.month > q.month ? 1 : 0; }).forEach(function(m){
+        cum += m.qty;
+        h += "<tr><td>" + esc(m.month) + "</td>" + keys.map(function(k){ return "<td class='num'>" + nf0.format(Math.round(m.bySku[k] || 0)) + "</td>"; }).join("") +
+          "<td class='num'>" + nf0.format(Math.round(m.qty)) + "</td><td class='num'>" + nf0.format(Math.round(m.retail)) + "</td><td class='num'>" + acct(tx(m.rev)) + "</td>" +
+          "<td class='num'>" + (a.delivered ? pct(cum / a.delivered) : "—") + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+    h += "<p class='spec' style='margin:10px 0 0'>「至今」把還沒賣掉的貨當庫存，不認損耗也不付逆物流；「若現在結案」假設剩下的貨全數退回。檔期全部結束後兩欄會一致，那就是本案最終獲利。V7 欄以同樣的售罄率套用參數設定計算。</p>";
+    box.innerHTML = h;
+  }
+
+  function renderDataTable(){
+    document.querySelectorAll("[data-dt]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.dt === actTab)); });
+    var spec = TYPES[actTab], d = docOf(actTab);
+    var tbl = $("tblData");
+    var head = "<thead><tr>" + spec.cols.map(function(c){ return "<th" + (c.t === "num" ? " class='num'" : "") + ">" + c.h + "</th>"; }).join("") + "<th></th></tr></thead>";
+    if (!d.rows.length){
+      tbl.innerHTML = head + "<tbody><tr><td colspan='" + (spec.cols.length + 1) + "' class='empty'>尚無" + spec.label + "。</td></tr></tbody>";
+      return;
+    }
+    var body = d.rows.map(function(r, i){
+      return "<tr>" + spec.cols.map(function(c){
+        var id = "act-" + actTab + "-" + i + "-" + c.k, v = r[c.k] == null ? "" : r[c.k];
+        if (c.t === "cat"){
+          return "<td><select class='cell' id='" + id + "' data-i='" + i + "' data-k='" + c.k + "' aria-label='" + c.h + "'>" +
+            CATS.map(function(o){ return "<option value='" + o.k + "'" + (o.k === v ? " selected" : "") + ">" + o.h + "</option>"; }).join("") + "</select></td>";
+        }
+        return "<td><input class='cell" + (c.t === "text" ? " name" : "") + "' type='" + (c.t === "num" ? "number" : "text") + "' step='any' id='" + id + "' data-i='" + i + "' data-k='" + c.k + "' value='" + esc(v) + "' aria-label='" + c.h + "'></td>";
+      }).join("") + "<td><button class='btn small ghost' type='button' data-row-del='" + i + "'>刪除</button></td></tr>";
+    }).join("");
+    var foot = "";
+    if (d.fileName) foot = "<tfoot><tr><td colspan='" + (spec.cols.length + 1) + "' class='src'>來源：" + esc(d.fileName) + (d.updatedAt ? "　·　更新 " + new Date(d.updatedAt).toLocaleString("zh-TW") : "") + "　·　共 " + d.rows.length + " 列</td></tr></tfoot>";
+    tbl.innerHTML = head + "<tbody>" + body + "</tbody>" + foot;
+  }
+
+  function renderActualAll(keepTable){
+    $("demoBanner").hidden = !actDemo;
+    if (!keepTable) renderDataTable();
+    renderActualResult();
+  }
+
+  function touch(t){
+    var d = act[t] || (act[t] = emptyDoc());
+    d.updatedAt = new Date().toISOString();
+    if (!d.fileName) d.fileName = "手動輸入";
+  }
+
+  function bindActual(){
+    var dz = $("dropZone");
+    ["dragenter","dragover"].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add("over"); }); });
+    ["dragleave","drop"].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove("over"); }); });
+    dz.addEventListener("drop", function(e){ handleFiles(e.dataTransfer && e.dataTransfer.files); });
+    $("fileInput").addEventListener("change", function(e){ handleFiles(e.target.files); e.target.value = ""; });
+
+    document.querySelectorAll("[data-dt]").forEach(function(b){
+      b.addEventListener("click", function(){ actTab = b.dataset.dt; renderDataTable(); });
+    });
+    var tbl = $("tblData");
+    function onEdit(e){
+      var el = e.target; if (!el.dataset || el.dataset.i == null) return;
+      var row = act[actTab].rows[+el.dataset.i], col = TYPES[actTab].cols.filter(function(c){ return c.k === el.dataset.k; })[0];
+      row[el.dataset.k] = col.t === "num" ? (el.value === "" ? null : parseFloat(el.value)) : el.value;
+      touch(actTab); persist(actTab); renderActualResult();
+    }
+    tbl.addEventListener("input", onEdit);
+    tbl.addEventListener("change", function(e){ if (e.target.tagName === "SELECT") onEdit(e); });
+    tbl.addEventListener("click", function(e){
+      var b = e.target.closest("[data-row-del]"); if (!b) return;
+      act[actTab].rows.splice(+b.dataset.rowDel, 1); touch(actTab); persist(actTab, true); renderActualAll();
+    });
+    $("btnAddRow").addEventListener("click", function(){
+      var d = act[actTab] || (act[actTab] = emptyDoc());
+      var blank = { production:{ batch:"", sku:state.skus[0] ? state.skus[0].name : "", produced:null, broken:0, delivered:null, cost:null },
+                    sales:{ month:"", sku:state.skus[0] ? state.skus[0].name : "", qty:null, ret:0, price:null },
+                    expenses:{ date:"", item:"", cat:"marketing", amt:null } }[actTab];
+      d.rows.push(blank); touch(actTab); persist(actTab, true); renderActualAll();
+    });
+    function twoStep(btn, label, fn){
+      var armed = false;
+      btn.addEventListener("click", function(){
+        if (!armed){ armed = true; btn.textContent = "再按一次確認"; setTimeout(function(){ armed = false; btn.textContent = label; }, 3000); return; }
+        armed = false; btn.textContent = label; fn();
+      });
+    }
+    twoStep($("btnClearType"), "清除這類資料", function(){
+      act[actTab] = { rows:[], fileName:"", updatedAt:new Date().toISOString() }; persist(actTab, true); renderActualAll();
+    });
+    twoStep($("btnClearAll"), "清除全部實際資料", function(){
+      var wasDemo = actDemo; actDemo = false;
+      Object.keys(TYPES).forEach(function(t){ act[t] = { rows:[], fileName:"", updatedAt:new Date().toISOString() }; if (!wasDemo) persist(t, true); });
+      showMsg("", ""); renderActualAll();
+    });
+    $("btnDemo").addEventListener("click", function(){
+      if (hasAnyActual() && !actDemo){ showMsg("err", "已經有實際資料，範例不會覆蓋。要看範例請先「清除全部實際資料」。"); return; }
+      actDemo = true;
+      act = demoData();
+      actTab = "sales"; showMsg("", ""); renderActualAll();
+    });
+    $("btnTemplate").addEventListener("click", downloadTemplate);
+  }
+
+  function demoData(){
+    var n = state.skus.map(function(k){ return k.name; });
+    var a = n[0] || "花膠", b = n[1] || n[0] || "干貝";
+    return {
+      production:{ fileName:"範例", updatedAt:"", rows:[
+        { batch:"第一批 2026/08", sku:a, produced:12200, broken:200, delivered:12000, cost:73.5 },
+        { batch:"第一批 2026/08", sku:b, produced:12200, broken:200, delivered:12000, cost:68.25 },
+        { batch:"第二批 2026/10", sku:a, produced:6000, broken:0, delivered:6000, cost:74.2 },
+        { batch:"第二批 2026/10", sku:b, produced:6000, broken:0, delivered:6000, cost:68.9 } ] },
+      sales:{ fileName:"範例", updatedAt:"", rows:[
+        { month:"2026-10", sku:a, qty:3100, ret:0, price:179 }, { month:"2026-10", sku:b, qty:3600, ret:0, price:179 },
+        { month:"2026-11", sku:a, qty:5200, ret:20, price:149 }, { month:"2026-11", sku:b, qty:5900, ret:15, price:149 },
+        { month:"2026-12", sku:a, qty:4800, ret:10, price:169 }, { month:"2026-12", sku:b, qty:5100, ret:10, price:169 },
+        { month:"2027-01", sku:a, qty:2600, ret:0, price:159 }, { month:"2027-01", sku:b, qty:2900, ret:0, price:159 } ] },
+      expenses:{ fileName:"範例", updatedAt:"", rows:[
+        { date:"2026-07", item:"SGS 檢驗（2 支）", cat:"test", amt:37800 },
+        { date:"2026-08", item:"御田印刷版費", cat:"plate", amt:107520 },
+        { date:"2026-11", item:"全聯 DM 一檔", cat:"dm", amt:56962.5 },
+        { date:"2026-11", item:"KOC 試吃＋社群", cat:"marketing", amt:62000 } ] }
+    };
+  }
+
+  function downloadTemplate(){
+    var n = state.skus.map(function(k){ return k.name; });
+    loadXLSX().then(function(X){
+      var wb = X.utils.book_new();
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([
+        ["批次", "品項", "生產量", "破損量", "交貨量", "單位成本（含稅）"],
+        ["第一批", n[0] || "", 18200, 200, 18000, 73.5],
+        ["第一批", n[1] || "", 18200, 200, 18000, 68.25]
+      ]), "生產");
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([
+        ["月份", "品項", "銷量", "退貨量", "售價（含稅末售價）"],
+        ["2026-10", n[0] || "", 0, 0, 179],
+        ["2026-10", n[1] || "", 0, 0, 179]
+      ]), "銷售");
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([
+        ["日期", "項目", "類別", "金額（含稅）"],
+        ["2026-07", "一次性檢驗費", "檢驗", 37800],
+        ["2026-08", "印刷版費", "印刷版費", 107520],
+        ["2026-11", "全聯 DM 檔期", "DM", 56962.5],
+        ["2026-11", "行銷費用", "行銷", 50000]
+      ]), "費用");
+      var buf = X.write(wb, { bookType:"xlsx", type:"array" });
+      var name = "雞湯大叔全聯_實際數據範本.xlsx";
+      var use = window.claude && typeof window.claude.use === "function" ? window.claude.use("downloads") : Promise.resolve(null);
+      return use.then(function(dl){
+        if (dl) return dl.save({ filename:name, data:new Uint8Array(buf) }).then(function(){ showMsg("ok", "範本已下載。三個工作表填好後，整本拖回上面就能匯入。"); });
+        var url = URL.createObjectURL(new Blob([buf], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+        var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      });
+    }).catch(function(e){
+      if (e && e.code === "declined") return;
+      showMsg("err", "範本無法下載（" + (e && e.message ? e.message : e) + "）。也可以直接用 Excel 自己建立，欄位名稱見下方「檔案要有哪些欄位」。");
+    });
+  }
+
   function update(){
     var r = model(state, state.sell);
     var be = breakEven(state);
@@ -999,11 +1761,14 @@
     renderCash(cf);
     renderSens(be);
     renderScale();
+    if (typeof renderActualResult === "function") renderActualResult();
     save();
   }
 
   syncInputs();
   bind();
+  bindActual();
+  initStore();
   update();
 })();
 </script>
