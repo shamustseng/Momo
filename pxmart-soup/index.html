@@ -1346,7 +1346,7 @@
     if (isCsv){
       return file.arrayBuffer().then(function(buf){
         var text = new TextDecoder("utf-8").decode(buf);
-        if (text.indexOf("�") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
+        if (text.indexOf("\uFFFD") >= 0){ try{ text = new TextDecoder("big5").decode(buf); }catch(e){} }
         return [{ name:file.name, grid:parseCSV(text) }];
       });
     }
