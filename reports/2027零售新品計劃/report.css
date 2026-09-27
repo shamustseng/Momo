@@ -1,0 +1,55 @@
+/* Alpha 報告房子樣式 v4 — 對標 Goldman 10-K「財務版」（非編輯版）。
+   特徵：純黑無色、襯線密排、小粗體段落標（非大展示標題）、
+   財務表格＝表頭一條規＋總計一條規＋無列線＋tabular＋負數括號、
+   running header＋頁碼由 render-pdf.js 加。
+   字體：sudo apt-get install -y fonts-ibm-plex fonts-noto-cjk
+   （頁面邊界由 render-pdf.js 控制，這裡 @page 不設 margin） */
+@page { size: A4; }
+
+:root{ --ink:#000000; --muted:#5A5A5A; --hair:#CFCFCF; --gold:#C9A227; }
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family:'IBM Plex Serif','Noto Serif CJK TC','Noto Serif',serif;
+  color:var(--ink); font-size:9pt; line-height:1.45;
+  font-feature-settings:'tnum' 1,'lnum' 1;
+}
+.sans{ font-family:'IBM Plex Sans','Noto Sans CJK TC',sans-serif; }
+
+/* 第一頁抬頭：小型大寫公司線 ＋ 黑細規 ＋ 小粗體標題 */
+/* 文件主標題：置中、主題金、無橫線；副標＝整份文件的重點結論 */
+.doc-head{ text-align:center; margin:10px 0 22px; }
+.doc-title{ font-weight:700; font-size:18pt; line-height:1.3; color:var(--gold); margin:0; letter-spacing:.3px; }
+.doc-sub{ font-size:10pt; color:var(--ink); line-height:1.55; margin:8px auto 0; max-width:80%; }
+
+/* 段落小標：小粗體（10-K 風，非大標） */
+h2.sec{ font-weight:700; font-size:9.5pt; margin:16px 0 6px; }
+p{ margin:0 0 9px; }
+p.lead{ margin:0 0 12px; }
+p.lead b{ font-weight:700; }
+
+/* 重點數字橫排：無框、細分隔線、純黑 */
+.verify{ display:flex; margin:8px 0 14px; }
+.verify .v{ flex:1; padding:0 16px; border-left:1px solid var(--hair); }
+.verify .v:first-child{ border-left:none; padding-left:0; }
+.verify .lab{ font-family:'IBM Plex Sans','Noto Sans CJK TC',sans-serif; font-size:7.5pt; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); }
+.verify .num{ font-weight:700; font-size:15pt; line-height:1.1; margin:4px 0 3px; }
+.verify .sub{ font-size:7.5pt; color:var(--muted); }
+.verify .ok{ font-size:7.5pt; color:var(--muted); margin-top:2px; }
+
+/* 表格：Goldman 財報式。表頭一條規、總計一條規（大計雙線）、無列線、tabular、負數括號、純黑 */
+.tcap{ font-size:7.5pt; font-style:italic; color:var(--muted); text-align:right; margin:10px 0 3px; }
+table.fin{ width:100%; border-collapse:collapse; font-size:8.5pt; }
+table.fin thead th{ font-weight:700; text-align:left; padding:4px 9px 5px; border-bottom:1px solid var(--ink); white-space:nowrap; }
+table.fin thead th.num{ text-align:right; }
+table.fin tbody td{ padding:3.5px 9px; vertical-align:top; }
+table.fin td.num{ text-align:right; white-space:nowrap; }
+table.fin tr.tot td{ border-top:1px solid var(--ink); font-weight:700; }
+table.fin tr.tot.grand td{ border-bottom:2.5px double var(--ink); }
+
+.vnote{ font-size:8pt; color:var(--muted); margin:6px 0 12px; }
+.note{ color:var(--muted); }
+.foot{ margin-top:18px; border-top:1px solid var(--hair); padding-top:5px; font-size:7.5pt; color:var(--muted); }
+
+.chartbox svg{ width:100%; height:auto; display:block; }
+.cap{ font-size:7.5pt; color:var(--muted); margin:2px 0 12px; }
