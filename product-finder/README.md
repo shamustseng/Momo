@@ -97,7 +97,7 @@ test/              測試
 
 `npm run hosted` 產出兩份：
 - `dist/hosted/`——GitHub Pages 網站版（index.html、app.js、styles.css、data.json、.nojekyll）。
-- `dist/claude/`——claude.ai 唯讀副本。claude.ai 的頁面跑在沙箱裡，連不到 GitHub，所以這份只顯示資料並指向網站版。
+- `dist/claude/`——claude.ai 版。claude.ai 的頁面跑在沙箱裡，連不到 GitHub，「重新搜尋」改走 claude.ai 內建的 Claude Code Remote（見下方），並附網站版連結。
 
 ### 「重新搜尋」怎麼運作
 
@@ -109,6 +109,16 @@ test/              測試
 
 失敗一定看得到：GitHub 回報失敗、權杖失效、10 分鐘沒跑完，都會停在紅色橫幅並附「查看 GitHub 紀錄」連結；權杖失效時自動打開設定面板。
 兩邊都抓不到時，資料沿用上一次成功的清單並標示 `refreshStatus: 'failed'`。
+
+### claude.ai 版的「重新搜尋」
+
+1. 按下後，頁面透過 claude.ai 內建的 **Claude Code Remote** 呼叫 `fire_trigger`，觸發 Routine「產品清單：重新搜尋（按下才跑）」
+   （`config.json` 的 `hosted.claudeTrigger`；這個 Routine 沒有排程，只有按下才跑）。第一次按會跳出詢問，選允許。
+2. Routine 開一個新的 Claude 雲端工作：clone repo、取 `product-finder-data` 上的 `cache.json` 當失敗備援、跑
+   `node scripts/build-hosted.js --refresh`，再把 `dist/claude/` 發布回同一個 Artifact。開著的頁面會自動換成新版本。約 3 分鐘。
+3. 頁面每 5 秒用 `get_session` 問那個工作的狀態。工作失敗、卡在等確認、結束了卻沒更新頁面、超過 15 分鐘，都會停在紅色橫幅，
+   附「查看雲端工作」連結。兩邊都抓不到時，新版本沿用上次資料並標示失敗。
+4. 每按一次會用掉一次 Claude 雲端工作的額度（約等於一段短對話）。
 
 ### 第一次設定（只做一次）
 

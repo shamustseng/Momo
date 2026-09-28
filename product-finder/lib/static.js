@@ -10,7 +10,7 @@ const STYLES = path.join(__dirname, '..', 'public', 'styles.css');
  * 把商品資料打包成不需要伺服器的網頁。兩種產物共用同一份版面與程式：
  *  - buildStaticHtml(data)：單一 HTML 檔，樣式／程式／資料全內嵌，雙擊即開。
  *  - buildSite(data)：GitHub Pages 網站版，「重新搜尋」直接呼叫 GitHub API 觸發抓取並顯示進度。
- *  - buildHosted(data)：claude.ai 唯讀副本（沙箱不能連 GitHub），指向網站版。
+ *  - buildHosted(data)：claude.ai 版，「重新搜尋」透過 Claude Code Remote 開雲端工作重抓，並附網站版連結。
  */
 
 function preparePayload(data) {
@@ -165,7 +165,7 @@ const MARKUP = `
 const APP_JS = String.raw`'use strict';
 const HOSTED = __HOSTED__;
 // 網站版（GitHub Pages）：{ mode:'site', repo, workflow, ref, dataBranch, tokenUrl }
-// claude.ai 版：{ mode:'artifact', siteUrl }；單檔版：null
+// claude.ai 版：{ mode:'artifact', siteUrl, trigger }；單檔版：null
 const LIVE = __LIVE_JSON__;
 let DATA = JSON.parse(document.getElementById('data').textContent);
 const LABELS = { momo: 'momo 購物網', alphaplus: 'Alpha Plus 官網' };
@@ -336,9 +336,10 @@ function renderRefreshState() {
   if (busy) {
     const sec = Math.round((Date.now() - job.startedAt) / 1000);
     banner.hidden = false;
-    text.textContent = job.phase === 'starting' ? '正在通知 GitHub 開始抓取…'
-      : job.phase === 'queued' ? 'GitHub 已收到，排隊等機器中…（已 ' + sec + ' 秒）'
-      : '正在抓取 momo 與 Alpha Plus 官網…（已 ' + sec + ' 秒，通常 1 分鐘內完成）';
+    const viaClaude = LIVE && LIVE.mode === 'artifact';
+    text.textContent = job.phase === 'starting' ? (viaClaude ? '正在請 Claude 開雲端工作…' : '正在通知 GitHub 開始抓取…')
+      : job.phase === 'queued' ? (viaClaude ? '雲端工作啟動中…（已 ' + sec + ' 秒）' : 'GitHub 已收到，排隊等機器中…（已 ' + sec + ' 秒）')
+      : '正在抓取 momo 與 Alpha Plus 官網…（已 ' + sec + ' 秒，' + (viaClaude ? '通常 2～4 分鐘完成，完成後本頁會自動更新）' : '通常 1 分鐘內完成）');
     return;
   }
   if (job && job.phase === 'failed') {
@@ -486,14 +487,137 @@ function setupSite() {
   note.textContent = '按「重新搜尋」會立刻請 GitHub 重新抓取 momo 與官網（約 1 分鐘），狀態直接顯示在上方；開啟本頁會自動載入最近一次抓取的結果。';
 }
 
-function setupArtifactNote() {
+function setupArtifactNote(canRefresh) {
   const note = $('auto-note');
   note.hidden = false;
   note.textContent = '';
-  note.append(document.createTextNode('這是 claude.ai 上的唯讀副本，資料不會自動更新。要重新搜尋請開正式網站：'));
+  note.append(document.createTextNode(canRefresh
+    ? '按「重新搜尋」會開一個 Claude 雲端工作重新抓取 momo 與官網（約 2～4 分鐘），抓完這一頁會自動換成新資料。另有 GitHub 網站版：'
+    : '這個畫面不能重新搜尋（需要在 claude.ai 開啟並允許使用 Claude Code Remote）。要重新搜尋也可以開 GitHub 網站版：'));
   const a = el('a', null, LIVE.siteUrl);
   a.href = LIVE.siteUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
   note.append(a);
+}
+
+/* ---------- claude.ai 版的「重新搜尋」：透過 Claude Code Remote 觸發雲端工作 ---------- */
+/*
+ * 頁面在 claude.ai 的沙箱裡，連不到 GitHub，但可以用 mcp 能力呼叫 claude.ai 內建的 Claude Code Remote：
+ *   fire_trigger 觸發一個「只在按下時才跑」的 Routine → 開一個新的雲端 session，
+ *   跑 scripts/build-hosted.js --refresh，再把新頁面發布回這個 Artifact。
+ * 發布後所有開著的畫面會自動重新載入成新版本；進行中的工作記在 localStorage，重新載入後接著判斷成功或失敗。
+ * 頁面每 5 秒用 get_session 問那個 session 的狀態：失敗、卡住等確認、結束了卻沒更新、超過時限，都停在紅色橫幅。
+ */
+const CCR = 'Claude Code Remote';
+const CLAUDE_JOB_KEY = 'product-finder:claude-job';
+const CLAUDE_LIMIT_MS = 15 * 60 * 1000;
+const CLAUDE_POLL_MS = 5000;
+let mcpApi = null;
+
+function loadClaudeJob() { try { return JSON.parse(localStorage.getItem(CLAUDE_JOB_KEY) || 'null'); } catch { return null; } }
+function saveClaudeJob(j) { try { j ? localStorage.setItem(CLAUDE_JOB_KEY, JSON.stringify(j)) : localStorage.removeItem(CLAUDE_JOB_KEY); } catch { /* 存不了就只在這次開啟有效 */ } }
+const sessionUrl = (id) => 'https://claude.ai/code/' + String(id).replace(/^cse_/, 'session_');
+
+function mcpMessage(err) {
+  const code = err && err.code;
+  if (code === 'not_in_manifest' || code === 'not_granted' || code === 'consent_required') return '沒有允許這一頁使用 Claude Code Remote（重新整理後再按一次，跳出詢問時選允許）';
+  if (code === 'server_not_connected' || code === 'needs_reauth') return 'claude.ai 的 Claude Code Remote 目前不能用（請到 claude.ai 設定 → Connectors 確認）';
+  if (code === 'blocked_by_policy' || code === 'approval_required') return '組織政策不允許這一頁使用 Claude Code Remote';
+  if (code === 'server_unavailable') return 'Claude Code Remote 暫時沒有回應，請稍後再按一次';
+  if (code === 'tool_error') return 'Claude Code Remote 回報錯誤：' + (err.message || '未知');
+  return (err && err.message) || String(err);
+}
+
+/** 從 fire_trigger 的回應找出這次開的 session id（{ trigger, session_id: 'cse_…' }；也容忍整包變成文字）。 */
+function findSessionId(v) {
+  if (v && typeof v === 'object' && typeof v.session_id === 'string' && v.session_id) return v.session_id;
+  const text = typeof v === 'string' ? v : JSON.stringify(v || '');
+  const m = text.match(/"session_id"\s*:\s*"([^"]+)"/);
+  return m ? m[1] : null;
+}
+
+/** get_session 的狀態：{ ccr: { status_bucket: 'SESSION_STATUS_BUCKET_WORKING' } } → 'working'。 */
+function sessionBucket(v) {
+  let b = v && typeof v === 'object' ? ((v.ccr && v.ccr.status_bucket) || v.status_bucket || (v.session && v.session.status_bucket)) : null;
+  if (!b) { const m = (typeof v === 'string' ? v : JSON.stringify(v || '')).match(/"status_bucket"\s*:\s*"([^"]+)"/); b = m ? m[1] : ''; }
+  return String(b).replace(/^SESSION_STATUS_BUCKET_/, '').toLowerCase();
+}
+
+async function onClaudeRefresh() {
+  if (job && ['starting', 'queued', 'running'].includes(job.phase)) return;
+  const startedAt = Date.now();
+  setJob({ phase: 'starting', startedAt, runUrl: null, message: '', sessionId: null });
+  try {
+    const res = await mcpApi.callTool(CCR, 'fire_trigger', { trigger_id: LIVE.trigger, text: '由產品清單頁面的「重新搜尋」按鈕觸發（' + new Date(startedAt).toISOString() + '）' });
+    const sessionId = findSessionId(res && (res.payload !== undefined ? res.payload : res));
+    saveClaudeJob({ startedAt, sessionId });
+    setJob({ phase: 'queued', sessionId, runUrl: sessionId ? sessionUrl(sessionId) : null });
+    pollClaude();
+  } catch (err) {
+    saveClaudeJob(null);
+    failJob(mcpMessage(err));
+  }
+}
+
+async function pollClaude() {
+  let endedAt = 0;
+  while (job && ['queued', 'running'].includes(job.phase)) {
+    if (Date.now() - job.startedAt > CLAUDE_LIMIT_MS) { endClaudeJob('等了 15 分鐘雲端工作還沒完成，請按「查看雲端工作」確認'); return; }
+    await new Promise((r) => setTimeout(r, CLAUDE_POLL_MS));
+    if (!job || !job.sessionId) continue;   // 找不到 session id 時只能等頁面被更新或逾時
+    let bucket;
+    try {
+      const res = await mcpApi.callTool(CCR, 'get_session', { session_id: job.sessionId }, { cache: false });
+      bucket = sessionBucket(res && (res.payload !== undefined ? res.payload : res));
+    } catch (err) {
+      if (err && ['not_in_manifest', 'not_granted', 'server_not_connected', 'needs_reauth', 'blocked_by_policy'].includes(err.code)) { endClaudeJob(mcpMessage(err)); return; }
+      continue;   // 一時問不到，下一輪再問
+    }
+    if (bucket === 'failed') { endClaudeJob('雲端工作執行失敗，按「查看雲端工作」可看原因'); return; }
+    if (bucket === 'blocked') { endClaudeJob('雲端工作卡在等待確認，沒有完成抓取，按「查看雲端工作」處理'); return; }
+    if (bucket === 'working') { endedAt = 0; if (job.phase !== 'running') setJob({ phase: 'running' }); continue; }
+    if (bucket === 'completed' || bucket === 'review_ready') {
+      // 工作發布新版本時這一頁就會重新載入；結束後 45 秒還在這裡，代表它沒有更新頁面
+      if (!endedAt) endedAt = Date.now();
+      else if (Date.now() - endedAt > 45000) { endClaudeJob('雲端工作結束了，但沒有更新這一頁，按「查看雲端工作」可看原因'); return; }
+    }
+  }
+}
+
+function endClaudeJob(message) {
+  saveClaudeJob(null);
+  failJob(message);
+}
+
+/** 重新載入後（通常是雲端工作發布了新版本）接著判斷上一次按的重新搜尋。 */
+function resumeClaudeJob() {
+  const saved = loadClaudeJob();
+  if (!saved || !saved.startedAt) return;
+  const generated = Date.parse(DATA.generatedAt) || 0;
+  if (generated >= saved.startedAt) {
+    saveClaudeJob(null);
+    if (DATA.refreshStatus !== 'failed') toast('已更新：' + fmtTime(DATA.generatedAt) + ' 抓到 ' + ORDER.reduce((n, k) => n + ((DATA.sources[k] || { products: [] }).products.length), 0) + ' 件商品');
+    renderRefreshState();
+    return;
+  }
+  if (Date.now() - saved.startedAt > CLAUDE_LIMIT_MS) {
+    job = { phase: 'failed', startedAt: saved.startedAt, runUrl: saved.sessionId ? sessionUrl(saved.sessionId) : null };
+    endClaudeJob('上一次按的重新搜尋沒有完成' + (saved.sessionId ? '，按「查看雲端工作」可看原因' : ''));
+    return;
+  }
+  setJob({ phase: saved.sessionId ? 'running' : 'queued', startedAt: saved.startedAt, sessionId: saved.sessionId, runUrl: saved.sessionId ? sessionUrl(saved.sessionId) : null, message: '' });
+  pollClaude();
+}
+
+async function setupArtifact() {
+  if (!LIVE.trigger || !window.claude || typeof window.claude.use !== 'function') { setupArtifactNote(false); return; }
+  mcpApi = await window.claude.use('mcp').catch(() => null);
+  if (!mcpApi) { setupArtifactNote(false); return; }
+  setupArtifactNote(true);
+  $('refresh-link').textContent = '查看雲端工作';
+  const btn = $('refresh-btn');
+  btn.hidden = false;
+  btn.addEventListener('click', onClaudeRefresh);
+  resumeClaudeJob();
 }
 
 let downloadsApi = null;
@@ -501,8 +625,8 @@ let downloadsApi = null;
 /**
  * 三種版本：
  *  - 網站版（GitHub Pages）：一般網頁，可以直接呼叫 GitHub API，「重新搜尋」在這裡。
- *  - claude.ai 版：沙箱裡不能連 GitHub，只顯示發布當時的資料，並指向網站版。
- *    downloads 能力用來存 CSV（檢視器不允許頁面自行下載）。
+ *  - claude.ai 版：沙箱裡不能連 GitHub；「重新搜尋」改用 mcp 能力呼叫 Claude Code Remote 開雲端工作，
+ *    工作抓完把新頁面發布回來。downloads 能力用來存 CSV（檢視器不允許頁面自行下載）。
  *  - 單檔版：什麼都不連，內嵌的資料就是全部。
  */
 async function setupCapabilities() {
@@ -510,7 +634,7 @@ async function setupCapabilities() {
     setupSite();
     await loadLatestData();
   }
-  if (LIVE && LIVE.mode === 'artifact' && LIVE.siteUrl) setupArtifactNote();
+  if (LIVE && LIVE.mode === 'artifact') setupArtifact();
   if (!HOSTED || !window.claude || typeof window.claude.use !== 'function') return;
   downloadsApi = await window.claude.use('downloads').catch(() => null);
 }
@@ -704,9 +828,9 @@ ${appJs(false)}
 }
 
 /**
- * 發布到 claude.ai 用的檔案（唯讀副本）。index.html 不含 doctype/html/head/body 外殼（發布工具會自己包）。
- * claude.ai 的沙箱不能連 GitHub，所以這一版不做重新搜尋，只顯示資料並指向網站版。
- * live = { siteUrl }，來自 config.json 的 hosted 區塊。
+ * 發布到 claude.ai 用的檔案。index.html 不含 doctype/html/head/body 外殼（發布工具會自己包）。
+ * 「重新搜尋」透過 Claude Code Remote 觸發 live.claudeTrigger 這個 Routine；同時附上網站版連結。
+ * live = { siteUrl, claudeTrigger }，來自 config.json 的 hosted 區塊。
  */
 function buildHosted(data, payloadOverrides = {}, live = null) {
   const payload = { ...preparePayload(data), ...payloadOverrides };
@@ -716,7 +840,7 @@ ${MARKUP}
 ${dataScript(payload)}
 <script src="app.js"></script>
 `;
-  const artifactLive = live && live.siteUrl ? { mode: 'artifact', siteUrl: live.siteUrl } : null;
+  const artifactLive = live && live.siteUrl ? { mode: 'artifact', siteUrl: live.siteUrl, trigger: live.claudeTrigger || null } : null;
   return {
     'index.html': index,
     'app.js': appJs(true, artifactLive),
