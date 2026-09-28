@@ -225,12 +225,12 @@ test('官網：滿額贈品頁不當成有售價的商品', () => {
   assert.strictEqual(normal.status, '');
 });
 
-test('網站版與 claude.ai 版：網站版帶 GitHub 觸發設定，claude.ai 版只指向網站', () => {
+test('網站版與 claude.ai 版：網站版帶 GitHub 觸發設定，claude.ai 版帶 Routine 與網站連結', () => {
   const { buildHosted, buildSite } = require('../lib/static');
   const data = { sources: { momo: { label: 'momo 購物網', updatedAt: '2026-09-20T00:00:00Z', products: [
     { id: 'momo:1', source: 'momo', sku: '1', name: '測試', price: 100, prices: { list: 150, promo: 100, flash: null }, url: 'u', keywords: [] },
   ] } } };
-  const live = { siteUrl: 'https://x.github.io/y/', repo: 'x/y', workflow: 'wf.yml', ref: 'main', dataBranch: 'data', tokenUrl: 'https://github.com/settings/personal-access-tokens/new' };
+  const live = { siteUrl: 'https://x.github.io/y/', repo: 'x/y', workflow: 'wf.yml', ref: 'main', dataBranch: 'data', tokenUrl: 'https://github.com/settings/personal-access-tokens/new', claudeTrigger: 'trig_test' };
 
   const site = buildSite(data, {}, live);
   assert.ok(site['index.html'].startsWith('<!doctype html>'), 'GitHub Pages 沒有外殼，要是完整文件');
@@ -242,7 +242,9 @@ test('網站版與 claude.ai 版：網站版帶 GitHub 觸發設定，claude.ai 
 
   const artifact = buildHosted(data, {}, live);
   assert.ok(artifact['app.js'].includes('"mode":"artifact"') && artifact['app.js'].includes('https://x.github.io/y/'));
-  assert.ok(!artifact['app.js'].includes('"repo":"x/y"'), 'claude.ai 沙箱連不到 GitHub，不該帶觸發設定');
+  assert.ok(!artifact['app.js'].includes('"repo":"x/y"'), 'claude.ai 沙箱連不到 GitHub，不該帶 GitHub 觸發設定');
+  assert.ok(artifact['app.js'].includes('"trigger":"trig_test"'), 'claude.ai 版的重新搜尋走 Claude Code Remote 的 Routine');
+  assert.ok(!site['app.js'].includes('trig_test'), '網站版不用 Routine');
   assert.ok(buildHosted(data)['app.js'].includes('const LIVE = null'), '沒有 hosted 設定時什麼都不連');
 });
 

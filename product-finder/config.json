@@ -38,6 +38,7 @@
   },
   "hosted": {
     "siteUrl": "https://shamustseng.github.io/Momo/",
+    "claudeTrigger": "trig_01AkVH81cpL98mexVDrXs8FT",
     "repo": "shamustseng/Momo",
     "workflow": "product-finder-refresh.yml",
     "ref": "claude/momo-commission-tracking-tool-9zt0tf",
