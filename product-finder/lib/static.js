@@ -515,7 +515,7 @@ let mcpApi = null;
 
 function loadClaudeJob() { try { return JSON.parse(localStorage.getItem(CLAUDE_JOB_KEY) || 'null'); } catch { return null; } }
 function saveClaudeJob(j) { try { j ? localStorage.setItem(CLAUDE_JOB_KEY, JSON.stringify(j)) : localStorage.removeItem(CLAUDE_JOB_KEY); } catch { /* 存不了就只在這次開啟有效 */ } }
-const sessionUrl = (id) => 'https://claude.ai/code/' + id;
+const sessionUrl = (id) => 'https://claude.ai/code/' + String(id).replace(/^cse_/, 'session_');
 
 function mcpMessage(err) {
   const code = err && err.code;
@@ -527,11 +527,19 @@ function mcpMessage(err) {
   return (err && err.message) || String(err);
 }
 
-/** 從 fire_trigger 的回應找出這次開的 session id（回應格式可能是巢狀物件或文字）。 */
+/** 從 fire_trigger 的回應找出這次開的 session id（{ trigger, session_id: 'cse_…' }；也容忍整包變成文字）。 */
 function findSessionId(v) {
+  if (v && typeof v === 'object' && typeof v.session_id === 'string' && v.session_id) return v.session_id;
   const text = typeof v === 'string' ? v : JSON.stringify(v || '');
-  const m = text.match(/session_[A-Za-z0-9]+/);
-  return m ? m[0] : null;
+  const m = text.match(/"session_id"\s*:\s*"([^"]+)"/);
+  return m ? m[1] : null;
+}
+
+/** get_session 的狀態：{ ccr: { status_bucket: 'SESSION_STATUS_BUCKET_WORKING' } } → 'working'。 */
+function sessionBucket(v) {
+  let b = v && typeof v === 'object' ? ((v.ccr && v.ccr.status_bucket) || v.status_bucket || (v.session && v.session.status_bucket)) : null;
+  if (!b) { const m = (typeof v === 'string' ? v : JSON.stringify(v || '')).match(/"status_bucket"\s*:\s*"([^"]+)"/); b = m ? m[1] : ''; }
+  return String(b).replace(/^SESSION_STATUS_BUCKET_/, '').toLowerCase();
 }
 
 async function onClaudeRefresh() {
@@ -556,16 +564,14 @@ async function pollClaude() {
     if (Date.now() - job.startedAt > CLAUDE_LIMIT_MS) { endClaudeJob('等了 15 分鐘雲端工作還沒完成，請按「查看雲端工作」確認'); return; }
     await new Promise((r) => setTimeout(r, CLAUDE_POLL_MS));
     if (!job || !job.sessionId) continue;   // 找不到 session id 時只能等頁面被更新或逾時
-    let s;
+    let bucket;
     try {
       const res = await mcpApi.callTool(CCR, 'get_session', { session_id: job.sessionId }, { cache: false });
-      s = res && (res.payload !== undefined ? res.payload : res);
-      if (typeof s === 'string') s = JSON.parse(s);
+      bucket = sessionBucket(res && (res.payload !== undefined ? res.payload : res));
     } catch (err) {
       if (err && ['not_in_manifest', 'not_granted', 'server_not_connected', 'needs_reauth', 'blocked_by_policy'].includes(err.code)) { endClaudeJob(mcpMessage(err)); return; }
       continue;   // 一時問不到，下一輪再問
     }
-    const bucket = (s && (s.status_bucket || (s.session && s.session.status_bucket))) || '';
     if (bucket === 'failed') { endClaudeJob('雲端工作執行失敗，按「查看雲端工作」可看原因'); return; }
     if (bucket === 'blocked') { endClaudeJob('雲端工作卡在等待確認，沒有完成抓取，按「查看雲端工作」處理'); return; }
     if (bucket === 'working') { endedAt = 0; if (job.phase !== 'running') setJob({ phase: 'running' }); continue; }
