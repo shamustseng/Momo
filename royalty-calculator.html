@@ -151,6 +151,25 @@
   .fm-grid .group-title:first-child{ margin-top:0; }
   table input[type="date"]{ width:124px; }
   .actual-table td, .actual-table th{ white-space:nowrap; }
+  .import-bar{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:12px 14px; border:1px dashed var(--border); border-radius:12px; background:var(--surface-2); }
+  .import-bar .btn{ cursor:pointer; }
+  .import-bar .btn.busy{ opacity:.6; pointer-events:none; }
+  .import-status{ font-size:12.5px; color:var(--ink-muted); flex:1 1 260px; }
+  .card.drop{ outline:2px dashed var(--accent); outline-offset:-6px; }
+  .import-panel{ border:1px solid var(--border); border-radius:12px; padding:14px 16px; background:var(--surface); display:flex; flex-direction:column; gap:12px; }
+  .import-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .import-head .sub{ font-size:12px; color:var(--ink-faint); }
+  .import-table select{ background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:4px 6px; color:var(--ink); font-size:12.5px; }
+  .import-table input[type="text"]{ width:160px; }
+  .import-summary{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ display:inline-flex; flex-direction:column; gap:2px; padding:8px 12px; border-radius:10px; background:var(--accent-soft); color:var(--accent-ink); font-size:13px; font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .chip b{ font-family:var(--font-ui); font-weight:800; }
+  .chip .sub{ font-family:var(--font-ui); font-size:11.5px; opacity:.8; }
+  .chip.warn{ background:var(--lf-soft); color:var(--lf-ink); }
+  .import-log{ border-top:1px dashed var(--border); padding-top:12px; }
+  .import-log ul{ margin:8px 0 0; padding-left:18px; font-size:12.5px; color:var(--ink-muted); }
+  .import-log li{ margin:3px 0; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
   .status{ display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; padding:2px 9px; border-radius:999px; background:var(--surface-3); color:var(--ink-muted); vertical-align:middle; margin-left:6px; }
   .neg{ color:var(--bad); }
 
@@ -766,8 +785,40 @@
 
       <section class="card">
         <h2>實際銷售回報</h2>
-        <p class="sub">全家每期提供銷售報表後，把實際實銷金額填進來。有實際數字的期別，展望與分期表改用實際值；沒有的期別沿用預估。</p>
+        <p class="sub">全家每期提供銷售報表後，上傳報表讓系統抽出數字，或直接把實際實銷金額填進表格。有實際數字的期別，展望與分期表改用實際值；沒有的期別沿用預估。</p>
         <div class="card-body">
+          <div class="import-bar">
+            <label class="btn" for="fReportFile" id="fReportLabel">上傳報表（Excel／CSV／PDF）</label>
+            <input type="file" id="fReportFile" accept=".xlsx,.xls,.csv,.pdf" hidden>
+            <button class="btn ghost" type="button" id="fImportStop" hidden>停止</button>
+            <span class="import-status" id="fImportStatus">把全家的銷售報表丟進來，系統會抽出各期實銷金額與數量，確認後再導入。</span>
+          </div>
+          <div id="fImportPanel" class="import-panel" hidden>
+            <div class="import-head">
+              <b id="fImportTitle">解析結果</b>
+              <span class="sub" id="fImportMeta"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="import-table" aria-label="解析結果">
+                <thead><tr><th>期別</th><th>商品</th><th>數量</th><th>實銷金額</th><th></th></tr></thead>
+                <tbody id="fImportBody"></tbody>
+              </table>
+            </div>
+            <div class="btn-row">
+              <button class="btn ghost" type="button" id="fImportAddLine">＋ 加一列</button>
+            </div>
+            <div class="import-summary" id="fImportSummary"></div>
+            <p class="hint" id="fImportNotes" style="margin:0"></p>
+            <div class="btn-row" style="align-items:center">
+              <div class="seg" role="group" aria-label="導入方式" style="max-width:260px;flex:1">
+                <button type="button" id="fImpOverwrite" aria-pressed="true">覆蓋該期數字</button>
+                <button type="button" id="fImpAdd" aria-pressed="false">累加到該期</button>
+              </div>
+              <button class="btn" type="button" id="fImportApply" style="margin-left:auto;background:var(--ink);color:var(--bg);border-color:var(--ink)">導入到實際回報</button>
+              <button class="btn ghost" type="button" id="fImportCancel">取消</button>
+            </div>
+          </div>
+          <div id="fImportLog" class="import-log" hidden></div>
           <div class="table-wrap">
             <table aria-label="實際銷售回報" class="actual-table">
               <thead>
@@ -1267,7 +1318,7 @@
     $('fTotalSalesSub').textContent = (s.mode === 'direct' ? '直接輸入' : int(r.totalUnits) + ' 個 × 售價，' + (s.basis === 'incl' ? '以架上售價計' : '架上售價換算未稅')) + '，純預估 ' + fmt0(r.estRoyalty);
     $('fGapRoyalty').textContent = s.countGap ? fmt0(r.gapRoyalty) : '未計入';
 
-    if (structure) { renderProducts(r); renderActuals(r); } else { updateProductCells(r); updateActualCells(r); }
+    if (structure) { renderProducts(r); renderActuals(r); if (typeof renderLog === 'function') renderLog(); } else { updateProductCells(r); updateActualCells(r); }
     $('fProductCard').hidden = s.mode === 'direct';
 
     // Period table
@@ -1355,6 +1406,285 @@
   $('fGapOn').addEventListener('click', () => { s.countGap=true; save(); render(false); });
   $('fGapOff').addEventListener('click', () => { s.countGap=false; save(); render(false); });
   $('fReset').addEventListener('click', () => { s = defaults(); sync(); save(); render(true); });
+
+  // ---------- Report import (Excel / CSV / PDF) ----------
+  const CDN_XLSX = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  const CDN_PDF = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const CDN_PDF_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const loadScript = src => new Promise((res, rej) => {
+    if (document.querySelector('script[src="' + src + '"]')) return res();
+    const el = document.createElement('script'); el.src = src; el.async = true;
+    el.onload = () => res(); el.onerror = () => rej(new Error('無法載入 ' + src));
+    document.head.appendChild(el);
+  });
+  let samplePromise = null;
+  const getSample = () => {
+    if (!samplePromise) samplePromise = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('sample').catch(() => null) : Promise.resolve(null);
+    return samplePromise;
+  };
+
+  let pending = null;          // { file, lines:[{period, product, units, sales}], notes, source }
+  let importMode = 'overwrite';
+  let importCtl = null;
+  if (!Array.isArray(s.imports)) s.imports = [];
+
+  const status = (msg, busy) => { $('fImportStatus').textContent = msg; $('fImportStop').hidden = !busy; $('fReportLabel').classList.toggle('busy', !!busy); };
+
+  const toNum = v => {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    if (v instanceof Date) return null;
+    const t = String(v).trim();
+    if (/^\d{2,4}[\/\-.]\d{1,2}([\/\-.]\d{1,2})?$/.test(t)) return null;
+    const n = parseFloat(t.replace(/[,，NT$＄元\s]/g, '').replace(/^\((.*)\)$/, '-$1'));
+    return isNaN(n) ? null : n;
+  };
+  const excelSerialToDate = n => new Date(Math.round((n - 25569) * DAY));
+  const monthToYear = m => (m >= 9 ? 2026 : 2027);
+  function parseDateCell(v){
+    if (v == null || v === '') return null;
+    if (v instanceof Date) return isNaN(v) ? null : v;
+    if (typeof v === 'number') return (v > 30000 && v < 60000) ? excelSerialToDate(v) : null;
+    const t = String(v).trim();
+    let m;
+    if ((m = t.match(/(\d{2,4})\s*[\/\-.年]\s*(\d{1,2})(?:\s*[\/\-.月]\s*(\d{1,2}))?/))) {
+      let y = +m[1], mo = +m[2], da = m[3] ? +m[3] : 1;
+      if (y < 1911) y += 1911;
+      const dt = new Date(Date.UTC(y, mo - 1, da)); return isNaN(dt) ? null : dt;
+    }
+    if ((m = t.match(/(\d{1,2})\s*月/))) { const mo = +m[1]; return new Date(Date.UTC(monthToYear(mo), mo - 1, 1)); }
+    return null;
+  }
+  function periodFromDate(dt){
+    if (!dt) return null;
+    const t = Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    for (let j = 0; j < PERIODS.length; j++) if (t >= d(PERIODS[j].start) && t <= d(PERIODS[j].end)) return j + 1;
+    if (t >= d('2026-09-01') && t < d(PERIODS[0].start)) return 1;
+    return null;
+  }
+  const isTotalRow = t => /合計|總計|小計|總額|total/i.test(t);
+  const productNames = () => s.products.map(p => p.name).filter(Boolean);
+
+  function heuristicFromRows(rows, defaultPeriod){
+    const kw = { product:['品名','商品','名稱','品項'], units:['數量','銷量','個數','件數','銷售量','份數'], sales:['金額','實銷','銷售額','營業額','業績','銷貨'], date:['日期','期間','期別','月份','區間','年月'] };
+    let headerIdx = -1, cols = {};
+    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+      const found = {};
+      rows[i].forEach((c, ci) => { const t = String(c == null ? '' : c).trim(); if (!t) return; for (const k in kw) if (found[k] == null && kw[k].some(w => t.includes(w))) found[k] = ci; });
+      if (found.sales != null && (found.product != null || found.units != null)) { headerIdx = i; cols = found; break; }
+    }
+    const lines = [];
+    if (headerIdx >= 0) {
+      for (let i = headerIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        const product = cols.product != null ? String(r[cols.product] == null ? '' : r[cols.product]).trim() : '';
+        const sales = toNum(r[cols.sales]);
+        const units = cols.units != null ? toNum(r[cols.units]) : null;
+        if (sales == null && units == null) continue;
+        if (isTotalRow(product)) continue;
+        const period = cols.date != null ? periodFromDate(parseDateCell(r[cols.date])) : null;
+        lines.push({ product: product || '（未命名）', units, sales, period: period || defaultPeriod || null });
+      }
+    } else {
+      const names = productNames();
+      rows.forEach(r => {
+        const cells = r.map(c => String(c == null ? '' : c).trim());
+        const nameCell = cells.find(t => names.some(n => n && t.includes(n)));
+        if (!nameCell || isTotalRow(nameCell)) return;
+        const nums = r.map(toNum).filter(n => n != null);
+        if (!nums.length) return;
+        lines.push({ product: nameCell, units: nums.length >= 2 ? nums[nums.length - 2] : null, sales: nums[nums.length - 1], period: defaultPeriod || null });
+      });
+    }
+    return lines;
+  }
+  function heuristicFromText(text){
+    const names = productNames();
+    let defaultPeriod = null;
+    const dm = text.match(/(\d{2,4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/);
+    if (dm) defaultPeriod = periodFromDate(parseDateCell(dm[0]));
+    const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+      const name = names.find(n => n && l.includes(n));
+      const nums = (l.match(/-?[\d,]+(?:\.\d+)?/g) || []).map(x => toNum(x)).filter(n => n != null && !(n > 1900 && n < 2200 && String(n).length === 4 && /年|\//.test(l)));
+      return name ? [name, ...nums] : (isTotalRow(l) ? ['合計', ...nums] : null);
+    }).filter(Boolean);
+    return heuristicFromRows(rows, defaultPeriod);
+  }
+
+  async function readExcel(file){
+    await loadScript(CDN_XLSX);
+    const wb = XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:true });
+    const rows = [], texts = [];
+    wb.SheetNames.forEach(name => {
+      const ws = wb.Sheets[name];
+      const aoa = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
+      rows.push(...aoa);
+      texts.push('【工作表：' + name + '】\n' + XLSX.utils.sheet_to_csv(ws, { blankrows:false }));
+    });
+    return { rows, text: texts.join('\n\n'), images: [] };
+  }
+  async function readPdf(file, wantImages){
+    await loadScript(CDN_PDF);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = CDN_PDF_WORKER;
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const byY = new Map();
+      content.items.forEach(it => { if (!it.str) return; const y = Math.round(it.transform[5] / 3); if (!byY.has(y)) byY.set(y, []); byY.get(y).push({ x: it.transform[4], str: it.str }); });
+      const lines = [...byY.entries()].sort((a, b) => b[0] - a[0]).map(([, items]) => items.sort((a, b) => a.x - b.x).map(x => x.str).join(' ').replace(/\s{2,}/g, ' '));
+      pages.push(lines.join('\n'));
+    }
+    const text = pages.map((t, i) => '--- 第 ' + (i + 1) + ' 頁 ---\n' + t).join('\n');
+    const images = [];
+    if (wantImages && text.replace(/[\s\-第頁\d]/g, '').length < 40) {
+      const n = Math.min(pdf.numPages, wantImages);
+      for (let i = 1; i <= n; i++) {
+        const page = await pdf.getPage(i);
+        const vp = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas'); canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        images.push(await new Promise(res => canvas.toBlob(res, 'image/png')));
+      }
+    }
+    return { rows: text.split('\n').map(l => [l]), text, images };
+  }
+
+  function claudePrompt(text, hasImages){
+    const prods = productNames().map(n => '「' + n + '」').join('、') || '（未提供）';
+    return [
+      '你是對帳助手。下面是全家便利商店提供給阿爾法餐飲的「雞湯大叔系列鮮食商品」銷售報表內容' + (hasImages ? '（文字抽取失敗，請直接閱讀附上的報表頁面影像）' : '（從 Excel 或 PDF 抽出的文字）') + '。請把每一筆商品銷售整理成 JSON。',
+      '合約期別以銷售日期判斷：1 = 2026/09/30–2026/12/31、2 = 2027/01/01–2027/03/31、3 = 2027/04/01–2027/06/30、4 = 2027/07/01–2027/08/31。民國年換算：115 = 2026、116 = 2027。2026/09/01–09/29 的銷售歸第 1 期。',
+      '已知聯名商品：' + prods + '。報表上的名稱若略有不同（例如多了容量、少了幾個字），請對應到最接近的已知商品，對應不到就照報表原名。',
+      '只回傳一個 JSON 物件，格式：{"report_range":"報表涵蓋的日期區間，無法判斷填 null","lines":[{"product":"商品名","period":1,"units":數量或 null,"sales":實銷金額或 null}],"notes":"需要人工確認的事項，沒有就填空字串"}',
+      '規則：金額與數量為新臺幣整數，去掉千分位與單位；不要把合計、小計列當成商品；同一商品若跨多個期別就分成多筆；只有合計沒有分商品時，lines 放一筆 product 為「合計」；判斷不出期別填 null。',
+      '',
+      '報表內容：',
+      text.length > 60000 ? text.slice(0, 60000) + '\n（內容過長，已截斷）' : text,
+    ].join('\n');
+  }
+
+  async function handleFile(file){
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!['xlsx','xls','csv','pdf'].includes(ext)) { status('只支援 Excel（.xlsx／.xls）、CSV 或 PDF。', false); return; }
+    importCtl = new AbortController();
+    const signal = importCtl.signal;
+    $('fImportPanel').hidden = true; pending = null;
+    try {
+      status('讀取檔案 ' + file.name + '…', true);
+      const sample = await getSample();
+      let limits = null;
+      if (sample) { try { limits = await sample.limits(); } catch(e) { limits = null; } }
+      const wantImages = limits && limits.images ? Math.min(limits.images.maxCount, 6) : 0;
+      const parsed = ext === 'pdf' ? await readPdf(file, wantImages) : await readExcel(file);
+      if (signal.aborted) throw { code:'cancelled' };
+      let lines = null, notes = '', source = '';
+      if (sample && (parsed.text.trim().length >= 20 || parsed.images.length)) {
+        status('請 Claude 解析報表（通常 10–60 秒）…', true);
+        try {
+          const out = await sample.json(claudePrompt(parsed.text, parsed.images.length > 0), Object.assign({ signal, cache:false }, parsed.images.length ? { images: parsed.images } : {}));
+          if (out && Array.isArray(out.lines)) {
+            lines = out.lines.map(l => ({ product: String(l.product == null ? '' : l.product).trim() || '（未命名）', period: [1,2,3,4].includes(+l.period) ? +l.period : null, units: toNum(l.units), sales: toNum(l.sales) })).filter(l => l.sales != null || l.units != null);
+            notes = [out.report_range ? '報表區間：' + out.report_range : '', out.notes ? String(out.notes) : ''].filter(Boolean).join('　');
+            source = 'Claude 解析';
+          }
+        } catch(e) {
+          if (e && e.code === 'cancelled') throw e;
+          const code = e && e.code;
+          const why = { not_granted:'未授權此頁使用 Claude', sampling_disabled:'此帳號無法使用 Claude', rate_limited:'Claude 使用額度暫時用盡', invalid_json:'Claude 回覆無法解析', refused:'Claude 拒絕解析此內容', prompt_too_large:'報表內容過大' }[code] || ('Claude 解析失敗（' + (code || 'unknown') + '）');
+          notes = why + '，改用規則解析，請仔細核對。';
+        }
+      } else if (!sample) {
+        notes = '此環境無法請 Claude 解析（需在 claude.ai 中開啟並授權），以下為規則解析結果，請核對。';
+      }
+      if (!lines) { lines = ext === 'pdf' ? heuristicFromText(parsed.text) : heuristicFromRows(parsed.rows, null); source = source || '規則解析'; }
+      if (!lines.length) { status('找不到可辨識的銷售資料。請確認報表含品名、數量與金額欄位' + (ext === 'pdf' ? '，掃描影像的 PDF 需在 claude.ai 中開啟才能解析' : '') + '。', false); return; }
+      const firstOpen = PERIODS.findIndex((p, j) => num(s.actuals[j].sales) == null);
+      lines.forEach(l => { if (l.period == null && firstOpen >= 0 && ext !== 'pdf') l.period = null; });
+      pending = { file: file.name, lines, notes, source };
+      renderPending();
+      status('解析完成（' + source + '），請核對下方結果後導入。', false);
+    } catch(e) {
+      if (e && e.code === 'cancelled') { status('已停止。', false); return; }
+      console.error(e);
+      status('讀取失敗：' + (e && e.message ? e.message : e), false);
+    } finally { importCtl = null; }
+  }
+
+  function renderPending(){
+    if (!pending) { $('fImportPanel').hidden = true; return; }
+    const opts = v => '<option value="">未定</option>' + PERIODS.map((p, j) => '<option value="' + (j + 1) + '"' + (v === j + 1 ? ' selected' : '') + '>' + p.label + '</option>').join('');
+    $('fImportBody').innerHTML = pending.lines.map((l, i) =>
+      '<tr data-li="' + i + '"><td><select data-lkey="period" aria-label="期別">' + opts(l.period) + '</select></td>' +
+      '<td class="name"><input type="text" data-lkey="product" value="' + esc(l.product) + '" aria-label="商品"></td>' +
+      '<td class="num"><input type="number" step="1" data-lkey="units" value="' + (l.units == null ? '' : l.units) + '" placeholder="—" style="width:90px" aria-label="數量"></td>' +
+      '<td class="num"><input type="number" step="1" data-lkey="sales" value="' + (l.sales == null ? '' : l.sales) + '" placeholder="—" style="width:118px" aria-label="實銷金額"></td>' +
+      '<td><button type="button" class="icon-btn" data-ldel="' + i + '" aria-label="刪除此列">✕</button></td></tr>').join('');
+    $('fImportMeta').textContent = pending.file + ' · ' + pending.lines.length + ' 筆 · ' + pending.source;
+    $('fImportNotes').textContent = pending.notes || '';
+    const byP = {}; let unassigned = 0;
+    pending.lines.forEach(l => { if (!l.period) { unassigned++; return; } const b = byP[l.period] || (byP[l.period] = { sales:0, units:0, hasUnits:false }); b.sales += l.sales || 0; if (l.units != null) { b.units += l.units; b.hasUnits = true; } });
+    const parts = Object.keys(byP).sort().map(k => { const b = byP[k]; const j = +k - 1; const cur = num(s.actuals[j].sales); return '<span class="chip"><b>' + PERIODS[j].label + '</b> ' + fmt0(b.sales) + (b.hasUnits ? ' · ' + int(b.units) + ' 個' : '') + ' → 授權金 ' + fmt0(b.sales * s.rate/100) + (cur != null ? '<span class="sub">目前已填 ' + fmt0(cur) + (importMode === 'add' ? '，累加後 ' + fmt0(cur + b.sales) : '，將被覆蓋') + '</span>' : '') + '</span>'; });
+    if (unassigned) parts.push('<span class="chip warn"><b>' + unassigned + ' 筆未定期別</b><span class="sub">請在左欄選擇期別，否則不會導入</span></span>');
+    $('fImportSummary').innerHTML = parts.join('') || '<span class="sub">沒有可導入的資料</span>';
+    $('fImpOverwrite').setAttribute('aria-pressed', importMode === 'overwrite');
+    $('fImpAdd').setAttribute('aria-pressed', importMode === 'add');
+    $('fImportApply').disabled = !Object.keys(byP).length;
+    $('fImportPanel').hidden = false;
+  }
+  function applyPending(){
+    if (!pending) return;
+    const byP = {};
+    pending.lines.forEach(l => { if (!l.period) return; const b = byP[l.period] || (byP[l.period] = { sales:0, units:0, hasUnits:false }); b.sales += l.sales || 0; if (l.units != null) { b.units += l.units; b.hasUnits = true; } });
+    const touched = [];
+    Object.keys(byP).forEach(k => {
+      const j = +k - 1, b = byP[k], a = s.actuals[j];
+      a.sales = String(Math.round(importMode === 'add' ? (num(a.sales) || 0) + b.sales : b.sales));
+      if (b.hasUnits) a.units = String(Math.round(importMode === 'add' ? (num(a.units) || 0) + b.units : b.units));
+      touched.push({ j, sales: b.sales, units: b.hasUnits ? b.units : null });
+    });
+    s.imports.unshift({ file: pending.file, at: new Date().toISOString(), mode: importMode, source: pending.source, periods: touched });
+    s.imports = s.imports.slice(0, 20);
+    pending = null; $('fImportPanel').hidden = true;
+    save(); render(true);
+    status('已導入 ' + touched.map(t => PERIODS[t.j].label).join('、') + '。', false);
+  }
+  function renderLog(){
+    const log = $('fImportLog');
+    if (!s.imports.length) { log.hidden = true; log.innerHTML = ''; return; }
+    log.hidden = false;
+    log.innerHTML = '<div class="import-head"><b>導入紀錄</b><button type="button" class="btn ghost" id="fImportClearLog" style="margin-left:auto">清除紀錄</button></div>' +
+      '<ul>' + s.imports.map(e => '<li><span class="num">' + esc(e.at.slice(0, 16).replace('T', ' ')) + '</span>　' + esc(e.file) + '　<span class="sub">' + esc(e.source) + (e.mode === 'add' ? '，累加' : '，覆蓋') + '：' + e.periods.map(t => PERIODS[t.j].label + ' ' + fmt0(t.sales)).join('、') + '</span></li>').join('') + '</ul>';
+    const clr = $('fImportClearLog'); if (clr) clr.addEventListener('click', () => { s.imports = []; save(); renderLog(); });
+  }
+
+  $('fReportFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; handleFile(f); });
+  $('fImportStop').addEventListener('click', () => { if (importCtl) importCtl.abort(); });
+  $('fImportBody').addEventListener('input', e => {
+    const t = e.target, k = t.dataset.lkey; if (!k || !pending) return;
+    const l = pending.lines[+t.closest('tr').dataset.li]; if (!l) return;
+    if (k === 'period') l.period = t.value ? +t.value : null;
+    else if (k === 'product') l.product = t.value;
+    else l[k] = toNum(t.value);
+    const focus = document.activeElement === t ? { li: t.closest('tr').dataset.li, k } : null;
+    renderPending();
+    if (focus && k !== 'period') { const el = $('fImportBody').querySelector('tr[data-li="' + focus.li + '"] [data-lkey="' + focus.k + '"]'); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(_){} } }
+  });
+  $('fImportBody').addEventListener('click', e => { const b = e.target.closest('[data-ldel]'); if (!b || !pending) return; pending.lines.splice(+b.dataset.ldel, 1); renderPending(); });
+  $('fImportAddLine').addEventListener('click', () => { if (!pending) return; pending.lines.push({ product:'', period:null, units:null, sales:null }); renderPending(); const last = $('fImportBody').querySelector('tr:last-child input[data-lkey="product"]'); if (last) last.focus(); });
+  $('fImpOverwrite').addEventListener('click', () => { importMode = 'overwrite'; renderPending(); });
+  $('fImpAdd').addEventListener('click', () => { importMode = 'add'; renderPending(); });
+  $('fImportApply').addEventListener('click', applyPending);
+  $('fImportCancel').addEventListener('click', () => { pending = null; $('fImportPanel').hidden = true; status('已取消，未導入任何數字。', false); });
+  // drag & drop onto the card
+  const dropZone = $('fReportFile').closest('.card');
+  ['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drop'); }));
+  ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('drop'); }));
+  dropZone.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f); });
+  getSample().then(sm => { if (!sm) $('fImportStatus').textContent = '把全家的銷售報表丟進來，系統會抽出各期實銷金額與數量，確認後再導入。（在 claude.ai 開啟並授權後，可由 Claude 解析較複雜的報表格式）'; });
+  renderLog();
 
   sync(); render(true);
 })();
