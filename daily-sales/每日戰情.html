@@ -490,6 +490,8 @@
         <li><b>銷售額</b>＝消費者付的含稅金額（總金額含稅欄）。<b>實收</b>＝公司真正入帳的未稅金額：momo 算<u>進價收入</u>，官網算<u>售價未稅</u>。兩者差額就是給 momo 的通路價差，所以 momo 的銷售額和實收不會一樣。</li>
         <li><b>件數</b>不含贈品。通路寫「贈品」或「公關品」的列整列不計——送出去的不是銷售，
           連金額也不算。運費另計在「其他通路」，不灌進官網銷售額。</li>
+        <li><b>訂單數</b>以銷售訂單號（SO）計；最新幾天常常還沒編 SO，就退回用 momo 平台訂單號
+          （去掉 -001／-002 的品項流水）。兩者都沒有的列不計入訂單數，但金額與件數照算。</li>
         <li>兩張表的「其他通路」合計會差一點：每日明細算的是整個通路（含運費與沒填品名的列），
           產品組合只算有品名的商品，所以會少一些。momo 與官網兩欄則完全一致。</li>
         <li>momo 有 <span class="num" id="impTxt">0</span> 筆沒填進價，用同品項的進價率回推補值。</li>
@@ -545,7 +547,7 @@
     return "other";
   }
   var NON_PRODUCT  = { "贈品":1, "運費":1 };
-  var COL = { brand:6, channel:7, date:8, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19 };
+  var COL = { brand:6, channel:7, date:8, pno:9, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19 };
   var STORE_KEY = "alpha-daily-sales-v1";
 
   /* ══════════ 小工具 ══════════ */
@@ -780,7 +782,7 @@
         if (!d || isNaN(d)) continue;
         recs.push({
           date: iso(d), brand: text(r, COL.brand), channel: text(r, COL.channel),
-          item: text(r, COL.item), so: text(r, COL.so),
+          item: text(r, COL.item), so: text(r, COL.so), pno: text(r, COL.pno),
           qty: val(r, COL.qty), gross: val(r, COL.gross), grossEx: val(r, COL.grossEx),
           netEx: val(r, COL.netEx)
         });
@@ -822,7 +824,7 @@
       if (isNaN(d)) continue;
       recs.push({
         date: iso(d), brand:(r[COL.brand-1]||"").trim(), channel:(r[COL.channel-1]||"").trim(),
-        item:(r[COL.item-1]||"").trim(), so:(r[COL.so-1]||"").trim(),
+        item:(r[COL.item-1]||"").trim(), so:(r[COL.so-1]||"").trim(), pno:(r[COL.pno-1]||"").trim(),
         qty:num(r[COL.qty-1]), gross:num(r[COL.gross-1]), grossEx:num(r[COL.grossEx-1]),
         netEx:num(r[COL.netEx-1])
       });
@@ -849,6 +851,15 @@
       }
     });
 
+    var pnoBase = function(p){
+      var t = String(p == null ? "" : p).trim().split(/\s/)[0].split("-")[0];
+      return /^\d{8,}$/.test(t) ? t : "";
+    };
+    var soByBase = {};
+    recs.forEach(function(x){
+      var pb = pnoBase(x.pno);
+      if (pb && x.so && !soByBase[pb]) soByBase[pb] = x.so;
+    });
     var bucket = function(){ return { gmv:0, rev:0, qty:0, orders:{}, items:{} }; };
     var days = {}, min = null, max = null;
 
@@ -871,7 +882,11 @@
           it.qty += x.qty; it.gmv += x.gross; it.rev += rv;
         }
       }
-      if (x.so) b.orders[x.so] = 1;
+      // 訂單數：有銷售訂單號用它；還沒編 SO 的列退回 momo 平台訂單號。
+      // 同一張平台單若別的列已經編了 SO，就併到那個 SO，免得一張單算成兩張。
+      var pb = pnoBase(x.pno);
+      var okey = x.so || (pb && soByBase[pb]) || pb;
+      if (okey) b.orders[okey] = 1;
       if (!min || x.date < min) min = x.date;
       if (!max || x.date > max) max = x.date;
     });
@@ -1686,13 +1701,14 @@
     var cQty = sum(rows, "momo", "qty") + sum(rows, "web", "qty");
 
     // 只報 MOMO 與 CYBERBIZ；其他通路（全家、團購主…）不進這份回報
+    var dayLine = fmtInt(dayAmt) + "元／" + dayOrd + "筆／品項數:" + fmtInt(dayQty) + "件";
     return "制表日期：" + ymd(today) + "\n" +
       "回報區間：" + mmdd(CAMP) + "-" + mmdd(end) +
-        (stale ? "（資料只到 " + mmdd(end) + "，" + mmdd(yest) + " 的還沒進系統）" : "") + "\n" +
-      // 最新幾天常常有出貨但還沒編銷售訂單號，寫成「0筆」會被當成沒生意
-      "前日銷售：" + fmtInt(dayAmt) + "元／" +
-        (dayOrd || !dayAmt ? dayOrd + "筆" : "訂單號未編") +
-        "／品項數:" + fmtInt(dayQty) + "件\n" +
+        (stale ? "（資料只到 " + mmdd(end) + "）" : "") + "\n" +
+      // 昨天的資料還沒進來時，不能把最近一天的數字當成「前日」報出去
+      (stale
+        ? "前日銷售（" + mmdd(yest) + "）：資料尚未登錄；最近一日 " + mmdd(end) + " 為 " + dayLine + "\n"
+        : "前日銷售：" + dayLine + "\n") +
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       "MOMO：" + fmtInt(cM) + "元\n" +
       "CYBERBIZ：" + fmtInt(cW) + "元" + pxBlock();
