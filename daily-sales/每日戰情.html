@@ -262,6 +262,17 @@
   .pxdel:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
   .pxempty{ font-size:13px; color:var(--ink-faint); padding:4px 0; }
 
+  .chmap{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chtag{ font-size:11.5px; font-family:var(--font-num); font-variant-numeric:tabular-nums;
+          background:var(--surface); border:1px solid var(--border); border-radius:4px;
+          padding:3px 8px; color:var(--ink-muted); }
+  .chtag b{ font-family:var(--font-ui); color:var(--ink); font-weight:600; }
+  .chtag.momo{ border-left:3px solid var(--momo); }
+  .chtag.web{ border-left:3px solid var(--web); }
+  .chtag.other{ border-left:3px solid var(--pool); }
+  .chtag.nonsale{ border-left:3px solid var(--border-strong); opacity:.75; }
+  .chtag.warn{ background:var(--warn-soft); color:var(--warn-ink); border-color:var(--warn); }
+
   .method,.howto{ background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:16px 20px; }
   .howto{ background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent); }
   .method h3,.howto h3{ font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:10px; }
@@ -510,6 +521,8 @@
           覆蓋，所以下面看得到售出率的走勢。統計從 <span class="num">2026-09-24</span> 那筆開始，
           更早的不列入。上面幾格與「複製簡易數字」都取最新那一筆。
           全聯算的是包數（有填單價才換算金額），不進上面的銷售額與累計。</li>
+        <li id="chMapLi"><b>這份檔案裡的通路寫法與歸組</b>（momo／官網數字看起來變低時先看這裡——
+          沒認得的寫法會掉進「其他」）：<div class="chmap" id="chMap"></div></li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
     </div>
@@ -861,6 +874,14 @@
       if (pb && x.so && !soByBase[pb]) soByBase[pb] = x.so;
     });
     var bucket = function(){ return { gmv:0, rev:0, qty:0, orders:{}, items:{} }; };
+    // 記下每個通路原始寫法 → 歸到哪一組、幾列、多少錢；頁面會列出來，沒認得的寫法一眼可見
+    var chMap = {};
+    recs.forEach(function(x){
+      var lab = String(x.channel == null ? "" : x.channel).trim() || "（空白）";
+      var cm = chMap[lab] || (chMap[lab] = { group: isNonSale(x.channel) ? "nonsale" : chGroup(x.channel), rows:0, gmv:0 });
+      cm.rows++; cm.gmv += x.gross || 0;
+    });
+
     var days = {}, min = null, max = null;
 
     recs.forEach(function(x){
@@ -914,6 +935,9 @@
     return {
       meta: { source: sourceName, sheet: sheetName, rows: recs.length,
               first_date: min, last_date: max, imputed: imputed, odd_rev: oddRev,
+              channels: Object.keys(chMap).map(function(k){
+                return { label: k, group: chMap[k].group, rows: chMap[k].rows, gmv: Math.round(chMap[k].gmv) };
+              }).sort(function(x, y){ return y.gmv - x.gmv; }),
               built_at: iso(new Date()) },
       days: out
     };
@@ -1107,6 +1131,7 @@
     $("srcTxt").textContent   = DATA.meta.source || "內建快照";
     $("builtTxt").textContent = DATA.meta.built_at || "—";
     $("impTxt").textContent   = DATA.meta.imputed != null ? DATA.meta.imputed : 0;
+    renderChMap();
     var odd = DATA.meta.odd_rev || 0;
     $("oddTxt").textContent = odd;
     $("oddRevLi").hidden = !odd;
@@ -1128,6 +1153,21 @@
     }
     return n;
   }
+  var GROUP_NAME = { momo:"momo", web:"官網", other:"其他", nonsale:"不計" };
+  function renderChMap(){
+    var list = DATA.meta.channels || [];
+    if (!list.length){ $("chMapLi").hidden = true; return; }
+    $("chMapLi").hidden = false;
+    $("chMap").innerHTML = list.map(function(c){
+      // 歸到「其他」又帶不少金額、名字又像 momo／官網的，多半是沒認得的另一種寫法
+      var warn = c.group === "other" && c.gmv >= 1000 &&
+                 /momo|寄倉|官網|cyber|網站|商城/i.test(c.label);
+      return '<span class="chtag ' + c.group + (warn ? ' warn' : '') + '" title="' + esc(c.label) + '">' +
+        '<b>' + esc(c.label) + '</b> → ' + GROUP_NAME[c.group] + ' · ' + fmtInt(c.rows) + ' 列 · ' + money(c.gmv) +
+        (warn ? ' ⚠ 疑似沒認得' : '') + '</span>';
+    }).join("");
+  }
+
   function renderNotice(){
     var thin = camp.filter(function(d){
       return (d.momo.gmv + d.web.gmv) === 0 ||
