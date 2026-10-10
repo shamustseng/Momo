@@ -262,6 +262,11 @@
   .pxdel:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
   .pxempty{ font-size:13px; color:var(--ink-faint); padding:4px 0; }
 
+  .recon{ margin-top:8px; font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:12.5px;
+          display:grid; grid-template-columns:max-content auto; gap:3px 12px; align-items:baseline; }
+  .recon b{ font-weight:600; color:var(--ink); }
+  .recon .sub{ color:var(--ink-faint); font-size:11.5px; }
+  .recon .warnrow{ color:var(--warn-ink); }
   .chmap{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .chtag{ font-size:11.5px; font-family:var(--font-num); font-variant-numeric:tabular-nums;
           background:var(--surface); border:1px solid var(--border); border-radius:4px;
@@ -521,6 +526,10 @@
           覆蓋，所以下面看得到售出率的走勢。統計從 <span class="num">2026-09-24</span> 那筆開始，
           更早的不列入。上面幾格與「複製簡易數字」都取最新那一筆。
           全聯算的是包數（有填單價才換算金額），不進上面的銷售額與累計。</li>
+        <li id="reconLi" hidden><b>對帳：整張「2026 銷售紀錄」的錢去了哪裡</b>（這頁的 momo／官網只是其中一部分，
+          團購主、全家、企業採購等都在「其他通路」；「複製簡易數字」只報 momo＋官網、而且只從檔期起算日起）：
+          <div class="recon" id="reconTxt"></div>
+          <div class="chmap" id="droppedList"></div></li>
         <li id="chMapLi"><b>這份檔案裡的通路寫法與歸組</b>（momo／官網數字看起來變低時先看這裡——
           沒認得的寫法會掉進「其他」）：<div class="chmap" id="chMap"></div></li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
@@ -760,6 +769,33 @@
     });
   }
 
+  /* 日期欄偶爾會被打成文字（例如「21-SEP」），Excel 顯示起來一樣，但程式讀到的不是日期。
+     這裡把常見寫法都認回來；只有月日沒有年的，用整份檔案最多列的那一年。 */
+  var MON = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, sept:9, oct:10, nov:11, dec:12 };
+  function anyDate(v, yearHint){
+    if (v == null || v === "") return null;
+    if (v instanceof Date) return isNaN(v) ? null : v;
+    if (typeof v === "number" && v > 20000 && v < 80000)           // Excel 序號
+      return new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000 + 12 * 3600000);
+    var t = String(v).trim(), m, y, mo, d;
+    if ((m = t.match(/^(\d{4})[\/.\-年](\d{1,2})[\/.\-月](\d{1,2})/)))      { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if ((m = t.match(/^(\d{1,2})[\/.\-月](\d{1,2})(?:日)?(?:[\/.\-](\d{2,4}))?$/))) {
+      mo = +m[1]; d = +m[2]; y = m[3] ? +m[3] : yearHint; if (y < 100) y += 2000; }
+    else if ((m = t.match(/^(\d{1,2})[\s\-\/]*([A-Za-z]{3,4})\.?(?:[\s\-\/,]*(\d{2,4}))?$/)) && MON[m[2].toLowerCase()]) {
+      d = +m[1]; mo = MON[m[2].toLowerCase()]; y = m[3] ? +m[3] : yearHint; if (y < 100) y += 2000; }
+    else if ((m = t.match(/^([A-Za-z]{3,4})\.?[\s\-\/]*(\d{1,2})(?:[\s\-\/,]*(\d{2,4}))?$/)) && MON[m[1].toLowerCase()]) {
+      mo = MON[m[1].toLowerCase()]; d = +m[2]; y = m[3] ? +m[3] : yearHint; if (y < 100) y += 2000; }
+    else { var g = new Date(t.replace(/\//g, "-")); return isNaN(g) ? null : g; }
+    if (!(mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+    var out = new Date(y, mo - 1, d);
+    return out.getMonth() === mo - 1 ? out : null;
+  }
+  function modeYear(dates){
+    var c = {}, best = new Date().getFullYear(), n = 0;
+    dates.forEach(function(d){ var y = d.getFullYear(); c[y] = (c[y] || 0) + 1; if (c[y] > n){ n = c[y]; best = y; } });
+    return best;
+  }
+
   function readXlsx(buf){
     if (typeof XLSX === "undefined") return Promise.reject(new Error("nolib"));
     var wb = XLSX.read(buf, { type:"array", cellFormula:true, cellDates:true, sheetStubs:true });
@@ -787,20 +823,28 @@
         var v = cell && cell.v != null ? String(cell.v).trim() : "";
         return v || (smap[addr] ? String(smap[addr]).trim() : "");
       };
-      var recs = [];
-      for (var r = 2; r <= ref.e.r + 1; r++){
-        var dc = sh[colLetter(COL.date) + r];
-        if (!dc) continue;
-        var d = dc.v instanceof Date ? dc.v : (dc.t === "d" ? new Date(dc.v) : null);
-        if (!d || isNaN(d)) continue;
-        recs.push({
-          date: iso(d), brand: text(r, COL.brand), channel: text(r, COL.channel),
+      var recs = [], dropped = [], realDates = [], r, dc;
+      for (r = 2; r <= ref.e.r + 1; r++){
+        dc = sh[colLetter(COL.date) + r];
+        if (dc && dc.v instanceof Date && !isNaN(dc.v)) realDates.push(dc.v);
+      }
+      var yearHint = modeYear(realDates);
+      for (r = 2; r <= ref.e.r + 1; r++){
+        dc = sh[colLetter(COL.date) + r];
+        var d = anyDate(dc ? (dc.v instanceof Date ? dc.v : (dc.t === "d" ? new Date(dc.v) : (dc.w || dc.v))) : null, yearHint);
+        var rec = {
+          brand: text(r, COL.brand), channel: text(r, COL.channel),
           item: text(r, COL.item), so: text(r, COL.so), pno: text(r, COL.pno),
           qty: val(r, COL.qty), gross: val(r, COL.gross), grossEx: val(r, COL.grossEx),
           netEx: val(r, COL.netEx)
-        });
+        };
+        if (d){ rec.date = iso(d); recs.push(rec); continue; }
+        // 沒日期、或日期看不懂的列：有內容就記下來，頁面會列出，金額不會悄悄消失
+        if (rec.channel || rec.item || rec.gross || rec.qty)
+          dropped.push({ row: r, channel: rec.channel, item: rec.item, gross: rec.gross,
+                         why: dc && dc.v != null && String(dc.v).trim() ? "日期看不懂：" + String(dc.w || dc.v).trim() : "沒日期" });
       }
-      return { records: recs, sheet: name };
+      return { records: recs, sheet: name, dropped: dropped };
     });
   }
 
@@ -828,25 +872,35 @@
     return isFinite(v) ? v : 0;
   }
   function readCsv(text){
-    var rows = parseCsv(text), recs = [];
-    for (var i = 1; i < rows.length; i++){
-      var r = rows[i]; if (!r) continue;
-      var raw = (r[COL.date - 1] || "").trim();
-      if (!raw) continue;
-      var d = new Date(raw.replace(/\//g, "-"));
-      if (isNaN(d)) continue;
-      recs.push({
-        date: iso(d), brand:(r[COL.brand-1]||"").trim(), channel:(r[COL.channel-1]||"").trim(),
+    var rows = parseCsv(text), recs = [], dropped = [], i, r, raw;
+    var realDates = [];
+    for (i = 1; i < rows.length; i++){
+      r = rows[i]; if (!r) continue;
+      raw = (r[COL.date - 1] || "").trim();
+      if (/^\d{4}[\/.\-]/.test(raw)){ var d0 = anyDate(raw, 0); if (d0) realDates.push(d0); }
+    }
+    var yearHint = modeYear(realDates);
+    for (i = 1; i < rows.length; i++){
+      r = rows[i]; if (!r) continue;
+      raw = (r[COL.date - 1] || "").trim();
+      var d = anyDate(raw, yearHint);
+      var rec = {
+        brand:(r[COL.brand-1]||"").trim(), channel:(r[COL.channel-1]||"").trim(),
         item:(r[COL.item-1]||"").trim(), so:(r[COL.so-1]||"").trim(), pno:(r[COL.pno-1]||"").trim(),
         qty:num(r[COL.qty-1]), gross:num(r[COL.gross-1]), grossEx:num(r[COL.grossEx-1]),
         netEx:num(r[COL.netEx-1])
-      });
+      };
+      if (d){ rec.date = iso(d); recs.push(rec); continue; }
+      if (rec.channel || rec.item || rec.gross || rec.qty)
+        dropped.push({ row: i + 1, channel: rec.channel, item: rec.item, gross: rec.gross,
+                       why: raw ? "日期看不懂：" + raw : "沒日期" });
     }
-    return { records: recs, sheet: "CSV" };
+    return { records: recs, sheet: "CSV", dropped: dropped };
   }
 
   /* ══════════ 3. 彙總 ══════════ */
-  function aggregate(recs, sourceName, sheetName){
+  function aggregate(recs, sourceName, sheetName, dropped){
+    dropped = dropped || [];
     // momo 少數幾筆沒填進價，用同品項的進價率補；補不到就用 momo 全體進價率。
     var byItem = {}, all = [];
     recs.forEach(function(x){
@@ -932,9 +986,24 @@
       cur = shiftDays(cur, 1);
     }
 
+    // 對帳：整張表的總金額 ＝ 算進去的 ＋ 贈品/公關品不計 ＋ 沒日期沒算的，三塊加起來要等於 Excel 的 P 欄合計
+    var recon = { momo:0, web:0, other:0, nonsale:0, dropped:0, dropped_rows: dropped.length };
+    recs.forEach(function(x){
+      if (isNonSale(x.channel)) recon.nonsale += x.gross || 0;
+      else recon[chGroup(x.channel)] += x.gross || 0;
+    });
+    dropped.forEach(function(x){ recon.dropped += x.gross || 0; });
+    Object.keys(recon).forEach(function(k){ recon[k] = Math.round(recon[k]); });
+    recon.counted = recon.momo + recon.web + recon.other;
+    recon.sheet_total = recon.counted + recon.nonsale + recon.dropped;
+
     return {
       meta: { source: sourceName, sheet: sheetName, rows: recs.length,
               first_date: min, last_date: max, imputed: imputed, odd_rev: oddRev,
+              recon: recon,
+              dropped: dropped.slice(0, 40).map(function(x){
+                return { row: x.row, channel: x.channel, item: x.item, gross: Math.round(x.gross || 0), why: x.why };
+              }),
               channels: Object.keys(chMap).map(function(k){
                 return { label: k, group: chMap[k].group, rows: chMap[k].rows, gmv: Math.round(chMap[k].gmv) };
               }).sort(function(x, y){ return y.gmv - x.gmv; }),
@@ -1132,6 +1201,7 @@
     $("builtTxt").textContent = DATA.meta.built_at || "—";
     $("impTxt").textContent   = DATA.meta.imputed != null ? DATA.meta.imputed : 0;
     renderChMap();
+    renderRecon();
     var odd = DATA.meta.odd_rev || 0;
     $("oddTxt").textContent = odd;
     $("oddRevLi").hidden = !odd;
@@ -1154,6 +1224,25 @@
     return n;
   }
   var GROUP_NAME = { momo:"momo", web:"官網", other:"其他", nonsale:"不計" };
+  function renderRecon(){
+    var rc = DATA.meta.recon, dl = DATA.meta.dropped || [];
+    if (!rc){ $("reconLi").hidden = true; return; }
+    $("reconLi").hidden = false;
+    var line = function(k, v, sub, cls){
+      return '<span class="' + (cls || "") + '">' + k + '</span><span class="' + (cls || "") + '"><b>' + money(v) + '</b>' +
+             (sub ? ' <span class="sub">' + sub + '</span>' : '') + '</span>';
+    };
+    $("reconTxt").innerHTML =
+      line("整張表 P 欄合計", rc.sheet_total, DATA.meta.first_date + " ～ " + DATA.meta.last_date + "，全部通路") +
+      line("＝ 算進這頁的", rc.counted, "momo " + money(rc.momo) + "　官網 " + money(rc.web) + "　其他通路 " + money(rc.other)) +
+      line("＋ 贈品／公關品不計", rc.nonsale, "") +
+      line("＋ 沒日期、沒算進任何一天", rc.dropped, rc.dropped_rows ? rc.dropped_rows + " 列，列在下面；回 Excel 補上日期再丟一次就會算進來" : "",
+           rc.dropped ? "warnrow" : "");
+    $("droppedList").innerHTML = dl.map(function(x){
+      return '<span class="chtag' + (x.gross ? ' warn' : ' nonsale') + '">第 ' + x.row + ' 列 · <b>' + esc(x.channel || "（通路空白）") +
+        '</b> · ' + esc(x.item || "（沒品名）") + ' · ' + money(x.gross) + ' · ' + esc(x.why) + '</span>';
+    }).join("");
+  }
   function renderChMap(){
     var list = DATA.meta.channels || [];
     if (!list.length){ $("chMapLi").hidden = true; return; }
@@ -1186,6 +1275,12 @@
       msgs.push("<b>" + name + "</b> 從 " + md(from) + " 起連續 <b>" + gap + " 天</b>沒有任何紀錄" +
         (otherSold ? "，" + otherName + "同期還有出貨——多半是" + name + "的單還沒登錄，別當成沒賣。" : "。"));
     });
+
+    var rc = DATA.meta.recon;
+    if (rc && rc.dropped >= 500){
+      msgs.push("有 <b>" + rc.dropped_rows + " 列</b>日期空白或打成文字（合計 <b>" + money(rc.dropped) +
+        "</b>）沒算進任何一天——最下面「對帳」那段列出了是哪幾列，回 Excel 補好日期再丟一次。");
+    }
 
     if (nCamp <= 5){
       msgs.unshift("檔期起算到現在只有 <b>" + nCamp + " 天</b>，樣本太少，下面的比較只能當進度追蹤。");
@@ -1864,7 +1959,7 @@
         })
         .then(function(parsed){
           if (!parsed.records.length) throw new Error("empty");
-          DATA = aggregate(parsed.records, file.name, parsed.sheet);
+          DATA = aggregate(parsed.records, file.name, parsed.sheet, parsed.dropped);
           DATA.meta.campaign_start = CAMP;        // 換檔案不要把檔期起算日弄丟
           try { localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); } catch (e) {}
           renderAll();
