@@ -518,6 +518,9 @@
         <li><b>累計一律從「檔期起算日」算起</b>，不是從月初。每日明細與產品組合的合計、
           以及「複製簡易數字」的累積銷售，都用同一個起算日。要換檔期（例如雙 11）就改上面
           「每日明細」那排的日期，不用改程式，選了會記住。</li>
+        <li><b>「複製簡易數字」的 MOMO ＝ 通路「MOMO」＋「MOMO寄倉」的總金額(含稅)，CYBERBIZ ＝ 官網的銷售額</b>
+          （同一個總金額欄），括號裡會寫出 momo 與寄倉各多少。這頁的算法一有更新，瀏覽器裡用舊算法
+          存著的資料會自動作廢並提醒重丟 Excel，免得簡易數字一直吐舊數字。</li>
         <li><b>「複製簡易數字」的制表日期＝按下按鈕的當天，前日銷售＝前一天</b>，回報區間與
           累積也都結束在昨天，所以檔案裡若已經有今天的半天資料不會被算進去。萬一資料還沒
           進到昨天，回報區間會註明實際到哪一天。</li>
@@ -571,6 +574,9 @@
   var NON_PRODUCT  = { "贈品":1, "運費":1 };
   var COL = { brand:6, channel:7, date:8, pno:9, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19 };
   var STORE_KEY = "alpha-daily-sales-v1";
+  // 算法一有改（例如贈品不計、文字日期、寄倉拆分）就加一號；瀏覽器裡用舊算法存下來的資料會被丟掉，
+  // 不然「複製簡易數字」會一直吐舊數字，看起來像沒修到。
+  var RULES = 4;
 
   /* ══════════ 小工具 ══════════ */
   var $ = function(id){ return document.getElementById(id); };
@@ -927,7 +933,7 @@
       var pb = pnoBase(x.pno);
       if (pb && x.so && !soByBase[pb]) soByBase[pb] = x.so;
     });
-    var bucket = function(){ return { gmv:0, rev:0, qty:0, orders:{}, items:{} }; };
+    var bucket = function(){ return { gmv:0, ck:0, rev:0, qty:0, orders:{}, items:{} }; };
     // 記下每個通路原始寫法 → 歸到哪一組、幾列、多少錢；頁面會列出來，沒認得的寫法一眼可見
     var chMap = {};
     recs.forEach(function(x){
@@ -944,6 +950,7 @@
       var grp = chGroup(x.channel);
       var b = day[grp];
       b.gmv += x.gross;
+      if (grp === "momo" && chKey(x.channel).indexOf("寄倉") >= 0) b.ck += x.gross;   // momo 裡寄倉那一塊
       // momo 與批發通路（全家、團購主…）收進價；官網是直客，沒有進價可言，一律用售價未稅
       var rv = grp === "momo" ? x.netEx
              : grp === "web"  ? x.grossEx
@@ -973,14 +980,14 @@
       ["momo","web","other"].forEach(function(g){
         var b = day && day[g];
         row[g] = b ? {
-          gmv: Math.round(b.gmv), rev: Math.round(b.rev), qty: Math.round(b.qty),
+          gmv: Math.round(b.gmv), ck: Math.round(b.ck), rev: Math.round(b.rev), qty: Math.round(b.qty),
           orders: Object.keys(b.orders).length,
           // [品項, 件數, 銷售額, 實收]，產品組合那一段用這個算
           items: Object.keys(b.items).map(function(k){
             var it = b.items[k];
             return [k, Math.round(it.qty), Math.round(it.gmv), Math.round(it.rev)];
           }).sort(function(a, c){ return c[2] - a[2]; })
-        } : { gmv:0, rev:0, qty:0, orders:0, items:[] };
+        } : { gmv:0, ck:0, rev:0, qty:0, orders:0, items:[] };
       });
       out.push(row);
       cur = shiftDays(cur, 1);
@@ -998,7 +1005,7 @@
     recon.sheet_total = recon.counted + recon.nonsale + recon.dropped;
 
     return {
-      meta: { source: sourceName, sheet: sheetName, rows: recs.length,
+      meta: { source: sourceName, sheet: sheetName, rows: recs.length, rules: RULES,
               first_date: min, last_date: max, imputed: imputed, odd_rev: oddRev,
               recon: recon,
               dropped: dropped.slice(0, 40).map(function(x){
@@ -1013,12 +1020,19 @@
   }
 
   /* ══════════ 4. 狀態 ══════════ */
+  var STALE_SAVED = "";
   var DATA = JSON.parse($("data").textContent);
   try {
     var saved = localStorage.getItem(STORE_KEY);
     if (saved){
       var p = JSON.parse(saved);
-      if (p && p.days && p.days.length && (!DATA.days.length || p.meta.last_date >= DATA.meta.last_date)) DATA = p;
+      if (p && p.days && p.days.length){
+        if (p.meta.rules !== RULES){
+          // 舊算法算出來的，不能用；若它比內建資料新，開頁後提醒重丟一次 Excel
+          if (DATA.days.length && p.meta.last_date > DATA.meta.last_date) STALE_SAVED = p.meta.last_date;
+          try { localStorage.removeItem(STORE_KEY); } catch (e2) {}
+        } else if (!DATA.days.length || p.meta.last_date >= DATA.meta.last_date) DATA = p;
+      }
     }
   } catch (e) { /* 無痕視窗或封鎖儲存時就用內建資料 */ }
 
@@ -1832,6 +1846,7 @@
     var dayOrd = day.momo.orders + day.web.orders;
     var dayQty = day.momo.qty + day.web.qty;
     var cM = sum(rows, "momo", "gmv"), cW = sum(rows, "web", "gmv");
+    var cK = rows.reduce(function(a, d){ return a + (d.momo.ck || 0); }, 0);
     var cOrd = sum(rows, "momo", "orders") + sum(rows, "web", "orders");
     var cQty = sum(rows, "momo", "qty") + sum(rows, "web", "qty");
 
@@ -1845,8 +1860,9 @@
         ? "前日銷售（" + mmdd(yest) + "）：資料尚未登錄；最近一日 " + mmdd(end) + " 為 " + dayLine + "\n"
         : "前日銷售：" + dayLine + "\n") +
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
-      "MOMO：" + fmtInt(cM) + "元\n" +
-      "CYBERBIZ：" + fmtInt(cW) + "元" + pxBlock();
+      // MOMO ＝ 通路 MOMO ＋ MOMO寄倉 的總金額(含稅)；CYBERBIZ ＝ 官網的銷售額（同一欄）。括號寫出組成，看的人不用猜。
+      "MOMO：" + fmtInt(cM) + "元（momo " + fmtInt(cM - cK) + "＋momo寄倉 " + fmtInt(cK) + "）\n" +
+      "CYBERBIZ：" + fmtInt(cW) + "元（官網銷售額）" + pxBlock();
   }
 
   /* 龍鳳 × 全聯：有填才附上，沒填就不要多出一段空的 */
@@ -2046,6 +2062,7 @@
 
   renderPx();
   renderAll();
+  if (STALE_SAVED) toast("計算規則更新了，之前存在這台電腦、到 " + STALE_SAVED + " 的資料已不適用，請重新丟一次最新的 Excel。");
   window.__DAILY__ = { get data(){ return DATA; }, aggregate: aggregate, readXlsx: readXlsx };
 })();
 </script>
