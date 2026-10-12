@@ -267,6 +267,13 @@
   .recon b{ font-weight:600; color:var(--ink); }
   .recon .sub{ color:var(--ink-faint); font-size:11.5px; }
   .recon .warnrow{ color:var(--warn-ink); }
+  .fmpaste{ display:flex; flex-direction:column; gap:8px; }
+  .fmpaste textarea{ font:inherit; font-size:12.5px; line-height:1.4; color:var(--ink); background:var(--surface);
+                     border:1px solid var(--border-strong); border-radius:5px; padding:8px 10px; width:100%;
+                     resize:vertical; font-family:var(--font-num); }
+  .fmpaste textarea:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .fmbtns{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .pxstat svg{ display:block; width:100%; height:28px; margin-top:4px; }
   .chmap{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .chtag{ font-size:11.5px; font-family:var(--font-num); font-variant-numeric:tabular-nums;
           background:var(--surface); border:1px solid var(--border); border-radius:4px;
@@ -484,6 +491,32 @@
     </div>
   </section>
 
+  <section id="secFm">
+    <div class="sechead">
+      <h2>雞湯大叔 × 全家 鮮食</h2>
+      <span class="hint">全家每週一上午寄前一週的實銷表；把 Word 裡那張表整個選起來複製、貼到下面框框，按「加入」就會記住，也會進「複製簡易數字」</span>
+    </div>
+    <div class="pxcard">
+      <div class="pxstats" id="fmStats"></div>
+      <div class="fmpaste">
+        <textarea id="fmText" rows="4" spellcheck="false"
+          placeholder="貼上全家回報表（含「項目／日期」那一列，以及各品項的「實銷金額」「銷售數量_PSD」列）"></textarea>
+        <div class="fmbtns">
+          <button class="btn primary" id="fmAdd" type="button">加入回報</button>
+          <button class="btn" id="fmClear" type="button">清掉所有全家紀錄</button>
+          <span class="hint" id="fmMsg"></span>
+        </div>
+      </div>
+      <div class="tablewrap px" id="fmLogWrap">
+        <table>
+          <thead id="fmHead"></thead>
+          <tbody id="fmLog"></tbody>
+          <tfoot id="fmFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <section>
     <div class="howto">
       <h3>每天要做的三件事</h3>
@@ -537,6 +570,9 @@
           <div class="chmap" id="droppedList"></div></li>
         <li id="chMapLi"><b>這份檔案裡的通路寫法與歸組</b>（momo／官網數字看起來變低時先看這裡——
           沒認得的寫法會掉進「其他」）：<div class="chmap" id="chMap"></div></li>
+        <li><b>雞湯大叔 × 全家 鮮食</b>是全家每週一回報的實銷表（實銷金額＝全家端的零售實銷，PSD＝每店每日銷量），
+          不在銷售紀錄裡，也不是公司入帳金額，所以不進上面的銷售額與累計，只在自己那一段與「複製簡易數字」裡呈現。
+          貼新表時同一天同品項會覆蓋，其他天累積。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
     </div>
@@ -1026,7 +1062,8 @@
 
   /* ══════════ 4. 狀態 ══════════ */
   var STALE_SAVED = "";
-  var DATA = JSON.parse($("data").textContent);
+  var BAKED = JSON.parse($("data").textContent);
+  var DATA = BAKED;
   try {
     var saved = localStorage.getItem(STORE_KEY);
     if (saved){
@@ -1053,19 +1090,25 @@
   var PX_START = "2026-09-24";
   var PX_KEY = STORE_KEY + ":px:" + PX_START;
   var PX_NUM = ["stores", "listed", "shipped", "sold", "price"];
-  var PX_ROWS = [];
+  var PX_ROWS = [], PX_DEL = [];
   (function(){
     try {
       var raw = JSON.parse(localStorage.getItem(PX_KEY) || "null");
       if (raw && raw.rows) PX_ROWS = raw.rows;
+      if (raw && raw.del) PX_DEL = raw.del;
     } catch (e) {}
-    if (!PX_ROWS.length) PX_ROWS = [{ d: PX_START, stores:1299, listed:901,
-                                      shipped:4492, sold:136, price:135 }];
+    // 內建的回報（寫在 data 區塊裡）跟這台電腦存的合併：同一天以存過的為準，刪過的不要再回來
+    var seed = (BAKED.meta && BAKED.meta.px_seed) ||
+               [{ d: PX_START, stores:1299, listed:901, shipped:4492, sold:136, price:135 }];
+    var have = {}, del = {};
+    PX_ROWS.forEach(function(r){ have[r.d] = 1; });
+    (PX_DEL || []).forEach(function(d){ del[d] = 1; });
+    seed.forEach(function(r){ if (r.d >= PX_START && !have[r.d] && !del[r.d]) PX_ROWS.push(r); });
     pxSort();
   })();
 
   function pxSort(){ PX_ROWS.sort(function(a, b){ return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); }); }
-  function pxStore(){ try { localStorage.setItem(PX_KEY, JSON.stringify({ rows: PX_ROWS })); } catch (e) {} }
+  function pxStore(){ try { localStorage.setItem(PX_KEY, JSON.stringify({ rows: PX_ROWS, del: PX_DEL })); } catch (e) {} }
   function pxLatest(){ return PX_ROWS.length ? PX_ROWS[PX_ROWS.length - 1] : null; }
   function pxInput(k){ return $("px" + k.charAt(0).toUpperCase() + k.slice(1)); }
   function pxNum(r, k){ var v = r && r[k]; return (v === "" || v == null) ? 0 : +v; }
@@ -1086,6 +1129,7 @@
   }
   function pxDelete(d){
     PX_ROWS = PX_ROWS.filter(function(r){ return r.d !== d; });
+    if (PX_DEL.indexOf(d) < 0) PX_DEL.push(d);
     pxStore(); renderPx();
   }
   function pxHas(){
@@ -1134,6 +1178,198 @@
   }
 
   function mdOf(d){ return md(d); }
+
+  /* ── 雞湯大叔 × 全家 鮮食 ──
+     全家每週一寄一張 Word 表：橫的是日期，每個品項兩列（實銷金額、銷售數量_PSD＝每店每日銷量）。
+     這裡存成一筆一筆 { d:日期, p:品項, price:售價, amt:實銷金額, psd }，內建的種子寫在 data 區塊，
+     Lance 之後把新表貼進來就累積上去。只存在這台電腦的瀏覽器。 */
+  var FM_KEY = STORE_KEY + ":fm";
+  var FM_ROWS = [];
+  (function(){
+    try {
+      var raw = JSON.parse(localStorage.getItem(FM_KEY) || "null");
+      if (raw && raw.rows) FM_ROWS = raw.rows;
+    } catch (e) {}
+    var have = {};
+    FM_ROWS.forEach(function(r){ have[r.d + "|" + r.p] = 1; });
+    ((BAKED.meta && BAKED.meta.fm_seed) || []).forEach(function(r){ if (!have[r.d + "|" + r.p]) FM_ROWS.push(r); });
+    fmSort();
+  })();
+  // 只依日期排；同一天保留加入順序，品項就照全家表上的順序呈現
+  function fmSort(){ FM_ROWS.sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; }); }
+  function fmStore(){ try { localStorage.setItem(FM_KEY, JSON.stringify({ rows: FM_ROWS })); } catch (e) {} }
+  function fmUpsert(d, p, price, patch){
+    var row = null;
+    for (var i = 0; i < FM_ROWS.length; i++) if (FM_ROWS[i].d === d && FM_ROWS[i].p === p){ row = FM_ROWS[i]; break; }
+    if (!row){ row = { d: d, p: p, price: price || 0, amt: null, psd: null }; FM_ROWS.push(row); }
+    if (price) row.price = price;
+    if (patch.amt != null) row.amt = patch.amt;
+    if (patch.psd != null) row.psd = patch.psd;
+  }
+  function fmDates(){ var m = {}; FM_ROWS.forEach(function(r){ m[r.d] = 1; }); return Object.keys(m).sort(); }
+  function fmProducts(){
+    var m = {}, order = [];
+    FM_ROWS.forEach(function(r){ if (!m[r.p]){ m[r.p] = { p: r.p, price: r.price || 0 }; order.push(r.p); } if (r.price) m[r.p].price = r.price; });
+    return order.map(function(k){ return m[k]; });
+  }
+  function fmCell(d, p){ for (var i = 0; i < FM_ROWS.length; i++) if (FM_ROWS[i].d === d && FM_ROWS[i].p === p) return FM_ROWS[i]; return null; }
+  function fmHas(){ return FM_ROWS.some(function(r){ return r.amt != null; }); }
+
+  // 日期：全家的表寫民國年「115/09/30(三)」，也接受 2026/09/30、09/30
+  var FM_DATE_RE = /^(?:(\d{2,4})[\/.\-])?(\d{1,2})[\/.\-](\d{1,2})(?:\s*[\(（][一二三四五六日天][\)）])?$/;
+  function fmDate(tok){
+    var m = String(tok || "").trim().match(FM_DATE_RE);
+    if (!m) return null;
+    var y = m[1] ? +m[1] : new Date().getFullYear(), mo = +m[2], d = +m[3];
+    if (m[1] && y < 1000) y += (y < 100 ? 2000 : 1911);         // 115 → 2026（民國）；26 → 2026
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return y + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  }
+  var fmBlank = function(t){ return t === "" || t === "　" || t === "-" || t === "—" || t === "–"; };
+  var fmNum = function(t){
+    if (fmBlank(t) || !/\d/.test(t) || /[^\d.,\-\s$元]/.test(t)) return null;   // 有中文或字母的不是數字
+    var v = +String(t).replace(/[^\d.\-]/g, ""); return isNaN(v) ? null : v;
+  };
+  var fmIsPrice = function(t){ return /^\$\s*[\d,]+(\.\d+)?$/.test(t); };
+
+  /* 解析貼進來的表。Word 表格貼到文字框通常是「一列一行、格子之間 Tab」；
+     若整段沒有 Tab（例如從 PDF 或郵件複製，每格一行），就當成一串 token 順著讀。 */
+  function fmParse(text){
+    var lines = String(text || "").replace(/\r/g, "").split("\n");
+    var tabbed = lines.some(function(l){ return l.indexOf("\t") >= 0; });
+    var dates = [], cur = null, added = 0, touchedDates = {};
+    var put = function(i, kind, tok){
+      if (i >= dates.length || !cur) return;
+      var v = fmNum(tok); if (v == null) return;
+      var patch = {}; patch[kind] = v;
+      fmUpsert(dates[i], cur.p, cur.price, patch); added++; touchedDates[dates[i]] = 1;
+    };
+    if (tabbed){
+      lines.forEach(function(line){
+        var c = line.split("\t").map(function(t){ return t.replace(/\u3000/g, "").trim(); });
+        var ds = c.map(fmDate).filter(Boolean);
+        if (ds.length >= 3){ dates = ds; return; }
+        var li = -1, kind = "";
+        c.forEach(function(t, i){ if (li < 0 && /實銷金額|實銷/.test(t)){ li = i; kind = "amt"; } });
+        if (li < 0) c.forEach(function(t, i){ if (li < 0 && /PSD|銷售數量/i.test(t)){ li = i; kind = "psd"; } });
+        var before = (li < 0 ? c : c.slice(0, li)).filter(function(t){ return t && t !== "項目"; });
+        var priceTok = null, nameTok = null;
+        before.forEach(function(t){ if (fmIsPrice(t)) priceTok = t; else if (!nameTok && fmNum(t) == null) nameTok = t; });
+        if (nameTok) cur = { p: nameTok, price: priceTok ? fmNum(priceTok) : (cur && cur.p === nameTok ? cur.price : 0) };
+        else if (priceTok && cur) cur.price = fmNum(priceTok);
+        if (li < 0) return;
+        c.slice(li + 1).forEach(function(t, i){ put(i, kind, t); });
+      });
+    } else {
+      var toks = lines.map(function(l){ return l.replace(/\u3000/g, "").trim(); });
+      var pend = [], mode = "", n = 0, lastText = "";
+      toks.forEach(function(t){
+        var d = fmDate(t);
+        if (d){ pend.push(d); return; }
+        if (pend.length >= 3) dates = pend;
+        pend = [];
+        if (mode){ put(n, mode, t); n++; if (n >= dates.length) mode = ""; return; }
+        if (/實銷金額|實銷/.test(t)){ mode = "amt"; n = 0; return; }
+        if (/PSD|銷售數量/i.test(t)){ mode = "psd"; n = 0; return; }
+        if (fmIsPrice(t)){ if (lastText) cur = { p: lastText, price: fmNum(t) }; return; }
+        if (!fmBlank(t) && fmNum(t) == null && t !== "項目") lastText = t;
+      });
+      if (pend.length >= 3) dates = pend;
+    }
+    return { added: added, dates: Object.keys(touchedDates).sort() };
+  }
+
+  function fmAddFromBox(){
+    var r = fmParse($("fmText").value);
+    if (!r.added){ $("fmMsg").textContent = "沒讀到數字。要連「項目／日期」那一列和「實銷金額」那幾列一起貼。"; return; }
+    fmSort(); fmStore(); renderFm();
+    $("fmText").value = "";
+    $("fmMsg").textContent = "已加入 " + r.added + " 格，日期 " + md(r.dates[0]) + "–" + md(r.dates[r.dates.length - 1]) + "。";
+  }
+  function fmClearAll(){
+    if (!confirm("確定要清掉全家鮮食的所有紀錄？內建的那幾天重新整理後會回來，自己貼的就沒了。")) return;
+    FM_ROWS = []; fmStore(); renderFm();
+  }
+
+  function renderFm(){
+    var dates = fmDates(), prods = fmProducts();
+    if (!dates.length){
+      $("fmStats").innerHTML = '<div class="pxstat"><span>全家鮮食</span><b>–</b><small>還沒有任何回報</small></div>';
+      $("fmHead").innerHTML = ""; $("fmLog").innerHTML = '<tr><td class="l pxempty">還沒有任何回報紀錄。</td></tr>'; $("fmFoot").innerHTML = "";
+      return;
+    }
+    var last = dates[dates.length - 1], first = dates[0];
+    var tot = function(p){ var t = 0; dates.forEach(function(d){ var c = fmCell(d, p); if (c && c.amt != null) t += c.amt; }); return t; };
+    var ndays = function(p){ var n = 0; dates.forEach(function(d){ var c = fmCell(d, p); if (c && c.amt != null) n++; }); return n; };
+    var spark = function(p){
+      var vals = dates.map(function(d){ var c = fmCell(d, p); return c && c.amt != null ? c.amt : null; });
+      var have = vals.filter(function(v){ return v != null; });
+      if (have.length < 2) return "";
+      var max = Math.max.apply(null, have) || 1, W = 200, H = 28;
+      var pts = []; vals.forEach(function(v, i){ if (v != null) pts.push((i / (vals.length - 1) * W).toFixed(1) + "," + (H - 2 - v / max * (H - 4)).toFixed(1)); });
+      return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+             '<polyline points="' + pts.join(" ") + '" fill="none" stroke="var(--ink-muted)" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+    };
+    var allLast = 0, allTot = 0;
+    $("fmStats").innerHTML = prods.map(function(pr){
+      var c = fmCell(last, pr.p), amt = c && c.amt != null ? c.amt : null, t = tot(pr.p), n = ndays(pr.p);
+      if (amt != null) allLast += amt; allTot += t;
+      return '<div class="pxstat"><span>' + esc(pr.p) + (pr.price ? ' <span class="num">$' + pr.price + '</span>' : '') + '</span>' +
+        '<b>' + (amt == null ? "–" : money(amt)) + '</b>' +
+        '<small>' + md(last) + ' 實銷' + (c && c.psd != null ? '　PSD ' + c.psd.toFixed(2) : '') +
+        '　｜　' + n + ' 天合計 ' + money(t) + (n ? '，日均 ' + money(t / n) : '') + '</small>' + spark(pr.p) + '</div>';
+    }).join("") +
+      '<div class="pxstat"><span>全部品項</span><b>' + money(allLast) + '</b><small>' + md(last) + ' 實銷合計　｜　' +
+        md(first) + '–' + md(last) + ' 累積 ' + money(allTot) + '</small></div>';
+
+    $("fmHead").innerHTML = '<tr><th class="l">日期</th>' + prods.map(function(pr){
+      return '<th colspan="2">' + esc(pr.p) + '</th>'; }).join("") + '<th>合計實銷</th></tr>' +
+      '<tr><th class="l"></th>' + prods.map(function(){ return '<th>實銷金額</th><th>PSD</th>'; }).join("") + '<th></th></tr>';
+    $("fmLog").innerHTML = dates.slice().reverse().map(function(d){
+      var sum = 0;
+      var cells = prods.map(function(pr){
+        var c = fmCell(d, pr.p);
+        if (c && c.amt != null) sum += c.amt;
+        return '<td class="d">' + (c && c.amt != null ? fmtInt(c.amt) : '<span class="zero">–</span>') + '</td>' +
+               '<td class="d">' + (c && c.psd != null ? c.psd.toFixed(2) : '<span class="zero">–</span>') + '</td>';
+      }).join("");
+      return '<tr' + (d === last ? ' class="cur"' : '') + '><td class="l">' + mdw(d, (new Date(d + "T00:00:00").getDay() + 6) % 7) + '</td>' + cells +
+             '<td class="d b">' + fmtInt(sum) + '</td></tr>';
+    }).join("");
+    $("fmFoot").innerHTML = '<tr><td class="l">合計 · ' + dates.length + ' 天</td>' + prods.map(function(pr){
+      var n = ndays(pr.p), t = tot(pr.p);
+      var ps = 0, pn = 0; dates.forEach(function(d){ var c = fmCell(d, pr.p); if (c && c.psd != null){ ps += c.psd; pn++; } });
+      return '<td class="d b">' + fmtInt(t) + '</td><td class="d">' + (pn ? (ps / pn).toFixed(2) : '–') + '</td>';
+    }).join("") + '<td class="d b">' + fmtInt(allTot) + '</td></tr>';
+  }
+
+  /* 簡易數字裡的全家那一段：報最近一天（理想上就是昨天）與起算以來的累積 */
+  function fmBlock(){
+    if (!fmHas()) return "";
+    var dates = fmDates(), prods = fmProducts(), last = dates[dates.length - 1], first = dates[0];
+    var yest = shiftDays(iso(new Date()), -1);
+    var lastSum = 0, totSum = 0, lastParts = [], totParts = [];
+    prods.forEach(function(pr){
+      var c = fmCell(last, pr.p), t = 0;
+      dates.forEach(function(d){ var x = fmCell(d, pr.p); if (x && x.amt != null) t += x.amt; });
+      if (c && c.amt != null){ lastSum += c.amt; lastParts.push(pr.p + " " + fmtInt(c.amt) + (c.psd != null ? "／PSD " + c.psd.toFixed(2) : "")); }
+      totSum += t; totParts.push(pr.p + " " + fmtInt(t));
+    });
+    var mm = function(d){ return d.slice(5).replace("-", "/"); };
+    return "\n【雞湯大叔 × 全家 鮮食】（資料到 " + mm(last) + "）\n" +
+      (last === yest ? "前日實銷：" : "最近一日 " + mm(last) + " 實銷：") + fmtInt(lastSum) + "元（" + lastParts.join("；") + "）\n" +
+      mm(first) + " 起累積實銷：" + fmtInt(totSum) + "元（" + totParts.join("；") + "）";
+  }
+  function fmMatrix(){
+    var dates = fmDates(), prods = fmProducts();
+    var head = ["日期"].concat(prods.map(function(pr){ return pr.p + " 實銷金額"; }), prods.map(function(pr){ return pr.p + " PSD"; }), ["合計實銷"]);
+    var rows = dates.map(function(d){
+      var sum = 0, a = prods.map(function(pr){ var c = fmCell(d, pr.p); if (c && c.amt != null){ sum += c.amt; return c.amt; } return ""; });
+      var b = prods.map(function(pr){ var c = fmCell(d, pr.p); return c && c.psd != null ? c.psd.toFixed(2) : ""; });
+      return [d].concat(a, b, [sum]);
+    });
+    return { head: head, rows: rows };
+  }
 
   function renderPxLog(cur){
     if (!PX_ROWS.length){
@@ -1810,7 +2046,8 @@
     return "## 每日明細　" + tableRangeText() + "\n\n" +
            mdTable(HEADER, exportMatrix().concat([exportTotal()])) +
            "\n## 產品組合　含全部通路\n\n" +
-           mdTable(MIX_HEADER, mixMatrix().concat([mixTotal()]));
+           mdTable(MIX_HEADER, mixMatrix().concat([mixTotal()])) +
+           (fmHas() ? "\n## 雞湯大叔 × 全家 鮮食（全家回報的實銷金額）\n\n" + mdTable(fmMatrix().head, fmMatrix().rows) : "");
   }
   function toSummary(){
     var cM = avg(camp,"momo","amt"), pM = avg(prev,"momo","amt");
@@ -1868,7 +2105,7 @@
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       // MOMO ＝ 通路 MOMO ＋ MOMO寄倉 的總金額(含稅)；CYBERBIZ ＝ 官網的銷售額（同一欄）。括號寫出組成，看的人不用猜。
       "MOMO：" + fmtInt(cM) + "元（實收；momo " + fmtInt(cM - cK) + "＋momo寄倉 " + fmtInt(cK) + "）\n" +
-      "CYBERBIZ：" + fmtInt(cW) + "元（銷售額）" + pxBlock();
+      "CYBERBIZ：" + fmtInt(cW) + "元（銷售額）" + pxBlock() + fmBlock();
   }
 
   /* 龍鳳 × 全聯：有填才附上，沒填就不要多出一段空的 */
@@ -2016,6 +2253,8 @@
 
   /* ══════════ 8. 其他控制項 ══════════ */
   ["date"].concat(PX_NUM).forEach(function(k){ pxInput(k).addEventListener("change", pxSave); });
+  $("fmAdd").addEventListener("click", fmAddFromBox);
+  $("fmClear").addEventListener("click", fmClearAll);
   $("pxLog").addEventListener("click", function(ev){
     var btn = ev.target.closest(".pxdel"); if (btn) pxDelete(btn.dataset.d);
   });
@@ -2067,6 +2306,7 @@
   });
 
   renderPx();
+  renderFm();
   renderAll();
   if (STALE_SAVED) toast("計算規則更新了，之前存在這台電腦、到 " + STALE_SAVED + " 的資料已不適用，請重新丟一次最新的 Excel。");
   window.__DAILY__ = { get data(){ return DATA; }, aggregate: aggregate, readXlsx: readXlsx };
