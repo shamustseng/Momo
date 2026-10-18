@@ -564,6 +564,7 @@
           覆蓋，所以下面看得到售出率的走勢。統計從 <span class="num">2026-09-24</span> 那筆開始，
           更早的不列入。上面幾格與「複製簡易數字」都取最新那一筆。
           全聯算的是包數（有填單價才換算金額），不進上面的銷售額與累計。</li>
+        <li id="colsLi" hidden><b>欄位對照</b>：<span id="colsTxt"></span></li>
         <li id="reconLi" hidden><b>對帳：整張「2026 銷售紀錄」的錢去了哪裡</b>（這頁的 momo／官網只是其中一部分，
           團購主、全家、企業採購等都在「其他通路」；「複製簡易數字」只報 momo＋官網、而且只從檔期起算日起）：
           <div class="recon" id="reconTxt"></div>
@@ -610,11 +611,41 @@
     return "other";
   }
   var NON_PRODUCT  = { "贈品":1, "運費":1 };
+  // 預設欄位位置（舊版進度表）。實際讀檔時一律先看第一列表頭認欄位，表格插欄、搬欄都不會讀錯；
+  // 認不齊關鍵欄位才退回這組預設。
   var COL = { brand:6, channel:7, date:8, pno:9, so:10, item:12, qty:13, gross:16, grossEx:17, netEx:19 };
+  var COL_RULES = [
+    ["brand",   function(h){ return h === "brand"; }],
+    ["channel", function(h){ return h === "channel" || h === "通路"; }],
+    ["date",    function(h){ return h.indexOf("ordercreatedate") >= 0 || h.indexOf("訂單建立") >= 0 || h.indexOf("訂單日期") >= 0; }],
+    ["pno",     function(h){ return h.indexOf("平台訂單") >= 0; }],
+    ["so",      function(h){ return h.indexOf("銷售訂單") >= 0; }],
+    ["item",    function(h){ return h === "品項" || h === "品名"; }],
+    ["qty",     function(h){ return h === "數量"; }],
+    ["gross",   function(h){ return h.indexOf("總金額") >= 0 && h.indexOf("含稅") >= 0; }],
+    ["grossEx", function(h){ return h.indexOf("總金額") >= 0 && h.indexOf("未稅") >= 0; }],
+    ["netEx",   function(h){ return h.indexOf("總進價收入") >= 0 && h.indexOf("未稅") >= 0; }]
+  ];
+  var COL_REQUIRED = ["channel", "date", "item", "qty", "gross"];
+  function normHeader(v){ return String(v == null ? "" : v).toLowerCase().replace(/[\s　（）()_\-／\/]/g, ""); }
+  // headers：第一列每一格的文字（index 0 = A 欄）。回傳 { cols, detected, missing }
+  function detectCols(headers){
+    var found = {}, hs = headers.map(normHeader);
+    COL_RULES.forEach(function(rule){
+      for (var i = 0; i < hs.length; i++){
+        if (hs[i] && rule[1](hs[i])){ found[rule[0]] = i + 1; break; }
+      }
+    });
+    var missing = COL_REQUIRED.filter(function(k){ return !found[k]; });
+    if (missing.length) return { cols: COL, detected: false, missing: missing };
+    var cols = {};
+    Object.keys(COL).forEach(function(k){ cols[k] = found[k] || 0; });   // 選配欄（SO、平台單號、進價）沒有就設 0
+    return { cols: cols, detected: true, missing: [] };
+  }
   var STORE_KEY = "alpha-daily-sales-v1";
   // 算法一有改（例如贈品不計、文字日期、寄倉拆分）就加一號；瀏覽器裡用舊算法存下來的資料會被丟掉，
   // 不然「複製簡易數字」會一直吐舊數字，看起來像沒修到。
-  var RULES = 5;
+  var RULES = 6;
 
   /* ══════════ 小工具 ══════════ */
   var $ = function(id){ return document.getElementById(id); };
@@ -863,24 +894,28 @@
       var ref = XLSX.utils.decode_range(sh["!ref"]);
       var val = makeEvaluator(sh, fmap);
       var text = function(r, c){
+        if (!c) return "";
         var addr = colLetter(c) + r, cell = sh[addr];
         var v = cell && cell.v != null ? String(cell.v).trim() : "";
         return v || (smap[addr] ? String(smap[addr]).trim() : "");
       };
+      var headers = [];
+      for (var hc = 1; hc <= ref.e.c + 1; hc++) headers.push(text(1, hc));
+      var det = detectCols(headers), C = det.cols;
       var recs = [], dropped = [], realDates = [], r, dc;
       for (r = 2; r <= ref.e.r + 1; r++){
-        dc = sh[colLetter(COL.date) + r];
+        dc = sh[colLetter(C.date) + r];
         if (dc && dc.v instanceof Date && !isNaN(dc.v)) realDates.push(dc.v);
       }
       var yearHint = modeYear(realDates);
       for (r = 2; r <= ref.e.r + 1; r++){
-        dc = sh[colLetter(COL.date) + r];
+        dc = sh[colLetter(C.date) + r];
         var d = anyDate(dc ? (dc.v instanceof Date ? dc.v : (dc.t === "d" ? new Date(dc.v) : (dc.w || dc.v))) : null, yearHint);
         var rec = {
-          brand: text(r, COL.brand), channel: text(r, COL.channel),
-          item: text(r, COL.item), so: text(r, COL.so), pno: text(r, COL.pno),
-          qty: val(r, COL.qty), gross: val(r, COL.gross), grossEx: val(r, COL.grossEx),
-          netEx: val(r, COL.netEx)
+          brand: text(r, C.brand), channel: text(r, C.channel),
+          item: text(r, C.item), so: text(r, C.so), pno: text(r, C.pno),
+          qty: val(r, C.qty), gross: val(r, C.gross), grossEx: val(r, C.grossEx),
+          netEx: val(r, C.netEx)
         };
         if (d){ rec.date = iso(d); recs.push(rec); continue; }
         // 沒日期、或日期看不懂的列：有內容就記下來，頁面會列出，金額不會悄悄消失
@@ -888,7 +923,7 @@
           dropped.push({ row: r, channel: rec.channel, item: rec.item, gross: rec.gross,
                          why: dc && dc.v != null && String(dc.v).trim() ? "日期看不懂：" + String(dc.w || dc.v).trim() : "沒日期" });
       }
-      return { records: recs, sheet: name, dropped: dropped };
+      return { records: recs, sheet: name, dropped: dropped, cols: C, cols_detected: det.detected, cols_missing: det.missing };
     });
   }
 
@@ -917,33 +952,33 @@
   }
   function readCsv(text){
     var rows = parseCsv(text), recs = [], dropped = [], i, r, raw;
+    var det = detectCols(rows[0] || []), C = det.cols;
     var realDates = [];
     for (i = 1; i < rows.length; i++){
       r = rows[i]; if (!r) continue;
-      raw = (r[COL.date - 1] || "").trim();
+      raw = (r[C.date - 1] || "").trim();
       if (/^\d{4}[\/.\-]/.test(raw)){ var d0 = anyDate(raw, 0); if (d0) realDates.push(d0); }
     }
     var yearHint = modeYear(realDates);
     for (i = 1; i < rows.length; i++){
       r = rows[i]; if (!r) continue;
-      raw = (r[COL.date - 1] || "").trim();
+      raw = (r[C.date - 1] || "").trim();
       var d = anyDate(raw, yearHint);
+      var cell = function(k){ return C[k] ? (r[C[k]-1] || "").trim() : ""; };
       var rec = {
-        brand:(r[COL.brand-1]||"").trim(), channel:(r[COL.channel-1]||"").trim(),
-        item:(r[COL.item-1]||"").trim(), so:(r[COL.so-1]||"").trim(), pno:(r[COL.pno-1]||"").trim(),
-        qty:num(r[COL.qty-1]), gross:num(r[COL.gross-1]), grossEx:num(r[COL.grossEx-1]),
-        netEx:num(r[COL.netEx-1])
+        brand: cell("brand"), channel: cell("channel"), item: cell("item"), so: cell("so"), pno: cell("pno"),
+        qty: num(cell("qty")), gross: num(cell("gross")), grossEx: num(cell("grossEx")), netEx: num(cell("netEx"))
       };
       if (d){ rec.date = iso(d); recs.push(rec); continue; }
       if (rec.channel || rec.item || rec.gross || rec.qty)
         dropped.push({ row: i + 1, channel: rec.channel, item: rec.item, gross: rec.gross,
                        why: raw ? "日期看不懂：" + raw : "沒日期" });
     }
-    return { records: recs, sheet: "CSV", dropped: dropped };
+    return { records: recs, sheet: "CSV", dropped: dropped, cols: C, cols_detected: det.detected, cols_missing: det.missing };
   }
 
   /* ══════════ 3. 彙總 ══════════ */
-  function aggregate(recs, sourceName, sheetName, dropped){
+  function aggregate(recs, sourceName, sheetName, dropped, colInfo){
     dropped = dropped || [];
     // momo 少數幾筆沒填進價，用同品項的進價率補；補不到就用 momo 全體進價率。
     var byItem = {}, all = [];
@@ -1048,6 +1083,8 @@
     return {
       meta: { source: sourceName, sheet: sheetName, rows: recs.length, rules: RULES,
               first_date: min, last_date: max, imputed: imputed, odd_rev: oddRev,
+              cols: colInfo ? colInfo.cols : null, cols_detected: colInfo ? colInfo.detected : null,
+              cols_missing: colInfo ? colInfo.missing : [],
               recon: recon,
               dropped: dropped.slice(0, 40).map(function(x){
                 return { row: x.row, channel: x.channel, item: x.item, gross: Math.round(x.gross || 0), why: x.why };
@@ -1479,7 +1516,22 @@
     return n;
   }
   var GROUP_NAME = { momo:"momo", web:"官網", other:"其他", nonsale:"不計" };
+  var COL_NAME = { brand:"Brand", channel:"Channel", date:"訂單日期", pno:"平台訂單號", so:"銷售訂單", item:"品項",
+                   qty:"數量", gross:"總金額(含稅)", grossEx:"總金額(未稅)", netEx:"總進價收入(未稅)" };
+  function renderCols(){
+    var c = DATA.meta.cols;
+    if (!c){ $("colsLi").hidden = true; return; }
+    $("colsLi").hidden = false;
+    var parts = Object.keys(COL_NAME).map(function(k){
+      return COL_NAME[k] + "＝" + (c[k] ? colLetter(c[k]) + " 欄" : "（無）");
+    });
+    $("colsTxt").innerHTML = (DATA.meta.cols_detected
+        ? "依第一列表頭自動認出："
+        : '<span class="num" style="color:var(--warn-ink)">⚠ 表頭認不齊（缺 ' + (DATA.meta.cols_missing || []).join("、") +
+          "），退回預設欄位位置，若表格有插欄數字會錯：</span>") + parts.join("、") + "。";
+  }
   function renderRecon(){
+    renderCols();
     var rc = DATA.meta.recon, dl = DATA.meta.dropped || [];
     if (!rc){ $("reconLi").hidden = true; return; }
     $("reconLi").hidden = false;
@@ -2218,7 +2270,8 @@
         })
         .then(function(parsed){
           if (!parsed.records.length) throw new Error("empty");
-          DATA = aggregate(parsed.records, file.name, parsed.sheet, parsed.dropped);
+          DATA = aggregate(parsed.records, file.name, parsed.sheet, parsed.dropped,
+                           { cols: parsed.cols, detected: parsed.cols_detected, missing: parsed.cols_missing });
           DATA.meta.campaign_start = CAMP;        // 換檔案不要把檔期起算日弄丟
           try { localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); } catch (e) {}
           renderAll();
