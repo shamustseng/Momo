@@ -325,7 +325,7 @@
         <div class="scrollwrap">
           <table id="tblSkuIn">
             <thead><tr>
-              <th>品項</th><th class="num">交貨量（包）</th><th class="num">破損備量（包）</th>
+              <th>品項（V7 名稱）</th><th>正式品名／別名（上傳資料會用這些對應）</th><th class="num">交貨量（包）</th><th class="num">破損備量（包）</th>
               <th class="num">建議成本／包（含稅）</th><th class="num">DM 檔期費／檔（未稅）</th>
             </tr></thead>
             <tbody></tbody>
@@ -546,8 +546,8 @@
 
   var DEFAULTS = {
     skus: [
-      { name:"老火花膠雞白湯", qty:18000, broken:200, cost:73.5,  dm:14250 },
-      { name:"北海道干貝雞白湯", qty:18000, broken:200, cost:68.25, dm:40000 }
+      { name:"老火花膠雞白湯", aliases:"雞湯大叔御膳花膠金湯燉雞、御膳花膠金湯燉雞、花膠金湯燉雞、花膠", qty:18000, broken:200, cost:73.5,  dm:14250 },
+      { name:"北海道干貝雞白湯", aliases:"雞湯大叔雞白湯鍋底、雞白湯鍋底、干貝雞白湯、干貝", qty:18000, broken:200, cost:68.25, dm:40000 }
     ],
     priceMode: "direct",
     price: 160,
@@ -581,6 +581,10 @@
         for (var k in DEFAULTS){ if (p[k] !== undefined) s[k] = p[k]; }
       }
     }catch(e){}
+    s.skus.forEach(function(k, i){
+      if (k.aliases == null && DEFAULTS.skus[i] && DEFAULTS.skus[i].name === k.name) k.aliases = DEFAULTS.skus[i].aliases;
+      if (k.aliases == null) k.aliases = "";
+    });
     return s;
   }
   function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
@@ -691,6 +695,7 @@
     $("tblSkuIn").querySelector("tbody").innerHTML = state.skus.map(function(k, i){
       return "<tr>" +
         "<td><input class='cell name' type='text' id='sku-name-" + i + "' value='" + esc(k.name) + "' aria-label='品項名稱'></td>" +
+        "<td><input class='cell name' type='text' id='sku-aliases-" + i + "' value='" + esc(k.aliases || "") + "' placeholder='用、或 , 分隔' aria-label='別名' style='min-width:300px'></td>" +
         "<td><input class='cell' type='number' step='500' id='sku-qty-" + i + "' value='" + k.qty + "' aria-label='交貨量'></td>" +
         "<td><input class='cell' type='number' step='50' id='sku-broken-" + i + "' value='" + k.broken + "' aria-label='破損備量'></td>" +
         "<td><input class='cell' type='number' step='0.25' id='sku-cost-" + i + "' value='" + k.cost + "' aria-label='建議成本'></td>" +
@@ -698,9 +703,9 @@
       "</tr>";
     }).join("");
     state.skus.forEach(function(k, i){
-      ["name","qty","broken","cost","dm"].forEach(function(f){
+      ["name","aliases","qty","broken","cost","dm"].forEach(function(f){
         $("sku-" + f + "-" + i).addEventListener("input", function(e){
-          k[f] = f === "name" ? e.target.value : parseFloat(e.target.value) || 0;
+          k[f] = (f === "name" || f === "aliases") ? e.target.value : parseFloat(e.target.value) || 0;
           update();
         });
       });
@@ -1497,9 +1502,9 @@
   function getAssets(){ return assetsP || (assetsP = getCap("assets")); }
 
   function aiPrompt(name, text, isImage){
-    var skus = state.skus.map(function(k){ return k.name; }).join("、");
+    var skus = state.skus.map(function(k){ return k.name + (k.aliases ? "（文件上也可能寫作：" + k.aliases + "）" : ""); }).join("；");
     return [
-      "你是資料擷取工具，替阿爾法餐飲整理「雞湯大叔常溫湯包上架全聯」案的實際數據。本案品項：" + skus + "。",
+      "你是資料擷取工具，替阿爾法餐飲整理「雞湯大叔常溫湯包上架全聯」案的實際數據。本案品項：" + skus + "。sku 欄請照文件上的寫法填，不要自己改名。",
       "下面" + (isImage ? "的圖片" : "的文字") + "來自檔案「" + name + "」，可能是生產單、出貨／交貨單、對帳單、銷售報表、發票、收據或報價單。",
       "只擷取文件裡實際寫出的數字，不要推算、不要補值、不要四捨五入。合計／小計列不要列入。數字不要千分位。",
       "只回傳一個 JSON 物件，格式：",
@@ -1746,13 +1751,29 @@
     }
     return best;
   }
+  function normName(s){ return String(s || "").replace(/[\s　，,、／/()（）【】\[\]「」\-–—·・]/g, "").toLowerCase(); }
+  function stripBrand(s){ return s.replace(/^(雞湯大叔|撈王|御田)/, ""); }
+  function skuNames(k){
+    return [k.name].concat(String(k.aliases || "").split(/[、,，;；\n]/)).map(normName).filter(Boolean);
+  }
   // Returns the plan SKU index an uploaded name refers to, or -1 when it is ambiguous or unknown.
+  // Exact name or alias wins; then an alias contained in the uploaded name (or the reverse);
+  // the longest-common-substring fallback only when it points at exactly one SKU.
   function planIndex(name){
-    var n = String(name || "").replace(/\s/g, "");
+    var n = normName(name);
     if (!n) return state.skus.length === 1 ? 0 : -1;
-    var scores = state.skus.map(function(k){ return lcs(n, k.name.replace(/\s/g, "")); });
+    var lists = state.skus.map(skuNames);
+    var exact = lists.map(function(l){ return l.indexOf(n) >= 0; });
+    if (exact.filter(Boolean).length === 1) return exact.indexOf(true);
+    var contain = lists.map(function(l){
+      return l.reduce(function(best, a){ return (a.length >= 2 && (n.indexOf(a) >= 0 || a.indexOf(n) >= 0)) ? Math.max(best, a.length) : best; }, 0);
+    });
+    var cb = Math.max.apply(null, contain);
+    if (cb > 0 && contain.filter(function(x){ return x === cb; }).length === 1) return contain.indexOf(cb);
+    var ns = stripBrand(n);
+    var scores = lists.map(function(l){ return l.reduce(function(best, a){ return Math.max(best, lcs(ns, stripBrand(a))); }, 0); });
     var best = Math.max.apply(null, scores);
-    if (best < 2 || scores.filter(function(x){ return x === best; }).length > 1) return -1;
+    if (best < 3 || scores.filter(function(x){ return x === best; }).length > 1) return -1;
     return scores.indexOf(best);
   }
   function skuKey(name){ var i = planIndex(name); return i >= 0 ? "#" + i : "@" + String(name || "（未填品項）").trim(); }
