@@ -474,6 +474,8 @@
           <input type="number" id="pxSold" class="num" min="0" step="1" inputmode="numeric"></label>
         <label class="pxf"><span>單價（元／包）</span>
           <input type="number" id="pxPrice" class="num" min="0" step="1" inputmode="numeric"></label>
+        <label class="pxf"><span>全聯以外 銷售包數</span>
+          <input type="number" id="pxOther" class="num" min="0" step="1" inputmode="numeric"></label>
       </div>
       <div class="pxstats" id="pxStats"></div>
       <div class="pxtrend" id="pxTrend" hidden>
@@ -484,7 +486,7 @@
       <div class="tablewrap px" id="pxLogWrap">
         <table>
           <thead><tr><th class="l">回報日期</th><th>鋪貨店數</th><th>鋪貨率</th><th>進貨</th>
-            <th>銷售</th><th>售出率</th><th>銷售金額</th><th></th></tr></thead>
+            <th>銷售</th><th>售出率</th><th>銷售金額</th><th>全聯以外</th><th></th></tr></thead>
           <tbody id="pxLog"></tbody>
         </table>
       </div>
@@ -580,7 +582,7 @@
           換電腦要重填。<b>每個回報日期存成一筆</b>：改日期再填數字就是新增一筆，同一天再填就是
           覆蓋，所以下面看得到售出率的走勢。統計從 <span class="num">2026-09-24</span> 那筆開始，
           更早的不列入。上面幾格與「複製簡易數字」都取最新那一筆。
-          全聯算的是包數（有填單價才換算金額），不進上面的銷售額與累計。</li>
+          全聯算的是包數（有填單價才換算金額），不進上面的銷售額與累計。「全聯以外 銷售包數」是旗山龍鳳經銷商鋪貨到南部零售通路（例如高屏的 814 百貨生鮮超市、愛國超市）的包數，沒有金額。</li>
         <li id="colsLi" hidden><b>欄位對照</b>：<span id="colsTxt"></span></li>
         <li id="reconLi" hidden><b>對帳：整張「2026 銷售紀錄」的錢去了哪裡</b>（這頁的 momo／官網只是其中一部分，
           團購主、全家、企業採購等都在「其他通路」；「複製簡易數字」只報 momo＋官網、而且只從檔期起算日起）：
@@ -1145,7 +1147,7 @@
   // 統計從 9/24 這筆開始，更早的不算。儲存位置帶起算日，舊版存過的資料不會跑回來。
   var PX_START = "2026-09-24";
   var PX_KEY = STORE_KEY + ":px:" + PX_START;
-  var PX_NUM = ["stores", "listed", "shipped", "sold", "price"];
+  var PX_NUM = ["stores", "listed", "shipped", "sold", "price", "other"];
   var PX_ROWS = [], PX_DEL = [];
   (function(){
     try {
@@ -1227,7 +1229,9 @@
       stat("銷售金額", price ? money(sold * price) : "–",
            price ? fmtInt(sold) + " 包 × " + money(price) : "填單價才算得出來") +
       stat("店均售出", listed ? (sold / listed).toFixed(2) + " 包" : "–", "每家鋪貨店") +
-      stat("店內庫存", fmtInt(Math.max(0, shipped - sold)) + " 包", "進貨減銷售");
+      stat("店內庫存", fmtInt(Math.max(0, shipped - sold)) + " 包", "進貨減銷售") +
+      (cur && cur.other !== "" && cur.other != null
+        ? stat("全聯以外通路", fmtInt(+cur.other) + " 包", "龍鳳經銷商鋪南部零售｜含全聯合計 " + fmtInt(sold + +cur.other) + " 包") : "");
 
     renderPxLog(cur);
     drawPxTrend();
@@ -1480,7 +1484,7 @@
 
   function renderPxLog(cur){
     if (!PX_ROWS.length){
-      $("pxLog").innerHTML = '<tr><td class="l pxempty" colspan="8">還沒有任何回報紀錄。</td></tr>';
+      $("pxLog").innerHTML = '<tr><td class="l pxempty" colspan="9">還沒有任何回報紀錄。</td></tr>';
       return;
     }
     $("pxLog").innerHTML = PX_ROWS.slice().reverse().map(function(r){
@@ -1495,6 +1499,7 @@
         '<td class="d">' + fmtInt(sold) + '</td>' +
         '<td class="d">' + (rate == null ? "–" : (rate * 100).toFixed(1) + "%") + '</td>' +
         '<td class="d">' + (price ? money(sold * price) : "–") + '</td>' +
+        '<td class="d">' + (r.other === "" || r.other == null ? "–" : fmtInt(+r.other)) + '</td>' +
         '<td class="d"><button type="button" class="pxdel" data-d="' + r.d +
           '" title="刪掉這筆回報" aria-label="刪掉 ' + r.d + ' 這筆">✕</button></td>' +
       '</tr>';
@@ -2241,7 +2246,8 @@
       "鋪貨店數：" + n("listed", "店") + "\n" +
       "進貨包數：" + n("shipped", "包") + "\n" +
       "銷售包數：" + n("sold", "包") +
-        (price ? " × " + money(price) + "/包＝" + money(sold * price) : "");
+        (price ? " × " + money(price) + "/包＝" + money(sold * price) : "") +
+      (r.other === "" || r.other == null ? "" : "\n全聯以外通路（旗山龍鳳經銷商鋪南部零售）：銷售包數 " + fmtInt(+r.other) + "包");
   }
 
   function toStandaloneHtml(){
