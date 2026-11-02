@@ -517,6 +517,23 @@
     </div>
   </section>
 
+  <section id="secPos">
+    <div class="sechead">
+      <h2>雞湯大叔 × 全聯 鍋底 日銷</h2>
+      <span class="hint">全聯提供的每日銷量（件）月表，不在銷售紀錄裡；不併入 momo＋官網的銷售額，也會進「複製簡易數字」</span>
+    </div>
+    <div class="pxcard">
+      <div class="pxstats" id="posStats"></div>
+      <div class="tablewrap px" id="posLogWrap">
+        <table>
+          <thead id="posHead"></thead>
+          <tbody id="posLog"></tbody>
+          <tfoot id="posFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <section>
     <div class="howto">
       <h3>每天要做的三件事</h3>
@@ -574,6 +591,8 @@
         <li><b>雞湯大叔 × 全家 鮮食</b>是全家每週一回報的實銷表（實銷金額＝全家端的零售實銷，PSD＝每店每日銷量），
           不在銷售紀錄裡，也不是公司入帳金額，所以不進上面的銷售額與累計，只在自己那一段與「複製簡易數字」裡呈現。
           貼新表時同一天同品項會覆蓋，其他天累積。</li>
+        <li><b>雞湯大叔 × 全聯 鍋底</b>是全聯提供的每日銷量月表（件數 × 月表上的價格＝營業額），不在銷售紀錄裡，
+          不進 momo＋官網的銷售額與累計，只在自己那一段與「複製簡易數字」裡呈現。</li>
         <li>這頁不會把資料傳到任何地方，Excel 是在你自己的瀏覽器裡讀的。</li>
       </ul>
     </div>
@@ -1215,6 +1234,57 @@
   }
 
   function mdOf(d){ return md(d); }
+
+  /* ── 雞湯大叔 × 全聯 鍋底 日銷 ──
+     全聯給的月表：每個品項每天賣幾件，月表自己有「價格」與「營業額」。這裡存成 { d, p, price, q }，
+     內建的歷史在 data 區塊的 meta.pos_seed（倉庫版沒有）。營業額＝件數 × 價格。 */
+  var POS = ((BAKED.meta && BAKED.meta.pos_seed) || []).slice();
+  function posDates(){ var m = {}; POS.forEach(function(r){ m[r.d] = 1; }); return Object.keys(m).sort(); }
+  function posProducts(){ var m = {}, o = []; POS.forEach(function(r){ if (!m[r.p]){ m[r.p] = 1; o.push({ p: r.p, price: r.price || 0 }); } }); return o; }
+  function posCell(d, p){ for (var i = 0; i < POS.length; i++) if (POS[i].d === d && POS[i].p === p) return POS[i]; return null; }
+  function posHas(){ return POS.length > 0; }
+  function posShort(n){ return String(n).replace(/^雞湯大叔(御膳)?/, ""); }
+  function renderPos(){
+    var dates = posDates(), prods = posProducts();
+    if (!dates.length){ $("secPos").hidden = true; return; }
+    $("secPos").hidden = false;
+    var last = dates[dates.length - 1], first = dates[0];
+    var qtyOf = function(d, p){ var c = posCell(d, p); return c ? c.q : 0; };
+    var sumQ = function(p, a, b){ var t = 0; dates.forEach(function(d){ if (d >= a && d <= b) t += qtyOf(d, p); }); return t; };
+    var last7 = shiftDays(last, -6);
+    var allQ = 0, allAmt = 0;
+    $("posStats").innerHTML = prods.map(function(pr){
+      var q = sumQ(pr.p, first, last), amt = q * pr.price, q7 = sumQ(pr.p, last7, last);
+      allQ += q; allAmt += amt;
+      return '<div class="pxstat"><span>' + esc(posShort(pr.p)) + (pr.price ? ' <span class="num">$' + pr.price + '</span>' : '') + '</span>' +
+        '<b>' + fmtInt(qtyOf(last, pr.p)) + ' 件</b><small>' + md(last) + ' 單日　｜　近 7 天日均 ' + (q7 / 7).toFixed(1) + ' 件</small>' +
+        '<small>' + md(first) + '–' + md(last) + ' 累積 ' + fmtInt(q) + ' 件、' + money(amt) + '</small></div>';
+    }).join("") + '<div class="pxstat"><span>兩品項合計</span><b>' + money(allAmt) + '</b><small>' + fmtInt(allQ) + ' 件　｜　' + md(first) + '–' + md(last) + '</small></div>';
+    $("posHead").innerHTML = '<tr><th class="l">日期</th>' + prods.map(function(pr){ return '<th>' + esc(posShort(pr.p)) + '</th>'; }).join("") + '<th>合計件數</th><th>營業額</th></tr>';
+    $("posLog").innerHTML = dates.slice().reverse().map(function(d){
+      var q = 0, amt = 0;
+      var cells = prods.map(function(pr){ var v = qtyOf(d, pr.p); q += v; amt += v * pr.price; return '<td class="d">' + (v ? fmtInt(v) : '<span class="zero">–</span>') + '</td>'; }).join("");
+      return '<tr' + (d === last ? ' class="cur"' : '') + '><td class="l">' + mdw(d, (new Date(d + "T00:00:00").getDay() + 6) % 7) + '</td>' + cells +
+             '<td class="d">' + fmtInt(q) + '</td><td class="d b">' + fmtInt(amt) + '</td></tr>';
+    }).join("");
+    $("posFoot").innerHTML = '<tr><td class="l">合計 · ' + dates.length + ' 天</td>' + prods.map(function(pr){ return '<td class="d b">' + fmtInt(sumQ(pr.p, first, last)) + '</td>'; }).join("") +
+      '<td class="d b">' + fmtInt(allQ) + '</td><td class="d b">' + fmtInt(allAmt) + '</td></tr>';
+  }
+  function posBlock(){
+    if (!posHas()) return "";
+    var dates = posDates(), prods = posProducts(), last = dates[dates.length - 1], first = dates[0];
+    var yest = shiftDays(iso(new Date()), -1), mm = function(d){ return d.slice(5).replace("-", "/"); };
+    var lq = [], tq = [], lsum = 0, tsum = 0, lamt = 0, tamt = 0;
+    prods.forEach(function(pr){
+      var l = 0, t = 0;
+      POS.forEach(function(r){ if (r.p === pr.p){ t += r.q; if (r.d === last) l += r.q; } });
+      lq.push(posShort(pr.p) + " " + fmtInt(l)); tq.push(posShort(pr.p) + " " + fmtInt(t));
+      lsum += l; tsum += t; lamt += l * pr.price; tamt += t * pr.price;
+    });
+    return "\n【雞湯大叔 × 全聯 鍋底】（資料到 " + mm(last) + "）\n" +
+      (last === yest ? "前日銷量：" : "最近一日 " + mm(last) + " 銷量：") + fmtInt(lsum) + "件／" + fmtInt(lamt) + "元（" + lq.join("；") + "）\n" +
+      mm(first) + " 起累積：" + fmtInt(tsum) + "件／" + fmtInt(tamt) + "元（" + tq.join("；") + "）";
+  }
 
   /* ── 雞湯大叔 × 全家 鮮食 ──
      全家每週一寄一張 Word 表：橫的是日期，每個品項兩列（實銷金額、銷售數量_PSD＝每店每日銷量）。
@@ -2157,7 +2227,7 @@
       "累積銷售（" + md(CAMP) + "起）：" + fmtInt(cM + cW) + "元／" + cOrd + "筆／" + fmtInt(cQty) + "件\n" +
       // MOMO ＝ 通路 MOMO ＋ MOMO寄倉 的總金額(含稅)；CYBERBIZ ＝ 官網的銷售額（同一欄）。括號寫出組成，看的人不用猜。
       "MOMO：" + fmtInt(cM) + "元（實收；momo " + fmtInt(cM - cK) + "＋momo寄倉 " + fmtInt(cK) + "）\n" +
-      "CYBERBIZ：" + fmtInt(cW) + "元（銷售額）" + pxBlock() + fmBlock();
+      "CYBERBIZ：" + fmtInt(cW) + "元（銷售額）" + pxBlock() + fmBlock() + posBlock();
   }
 
   /* 龍鳳 × 全聯：有填才附上，沒填就不要多出一段空的 */
@@ -2360,6 +2430,7 @@
 
   renderPx();
   renderFm();
+  renderPos();
   renderAll();
   if (STALE_SAVED) toast("計算規則更新了，之前存在這台電腦、到 " + STALE_SAVED + " 的資料已不適用，請重新丟一次最新的 Excel。");
   window.__DAILY__ = { get data(){ return DATA; }, aggregate: aggregate, readXlsx: readXlsx };
