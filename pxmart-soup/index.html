@@ -110,7 +110,7 @@
   .field{ display:flex; flex-direction:column; gap:5px; }
   .field label{ font-size:12.5px; font-weight:700; color:var(--ink-muted); }
   .field .hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; }
-  .field input[type="number"], .field input[type="text"], input.cell{
+  .field input[type="number"], .field input[type="text"], .field input[type="date"], input.cell{
     background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
     padding:7px 10px; color:var(--ink); width:100%; font-family:var(--font-mono); font-variant-numeric:tabular-nums;
   }
@@ -211,6 +211,7 @@
     </div>
     <nav class="tabs" aria-label="區塊">
       <a href="#actual">實際結算</a>
+      <a href="#daily">逐日銷售</a>
       <a href="#inputs">參數</a>
       <a href="#pl">損益表</a>
       <a href="#sku">單支拆解</a>
@@ -296,6 +297,7 @@
             <button type="button" class="chip" data-dt="production" aria-pressed="true">生產資料</button>
             <button type="button" class="chip" data-dt="sales" aria-pressed="false">銷售資料</button>
             <button type="button" class="chip" data-dt="expenses" aria-pressed="false">費用資料</button>
+            <button type="button" class="chip" data-dt="daily" aria-pressed="false">逐日銷售</button>
           </div>
           <div class="btn-row">
             <button class="btn small" id="btnAddRow" type="button">＋ 新增一列</button>
@@ -306,6 +308,20 @@
         <div class="scrollwrap"><table class="data-table" id="tblData"></table></div>
       </div>
     </div>
+  </section>
+
+  <section class="card" id="daily">
+    <div class="card-head">
+      <div>
+        <h2>逐日銷售　進度對照</h2>
+        <p class="sub">全聯每日銷量表上傳後自動更新。累計售罄率對照「到截止日前達到損益兩平」所需的進度線，看現在的速度夠不夠。</p>
+      </div>
+      <div class="field" style="min-width:180px">
+        <label for="in-endDate">結算截止日</label>
+        <input type="date" id="in-endDate">
+      </div>
+    </div>
+    <div class="card-body" id="dailyBody"></div>
   </section>
 
   <section class="card" id="inputs">
@@ -562,6 +578,7 @@
     extras: [],
     pay1: 308700, split: [30, 35, 35],
     sell: 90,
+    endDate: "2027-01-31",
     showTax: false
   };
   var PPT_EXTRAS = [
@@ -769,6 +786,7 @@
       $("in-r" + n).addEventListener("input", function(e){ state.split[n-1] = parseFloat(e.target.value) || 0; update(); });
     });
     $("in-sell").addEventListener("input", function(e){ state.sell = parseFloat(e.target.value); update(); });
+    $("in-endDate").addEventListener("change", function(e){ if (e.target.value) { state.endDate = e.target.value; save(); renderDaily(); } });
     $("sellChips").addEventListener("click", function(e){
       var b = e.target.closest("[data-sell]"); if (!b) return;
       var v = b.dataset.sell === "be" ? breakEven(state) : parseFloat(b.dataset.sell);
@@ -1099,14 +1117,17 @@
       { k:"price", h:"末售價（含稅）", t:"num" } ] },
     expenses: { label:"費用資料", cols:[
       { k:"date", h:"日期", t:"text" }, { k:"item", h:"項目", t:"text" },
-      { k:"cat", h:"類別", t:"cat" }, { k:"amt", h:"金額（含稅）", t:"num" } ] }
+      { k:"cat", h:"類別", t:"cat" }, { k:"amt", h:"金額（含稅）", t:"num" } ] },
+    daily: { label:"逐日銷售", cols:[
+      { k:"d", h:"日期", t:"text" }, { k:"sku", h:"品項", t:"text" },
+      { k:"qty", h:"銷量", t:"num" }, { k:"price", h:"末售價（含稅）", t:"num" } ] }
   };
   var CATS = [
     { k:"marketing", h:"行銷" }, { k:"dm", h:"DM" }, { k:"test", h:"檢驗" },
     { k:"plate", h:"印刷版費" }, { k:"inbound", h:"進倉運費" }, { k:"other", h:"其他" }
   ];
-  var act = { production:null, sales:null, expenses:null, files:null }; // {rows, fileName, updatedAt}
-  var DOCS = ["production", "sales", "expenses", "files"];
+  var act = { production:null, sales:null, expenses:null, daily:null, files:null }; // {rows, fileName, updatedAt}
+  var DOCS = ["production", "sales", "expenses", "daily", "files"];
   var actDemo = false;
   var actTab = "production";
   var db = null, dbReady = false;
@@ -1305,7 +1326,8 @@
         if (price != null && mp.price.untaxed) price *= TAX;
         if (price == null && mp.amount){ var a = parseNum(cell(row, mp.amount)); if (a != null && qty) price = (mp.amount.untaxed ? a * TAX : a) / qty; }
         if (price == null && mp.inPrice){ var ip = parseNum(cell(row, mp.inPrice)); if (ip != null){ if (mp.inPrice.untaxed) ip *= TAX; price = ip / (state.inRate / 100); } }
-        out.push({ month:excelMonth(cell(row, mp.month)), sku:sku, qty:qty, ret:parseNum(cell(row, mp.ret)) || 0, price:price });
+        var fullDate = excelDate(cell(row, mp.month));
+        out.push({ month:excelMonth(cell(row, mp.month)), sku:sku, qty:qty, ret:parseNum(cell(row, mp.ret)) || 0, price:price, d:fullDate });
       } else {
         var amt = parseNum(cell(row, mp.amt));
         if (amt == null) continue;
@@ -1315,7 +1337,12 @@
                    cat:guessCat(String(cell(row, mp.cat) == null ? "" : cell(row, mp.cat)) + " " + item), amt:Math.abs(amt) });
       }
     }
-    if (type === "sales") out = aggregateSales(out);
+    if (type === "sales"){
+      var dated = out.filter(function(r){ return r.d; });
+      var agg = aggregateSales(out);
+      if (dated.length && dated.length === out.length) agg.dailyRows = dated.map(function(r){ return { d:r.d, sku:r.sku, qty:r.qty - (r.ret || 0), price:r.price }; });
+      out = agg;
+    }
     return out;
   }
 
@@ -1654,6 +1681,18 @@
     if (actDemo){ Object.keys(TYPES).forEach(function(t){ act[t] = null; }); actDemo = false; }
     Object.keys(got).forEach(function(t){
       if (!got[t].rows.length) return;
+      if (t === "daily"){
+        var map = {}, prevD = append && act.daily ? act.daily.rows : [];
+        prevD.concat(got.daily.rows).forEach(function(r){ var k = r.d + "|" + normName(r.sku); if (map[k] && !got.daily.rows.includes(r)) return; map[k] = r; });
+        var merged = Object.keys(map).sort().map(function(k){ return map[k]; });
+        var namesD = got.daily.names || [sourceName];
+        act.daily = { rows:merged, fileName:(append && act.daily && act.daily.fileName ? act.daily.fileName + "、" : "") + namesD.join("、"), updatedAt:new Date().toISOString() };
+        persist("daily", true);
+        syncMonthlyFromDaily(got.daily.rows);
+        lines.push("逐日銷售：" + got.daily.rows.length + " 筆（" + namesD.join("、") + "），" + got.daily.rows[0].d + " 至 " + got.daily.rows[got.daily.rows.length - 1].d + "；月份彙總已同步到銷售資料");
+        actTab = "daily";
+        return;
+      }
       var prev = append && act[t] ? act[t].rows : [];
       var rows = prev.concat(got[t].rows);
       if (t === "sales") rows = aggregateSales(rows);
@@ -1677,10 +1716,23 @@
       list.filter(Boolean).forEach(function(x){
         var usedAny = false;
         x.src.grids.forEach(function(sh){
+          var dRows = dailyFromGrid(sh.grid);
+          if (dRows){
+            usedAny = true;
+            direct.daily = direct.daily || { rows:[], names:[] };
+            direct.daily.rows = direct.daily.rows.concat(dRows); direct.daily.names.push(sh.name);
+            return;
+          }
           var c = classify(sh.grid);
           if (!c) return;
           var rows = toRows(c.type, sh.grid, c);
           if (!rows.length) return;
+          if (c.type === "sales" && rows.dailyRows){
+            direct.daily = direct.daily || { rows:[], names:[] };
+            direct.daily.rows = direct.daily.rows.concat(rows.dailyRows); direct.daily.names.push(sh.name);
+            usedAny = true;
+            return; // monthly rows are rebuilt from the daily ones
+          }
           usedAny = true;
           direct[c.type] = direct[c.type] || { rows:[], names:[] };
           direct[c.type].rows = direct[c.type].rows.concat(rows);
@@ -1692,6 +1744,7 @@
         toAI++;
         queueAI({ id:"q" + Date.now() + Math.random().toString(36).slice(2, 6), name:x.file.name, src:x.src, status:"waiting" });
       });
+      if (direct.daily) direct.daily.rows.sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
       var lines = Object.keys(direct).length ? applyRows(direct) : [];
       if (direct.sales){
         var mp = direct.sales.rows.filter(function(r){ return r.price == null; }).length;
@@ -1956,6 +2009,195 @@
     box.innerHTML = h;
   }
 
+  // =====================================================================
+  // 逐日銷售
+  // =====================================================================
+  function excelDate(v){
+    var d = null;
+    if (typeof v === "number" && v > 20000 && v < 80000) d = new Date(Math.round((v - 25569) * 86400000));
+    else if (v instanceof Date && !isNaN(v)) d = new Date(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()));
+    else {
+      var s = String(v == null ? "" : v).trim(), m = s.match(/^(\d{4})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})/);
+      if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+      var m2 = s.match(/^(\d{1,2})[\/\-.月](\d{1,2})(?!\d)/);
+      if (m2){ var mm = +m2[1]; return (mm >= 7 ? "2026" : "2027") + "-" + String(mm).padStart(2, "0") + "-" + String(+m2[2]).padStart(2, "0"); }
+      return null;
+    }
+    return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+  }
+  function addDays(iso, n){ var d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function dayDiff(a, b){ return Math.round((new Date(b + "T00:00:00Z") - new Date(a + "T00:00:00Z")) / 86400000); }
+  function wkName(iso){ return "日一二三四五六"[new Date(iso + "T00:00:00Z").getUTCDay()]; }
+
+  // 全聯每日銷量表：日期橫向排一列，每個品項一列。回傳 [{d, sku, qty, price}] 或 null。
+  function dailyFromGrid(grid){
+    var best = null;
+    for (var r = 0; r < Math.min(grid.length, 12); r++){
+      var cols = [];
+      (grid[r] || []).forEach(function(v, c){ var d = excelDate(v); if (d) cols.push({ c:c, d:d }); });
+      if (cols.length >= 7 && (!best || cols.length > best.cols.length)) best = { r:r, cols:cols };
+    }
+    if (!best) return null;
+    var dateCols = {}; best.cols.forEach(function(x){ dateCols[x.c] = x.d; });
+    var priceCol = -1;
+    for (var h = 0; h <= best.r; h++) (grid[h] || []).forEach(function(v, c){
+      if (priceCol < 0 && /價/.test(String(v || "")) && !/營業額|銷售額/.test(String(v || ""))) priceCol = c;
+    });
+    var out = [];
+    for (var i = best.r + 1; i < grid.length; i++){
+      var row = grid[i] || [], name = "";
+      row.forEach(function(v, c){
+        if (dateCols[c] != null || c === priceCol) return;
+        var s = String(v == null ? "" : v).trim();
+        if (/[一-鿿]/.test(s) && s.length > name.length) name = s;
+      });
+      if (!name || /^(合計|總計|小計)/.test(name)) continue;
+      var price = priceCol >= 0 ? parseNum(row[priceCol]) : null;
+      Object.keys(dateCols).forEach(function(c){
+        var q = parseNum(row[c]);
+        if (q != null && q !== 0) out.push({ d:dateCols[c], sku:name, qty:q, price:price });
+      });
+    }
+    return out.length ? out : null;
+  }
+
+  // Keeps the monthly 銷售資料 in step with the daily rows for the months and SKUs they cover.
+  function syncMonthlyFromDaily(dailyRows){
+    var touched = {};
+    dailyRows.forEach(function(r){ touched[r.d.slice(0, 7) + "|" + skuKey(r.sku)] = true; });
+    var all = docOf("daily").rows;
+    var agg = aggregateSales(all.filter(function(r){ return touched[r.d.slice(0, 7) + "|" + skuKey(r.sku)]; })
+      .map(function(r){ return { month:r.d.slice(0, 7), sku:r.sku, qty:r.qty, ret:0, price:r.price }; }));
+    var sales = act.sales || (act.sales = emptyDoc());
+    sales.rows = sales.rows.filter(function(r){ return !touched[r.month + "|" + skuKey(r.sku)]; }).concat(agg);
+    sales.fileName = (sales.fileName ? sales.fileName + "、" : "") + "逐日彙總";
+    sales.updatedAt = new Date().toISOString();
+    persist("sales", true);
+  }
+
+  function dailySeries(){
+    var rows = docOf("daily").rows.filter(function(r){ return r.d && r.qty != null; });
+    if (!rows.length) return null;
+    var byDay = {}, keys = [];
+    rows.forEach(function(r){
+      var k = skuKey(r.sku); if (keys.indexOf(k) < 0) keys.push(k);
+      var day = byDay[r.d] || (byDay[r.d] = { d:r.d, total:0, by:{}, price:null });
+      day.by[k] = (day.by[k] || 0) + (+r.qty || 0); day.total += +r.qty || 0;
+      if (r.price != null) day.price = r.price;
+    });
+    keys.sort(function(a, b){ return a < b ? -1 : 1; });
+    var days = Object.keys(byDay).sort().map(function(d){ return byDay[d]; });
+    var first = days[0].d, last = days[days.length - 1].d, cum = 0, launch = null;
+    var full = [];
+    for (var d = first; d <= last; d = addDays(d, 1)){
+      var x = byDay[d] || { d:d, total:0, by:{}, price:null };
+      cum += x.total; x.cum = cum;
+      if (!launch && x.total >= 20) launch = d;
+      full.push(x);
+    }
+    return { days:full, keys:keys, first:first, last:last, launch:launch || first, cum:cum };
+  }
+
+  function renderDaily(){
+    var box = $("dailyBody"), s = dailySeries();
+    $("in-endDate").value = state.endDate;
+    if (!s){ box.innerHTML = "<div class='empty'>還沒有逐日銷售資料。把全聯的「每日銷量統計表」直接丟進上面的上傳區，日期橫列、品項直列的格式會自動辨識。</div>"; return; }
+    var delivered = state.skus.reduce(function(a, k){ return a + (+k.qty || 0); }, 0);
+    var be = breakEven(state), bePacks = be != null ? be / 100 * delivered : null;
+    var endDate = state.endDate || "2027-01-31";
+    var daysLeft = Math.max(0, dayDiff(s.last, endDate));
+    var last7 = s.days.slice(-7), avg7 = last7.reduce(function(a, x){ return a + x.total; }, 0) / Math.max(1, last7.length);
+    var sinceLaunch = s.days.filter(function(x){ return x.d >= s.launch; });
+    var avgAll = sinceLaunch.reduce(function(a, x){ return a + x.total; }, 0) / Math.max(1, sinceLaunch.length);
+    var needBE = bePacks != null && daysLeft > 0 ? Math.max(0, (bePacks - s.cum) / daysLeft) : null;
+    var needAll = daysLeft > 0 ? Math.max(0, (delivered - s.cum) / daysLeft) : null;
+    var projCum = Math.min(delivered, s.cum + avg7 * daysLeft), projPct = delivered ? projCum / delivered * 100 : 0;
+    var projNet = tx(model(state, projPct).net);
+    var tiles = [
+      { l:"累計銷量（至 " + s.last + "）", v:nf0.format(s.cum) + " 包", n:"占交貨 " + nf0.format(delivered) + " 包的 " + (delivered ? (s.cum / delivered * 100).toFixed(1) : 0) + "%" },
+      { l:"開賣日", v:s.launch, n:"已賣 " + sinceLaunch.length + " 天，開賣後日均 " + avgAll.toFixed(0) + " 包" },
+      { l:"最近 7 天日均", v:avg7.toFixed(0) + " 包", n:last7[0].d.slice(5) + " 至 " + s.last.slice(5) },
+      { l:"損益兩平所需日均", v:needBE == null ? "—" : needBE.toFixed(0) + " 包", n:"到 " + endDate + " 還有 " + daysLeft + " 天，需再賣 " + (bePacks != null ? nf0.format(Math.max(0, Math.round(bePacks - s.cum))) : "—") + " 包" },
+      { l:"全數售罄所需日均", v:needAll == null ? "—" : needAll.toFixed(0) + " 包", n:"剩 " + nf0.format(Math.max(0, delivered - s.cum)) + " 包" },
+      { l:"照最近 7 天速度到 " + endDate.slice(5), v:projPct.toFixed(1) + "%", n:"約 " + nf0.format(Math.round(projCum)) + " 包，估計淨利 " + money(projNet) + "（" + taxLabel() + "）", neg:projNet < 0 }
+    ];
+    var h = "<div class='actual-kpis'>" + tiles.map(function(t){
+      return "<div class='kpi'><div class='label'>" + t.l + "</div><div class='value" + (t.neg ? " neg" : "") + "'>" + t.v + "</div><div class='note'>" + t.n + "</div></div>";
+    }).join("") + "</div>";
+
+    // chart: daily bars by SKU (left axis) + cumulative % (right axis) + required path to break-even
+    var W = 900, H = 340, L = 56, R = 60, T = 18, B = 46;
+    var xFirst = s.first, xLast = endDate > s.last ? endDate : s.last, span = Math.max(1, dayDiff(xFirst, xLast));
+    function X(d){ return L + dayDiff(xFirst, d) / span * (W - L - R); }
+    var maxBar = Math.max.apply(null, s.days.map(function(x){ return x.total; })) || 1;
+    var stepL = niceStep(maxBar / 4); maxBar = Math.ceil(maxBar / stepL) * stepL;
+    function Y(v){ return T + (1 - v / maxBar) * (H - T - B); }
+    var maxPct = Math.max(be || 0, s.cum / delivered * 100, projPct, 10); maxPct = Math.ceil(maxPct / 20) * 20;
+    function Y2(p){ return T + (1 - p / maxPct) * (H - T - B); }
+    var colors = ["var(--cost)", "var(--accent)", "var(--ink-faint)", "var(--momo, var(--bad))"];
+    var g = "";
+    for (var t = 0; t <= maxBar + 1e-6; t += stepL){
+      g += "<line x1='" + L + "' x2='" + (W - R) + "' y1='" + Y(t) + "' y2='" + Y(t) + "' stroke='var(--border)'" + (t ? " stroke-dasharray='3 4'" : "") + "/>";
+      g += "<text x='" + (L - 8) + "' y='" + (Y(t) + 4) + "' text-anchor='end' font-size='11' fill='var(--ink-faint)' font-family='var(--font-mono)'>" + t + "</text>";
+    }
+    for (var p = 0; p <= maxPct + 1e-6; p += 20){
+      g += "<text x='" + (W - R + 8) + "' y='" + (Y2(p) + 4) + "' font-size='11' fill='var(--ink-faint)' font-family='var(--font-mono)'>" + Math.round(p) + "%</text>";
+    }
+    var bw = Math.max(1.5, (W - L - R) / span * 0.8);
+    s.days.forEach(function(x){
+      var y0 = Y(0), cx = X(x.d);
+      s.keys.forEach(function(k, i){
+        var v = x.by[k] || 0; if (!v) return;
+        var hgt = (v / maxBar) * (H - T - B);
+        g += "<rect x='" + (cx - bw / 2) + "' y='" + (y0 - hgt) + "' width='" + bw + "' height='" + hgt + "' fill='" + colors[i % colors.length] + "' opacity='.85'/>";
+        y0 -= hgt;
+      });
+    });
+    // month ticks
+    for (var d = xFirst.slice(0, 7) + "-01"; d <= xLast; d = addDays(d, 32).slice(0, 7) + "-01"){
+      if (d < xFirst) continue;
+      g += "<line x1='" + X(d) + "' x2='" + X(d) + "' y1='" + (H - B) + "' y2='" + (H - B + 5) + "' stroke='var(--ink-faint)'/>";
+      g += "<text x='" + (X(d) + 4) + "' y='" + (H - B + 18) + "' font-size='11.5' fill='var(--ink-muted)'>" + d.slice(0, 7) + "</text>";
+    }
+    // required path and cumulative
+    if (bePacks != null && endDate > s.launch){
+      g += "<line x1='" + X(s.launch) + "' y1='" + Y2(0) + "' x2='" + X(endDate) + "' y2='" + Y2(be) + "' stroke='var(--ink-muted)' stroke-dasharray='5 4' stroke-width='1.5'/>";
+      g += "<text x='" + (X(endDate) - 4) + "' y='" + (Y2(be) - 6) + "' text-anchor='end' font-size='11.5' font-weight='700' fill='var(--ink-muted)'>損益兩平所需進度 " + be.toFixed(1) + "%</text>";
+    }
+    g += "<path d='" + s.days.map(function(x, i){ return (i ? "L" : "M") + X(x.d) + "," + Y2(x.cum / delivered * 100); }).join(" ") + "' fill='none' stroke='var(--ink)' stroke-width='2.2'/>";
+    var lastPt = s.days[s.days.length - 1];
+    g += "<circle cx='" + X(lastPt.d) + "' cy='" + Y2(lastPt.cum / delivered * 100) + "' r='4.5' fill='var(--ink)' stroke='var(--surface)' stroke-width='2'/>";
+    g += "<text x='" + (X(lastPt.d) + 8) + "' y='" + (Y2(lastPt.cum / delivered * 100) + 4) + "' font-size='12' font-weight='800' fill='var(--ink)' font-family='var(--font-mono)'>" + (lastPt.cum / delivered * 100).toFixed(1) + "%</text>";
+    if (daysLeft > 0){
+      g += "<line x1='" + X(lastPt.d) + "' y1='" + Y2(lastPt.cum / delivered * 100) + "' x2='" + X(endDate) + "' y2='" + Y2(projPct) + "' stroke='var(--ink)' stroke-dasharray='2 4' stroke-width='1.5' opacity='.7'/>";
+    }
+    h += "<div class='legend' style='margin-top:16px'>" + s.keys.map(function(k, i){ return "<span class='item'><span class='swatch' style='background:" + colors[i % colors.length] + "'></span>" + esc(skuLabel(k)) + "（每日，左軸）</span>"; }).join("") +
+      "<span class='item'><span class='swatch' style='background:var(--ink);height:2px'></span>累計售罄率（右軸）</span><span class='item'><span class='swatch' style='background:transparent;border-top:2px dashed var(--ink-muted);height:0'></span>損益兩平所需進度</span><span class='item'><span class='swatch' style='background:transparent;border-top:2px dotted var(--ink);height:0'></span>照最近 7 天速度推估</span></div>";
+    h += "<div class='scrollwrap'><div class='chart-shell'><svg class='chart' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='逐日銷量與累計售罄率'>" + g + "</svg></div></div>";
+
+    // weekly table from launch day
+    var pre = s.days.filter(function(x){ return x.d < s.launch; }), preTot = pre.reduce(function(a, x){ return a + x.total; }, 0);
+    h += "<div class='scrollwrap' style='margin-top:16px'><table><thead><tr><th>週次</th><th>日期</th>" + s.keys.map(function(k){ return "<th class='num'>" + esc(skuLabel(k)) + "</th>"; }).join("") +
+      "<th class='num'>合計</th><th class='num'>日均</th><th class='num'>較前週</th><th class='num'>累計</th><th class='num'>累計售罄率</th></tr></thead><tbody>";
+    if (preTot) h += "<tr><td>上架前</td><td>" + pre[0].d.slice(5) + "–" + pre[pre.length - 1].d.slice(5) + "</td>" + s.keys.map(function(k){ return "<td class='num'>" + pre.reduce(function(a, x){ return a + (x.by[k] || 0); }, 0) + "</td>"; }).join("") +
+      "<td class='num'>" + preTot + "</td><td class='num'>—</td><td class='num'>—</td><td class='num'>" + preTot + "</td><td class='num'>" + (preTot / delivered * 100).toFixed(1) + "%</td></tr>";
+    var prevTot = null, w = 1;
+    for (var ws = s.launch; ws <= s.last; ws = addDays(ws, 7), w++){
+      var we = addDays(ws, 6); if (we > s.last) we = s.last;
+      var wk = s.days.filter(function(x){ return x.d >= ws && x.d <= we; });
+      var totW = wk.reduce(function(a, x){ return a + x.total; }, 0), n = wk.length;
+      var chg = prevTot ? ((totW / n) / (prevTot) - 1) * 100 : null;
+      h += "<tr><td>第 " + w + " 週</td><td>" + ws.slice(5) + "（" + wkName(ws) + "）–" + we.slice(5) + (n < 7 ? "　" + n + " 天" : "") + "</td>" +
+        s.keys.map(function(k){ return "<td class='num'>" + nf0.format(wk.reduce(function(a, x){ return a + (x.by[k] || 0); }, 0)) + "</td>"; }).join("") +
+        "<td class='num'>" + nf0.format(totW) + "</td><td class='num'>" + (totW / n).toFixed(0) + "</td><td class='num " + (chg == null ? "" : chg < 0 ? "neg" : "pos") + "'>" + (chg == null ? "—" : (chg > 0 ? "+" : "") + chg.toFixed(0) + "%") + "</td>" +
+        "<td class='num'>" + nf0.format(wk[wk.length - 1].cum) + "</td><td class='num'>" + (wk[wk.length - 1].cum / delivered * 100).toFixed(1) + "%</td></tr>";
+      prevTot = totW / n;
+    }
+    h += "</tbody></table></div>";
+    h += "<p class='spec' style='margin:10px 0 0'>開賣日＝第一個單日賣出 20 包以上的日子；之前的零星銷量列為上架前。日均比較以週日均計，不足 7 天的週按實際天數。所需日均以「參數設定」的交貨量與損益兩平售罄率計算，改參數會跟著變。</p>";
+    box.innerHTML = h;
+  }
+
   function renderDataTable(){
     document.querySelectorAll("[data-dt]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.dt === actTab)); });
     var spec = TYPES[actTab], d = docOf(actTab);
@@ -1985,6 +2227,7 @@
     if (!keepTable) renderDataTable();
     renderActualResult();
     renderFiles();
+    renderDaily();
   }
 
   function touch(t){
@@ -2008,7 +2251,9 @@
       var el = e.target; if (!el.dataset || el.dataset.i == null) return;
       var row = act[actTab].rows[+el.dataset.i], col = TYPES[actTab].cols.filter(function(c){ return c.k === el.dataset.k; })[0];
       row[el.dataset.k] = col.t === "num" ? (el.value === "" ? null : parseFloat(el.value)) : el.value;
-      touch(actTab); persist(actTab); renderActualResult();
+      touch(actTab); persist(actTab);
+      if (actTab === "daily" && row.d && row.d.length === 10) syncMonthlyFromDaily([row]);
+      renderActualResult(); renderDaily();
     }
     tbl.addEventListener("input", onEdit);
     tbl.addEventListener("change", function(e){ if (e.target.tagName === "SELECT") onEdit(e); });
@@ -2020,7 +2265,8 @@
       var d = act[actTab] || (act[actTab] = emptyDoc());
       var blank = { production:{ batch:"", sku:state.skus[0] ? state.skus[0].name : "", produced:null, broken:0, delivered:null, cost:null },
                     sales:{ month:"", sku:state.skus[0] ? state.skus[0].name : "", qty:null, ret:0, price:null },
-                    expenses:{ date:"", item:"", cat:"marketing", amt:null } }[actTab];
+                    expenses:{ date:"", item:"", cat:"marketing", amt:null },
+                    daily:{ d:"", sku:state.skus[0] ? state.skus[0].name : "", qty:null, price:null } }[actTab];
       d.rows.push(blank); touch(actTab); persist(actTab, true); renderActualAll();
     });
     function twoStep(btn, label, fn){
@@ -2129,7 +2375,7 @@
     renderCash(cf);
     renderSens(be);
     renderScale();
-    if (typeof renderActualResult === "function") renderActualResult();
+    if (typeof renderActualResult === "function"){ renderActualResult(); renderDaily(); }
     save();
   }
 
