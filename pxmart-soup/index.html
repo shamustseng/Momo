@@ -554,6 +554,7 @@
   </footer>
 </main>
 
+<script id="seedData" type="application/json">null</script>
 <script>
 (function(){
   "use strict";
@@ -1137,11 +1138,15 @@
   function docOf(t){ return act[t] || emptyDoc(); }
 
   // ---------- storage: shared db in the artifact, localStorage otherwise ----------
+  var SEED = null;
+  try{ SEED = JSON.parse(document.getElementById("seedData").textContent); }catch(e){}
   function loadLocal(){
+    var loaded = false;
     try{
       var raw = localStorage.getItem(ACT_KEY);
-      if (raw){ var p = JSON.parse(raw); DOCS.forEach(function(t){ if (p[t]) act[t] = p[t]; }); }
+      if (raw){ var p = JSON.parse(raw); DOCS.forEach(function(t){ if (p[t]) act[t] = p[t]; }); loaded = true; }
     }catch(e){}
+    if (!loaded && SEED && SEED.docs){ DOCS.forEach(function(t){ if (SEED.docs[t]) act[t] = clone(SEED.docs[t]); }); }
   }
   function saveLocal(){ try{ localStorage.setItem(ACT_KEY, JSON.stringify(act)); }catch(e){} }
 
@@ -1177,7 +1182,7 @@
   function initStore(){
     loadLocal();
     var use = window.claude && typeof window.claude.use === "function" ? window.claude.use("db") : null;
-    if (!use){ setStore("warn", "資料只存在這台電腦的瀏覽器"); renderActualAll(); return; }
+    if (!use){ setStore("warn", SEED && SEED.exportedAt ? "分享版：內含 " + SEED.exportedAt + " 匯出的資料；在這裡上傳或修改只存在這台電腦的瀏覽器" : "資料只存在這台電腦的瀏覽器"); renderActualAll(); return; }
     setStore("", "連線中…");
     renderActualAll();
     use.then(function(d){
