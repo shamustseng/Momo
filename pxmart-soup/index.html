@@ -2108,23 +2108,34 @@
     $("in-endDate").value = state.endDate;
     if (!s){ box.innerHTML = "<div class='empty'>還沒有逐日銷售資料。把全聯的「每日銷量統計表」直接丟進上面的上傳區，日期橫列、品項直列的格式會自動辨識。</div>"; return; }
     var delivered = state.skus.reduce(function(a, k){ return a + (+k.qty || 0); }, 0);
-    var be = breakEven(state), bePacks = be != null ? be / 100 * delivered : null;
+    // Actual weighted average price when the daily rows carry one; otherwise the parameter price.
+    var pw = 0, pq = 0;
+    docOf("daily").rows.forEach(function(r){ if (r.price != null && r.qty){ pw += r.price * r.qty; pq += r.qty; } });
+    var actualPrice = pq ? pw / pq : null, P = actualPrice != null ? actualPrice : avgPrice(state);
+    var popt = { price:P };
+    var be = breakEven(state, popt), bePacks = be != null ? be / 100 * delivered : null;
     var endDate = state.endDate || "2027-01-31";
     var daysLeft = Math.max(0, dayDiff(s.last, endDate));
     var last7 = s.days.slice(-7), avg7 = last7.reduce(function(a, x){ return a + x.total; }, 0) / Math.max(1, last7.length);
+    function isWeekend(d){ var w = new Date(d + "T00:00:00Z").getUTCDay(); return w === 0 || w === 6; }
+    var wd7 = last7.filter(function(x){ return !isWeekend(x.d); }), we7 = last7.filter(function(x){ return isWeekend(x.d); });
+    var wdAvg = wd7.length ? wd7.reduce(function(a, x){ return a + x.total; }, 0) / wd7.length : avg7;
+    var weAvg = we7.length ? we7.reduce(function(a, x){ return a + x.total; }, 0) / we7.length : avg7;
     var sinceLaunch = s.days.filter(function(x){ return x.d >= s.launch; });
     var avgAll = sinceLaunch.reduce(function(a, x){ return a + x.total; }, 0) / Math.max(1, sinceLaunch.length);
     var needBE = bePacks != null && daysLeft > 0 ? Math.max(0, (bePacks - s.cum) / daysLeft) : null;
     var needAll = daysLeft > 0 ? Math.max(0, (delivered - s.cum) / daysLeft) : null;
-    var projCum = Math.min(delivered, s.cum + avg7 * daysLeft), projPct = delivered ? projCum / delivered * 100 : 0;
-    var projNet = tx(model(state, projPct).net);
+    var wdLeft = 0, weLeft = 0;
+    for (var dd = addDays(s.last, 1); dd <= endDate; dd = addDays(dd, 1)){ if (isWeekend(dd)) weLeft++; else wdLeft++; }
+    var projCum = Math.min(delivered, s.cum + wdAvg * wdLeft + weAvg * weLeft), projPct = delivered ? projCum / delivered * 100 : 0;
+    var projNet = tx(model(state, projPct, popt).net);
     var tiles = [
       { l:"累計銷量（至 " + s.last + "）", v:nf0.format(s.cum) + " 包", n:"占交貨 " + nf0.format(delivered) + " 包的 " + (delivered ? (s.cum / delivered * 100).toFixed(1) : 0) + "%" },
       { l:"開賣日", v:s.launch, n:"已賣 " + sinceLaunch.length + " 天，開賣後日均 " + avgAll.toFixed(0) + " 包" },
-      { l:"最近 7 天日均", v:avg7.toFixed(0) + " 包", n:last7[0].d.slice(5) + " 至 " + s.last.slice(5) },
-      { l:"損益兩平所需日均", v:needBE == null ? "—" : needBE.toFixed(0) + " 包", n:"到 " + endDate + " 還有 " + daysLeft + " 天，需再賣 " + (bePacks != null ? nf0.format(Math.max(0, Math.round(bePacks - s.cum))) : "—") + " 包" },
+      { l:"最近 7 天：平日／週末日均", v:wdAvg.toFixed(0) + "／" + weAvg.toFixed(0) + " 包", n:last7[0].d.slice(5) + " 至 " + s.last.slice(5) + "，整週日均 " + avg7.toFixed(0) + " 包" },
+      { l:"損益兩平所需日均（" + (actualPrice != null ? "實際均價 $" + nf2.format(P) : "參數售價 $" + nf2.format(P)) + "）", v:needBE == null ? "—" : needBE.toFixed(0) + " 包", n:"兩平 " + (be != null ? be.toFixed(1) : "—") + "%；到 " + endDate + " 還有 " + daysLeft + " 天，需再賣 " + (bePacks != null ? nf0.format(Math.max(0, Math.round(bePacks - s.cum))) : "—") + " 包" },
       { l:"全數售罄所需日均", v:needAll == null ? "—" : needAll.toFixed(0) + " 包", n:"剩 " + nf0.format(Math.max(0, delivered - s.cum)) + " 包" },
-      { l:"照最近 7 天速度到 " + endDate.slice(5), v:projPct.toFixed(1) + "%", n:"約 " + nf0.format(Math.round(projCum)) + " 包，估計淨利 " + money(projNet) + "（" + taxLabel() + "）", neg:projNet < 0 }
+      { l:"照最近 7 天速度到 " + endDate.slice(5), v:projPct.toFixed(1) + "%", n:"剩 " + wdLeft + " 個平日、" + weLeft + " 個週末日，約 " + nf0.format(Math.round(projCum)) + " 包，估計淨利 " + money(projNet) + "（" + taxLabel() + "）", neg:projNet < 0 }
     ];
     var h = "<div class='actual-kpis'>" + tiles.map(function(t){
       return "<div class='kpi'><div class='label'>" + t.l + "</div><div class='value" + (t.neg ? " neg" : "") + "'>" + t.v + "</div><div class='note'>" + t.n + "</div></div>";
@@ -2177,7 +2188,7 @@
       g += "<line x1='" + X(lastPt.d) + "' y1='" + Y2(lastPt.cum / delivered * 100) + "' x2='" + X(endDate) + "' y2='" + Y2(projPct) + "' stroke='var(--ink)' stroke-dasharray='2 4' stroke-width='1.5' opacity='.7'/>";
     }
     h += "<div class='legend' style='margin-top:16px'>" + s.keys.map(function(k, i){ return "<span class='item'><span class='swatch' style='background:" + colors[i % colors.length] + "'></span>" + esc(skuLabel(k)) + "（每日，左軸）</span>"; }).join("") +
-      "<span class='item'><span class='swatch' style='background:var(--ink);height:2px'></span>累計售罄率（右軸）</span><span class='item'><span class='swatch' style='background:transparent;border-top:2px dashed var(--ink-muted);height:0'></span>損益兩平所需進度</span><span class='item'><span class='swatch' style='background:transparent;border-top:2px dotted var(--ink);height:0'></span>照最近 7 天速度推估</span></div>";
+      "<span class='item'><span class='swatch' style='background:var(--ink);height:2px'></span>累計售罄率（右軸）</span><span class='item'><span class='swatch' style='background:transparent;border-top:2px dashed var(--ink-muted);height:0'></span>損益兩平所需進度</span><span class='item'><span class='swatch' style='background:transparent;border-top:2px dotted var(--ink);height:0'></span>照最近 7 天平日／週末速度推估</span></div>";
     h += "<div class='scrollwrap'><div class='chart-shell'><svg class='chart' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='逐日銷量與累計售罄率'>" + g + "</svg></div></div>";
 
     // weekly table from launch day
@@ -2199,7 +2210,7 @@
       prevTot = totW / n;
     }
     h += "</tbody></table></div>";
-    h += "<p class='spec' style='margin:10px 0 0'>開賣日＝第一個單日賣出 20 包以上的日子；之前的零星銷量列為上架前。日均比較以週日均計，不足 7 天的週按實際天數。所需日均以「參數設定」的交貨量與損益兩平售罄率計算，改參數會跟著變。</p>";
+    h += "<p class='spec' style='margin:10px 0 0'>開賣日＝第一個單日賣出 20 包以上的日子；之前的零星銷量列為上架前。日均比較以週日均計，不足 7 天的週按實際天數。推估用最近 7 天的平日日均乘剩餘平日數、週末日均乘剩餘週末日數（國定假日未另計）。損益兩平與淨利以實際加權均價計算，沒有實際售價時才用「參數設定」的售價；交貨量與費用仍依參數。</p>";
     box.innerHTML = h;
   }
 
