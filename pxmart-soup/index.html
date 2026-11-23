@@ -206,7 +206,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <span class="eyebrow">阿爾法餐飲集團　內部工具　·　數字以 V7 為準</span>
+      <span class="eyebrow">阿爾法餐飲集團　內部工具　·　參數依 V7，實際生產各 13,000 包</span>
       <h1>雞湯大叔　全聯常溫湯包　整體損益測算器</h1>
     </div>
     <nav class="tabs" aria-label="區塊">
@@ -328,10 +328,10 @@
     <div class="card-head">
       <div>
         <h2>參數設定</h2>
-        <p class="sub">預設值全部取自《雞湯大叔_兩支18000_常溫_V7》（含稅）。改任一格，全頁即時重算；設定存在這台電腦的瀏覽器。</p>
+        <p class="sub">費率與費用取自《雞湯大叔_兩支18000_常溫_V7》（含稅）；交貨量已改為實際生產的各 13,000 包（對應 V7 的 13k 頁）。改任一格，全頁即時重算；設定存在這台電腦的瀏覽器。</p>
       </div>
       <div class="btn-row">
-        <button class="btn" id="btnReset" type="button">還原 V7 預設</button>
+        <button class="btn" id="btnReset" type="button">還原預設（各 13,000 包）</button>
       </div>
     </div>
     <div class="card-body">
@@ -550,7 +550,7 @@
   <footer>
     <p>資料來源：《雞湯大叔_兩支18000_常溫_V7》損益表、現金流量表與 13k／18k 對照頁；價格帶（$179／$169／$149）與額外行銷項目參考《全聯三支常溫湯品》簡報與報告。簡報為三支、均價 $155 的較早版本，數字一律以 V7 為準。</p>
     <p>通路費拆解：V7 每包全聯通路費 20.46576（含稅）＝ 物流 售價×4.5%×1.05 ＋ 前進倉／其他 進價×4%×1.05 ＋ 德明服務費 進價×6%×1.05，改售價時三項同步變動。未稅＝含稅÷1.05，與 V7 未稅頁相同；淨營業稅（含稅與未稅淨利的差額）需另繳。德明另撥營業額 1% 的行銷回饋不回流阿爾法，不列入本損益。</p>
-    <p>預設值核對：18,000／支 100% 售罄含稅淨利 742,532、未稅 707,173；損益兩平 82.46%；資金需求峰值 (2,888,570) 於 2026/11/1，皆與 V7 相同。</p>
+    <p>預設值核對（各 13,000 包，對應 V7 13k 頁）：100% 售罄含稅淨利 458,320、未稅 436,495；損益兩平 85.0%；資金需求峰值 (2,148,320) 於 2026/11/1。把交貨量改回 18,000 即為 V7 18k 頁：742,532／82.46%／(2,888,570)。</p>
   </footer>
 </main>
 
@@ -558,13 +558,13 @@
 <script>
 (function(){
   "use strict";
-  var STORAGE_KEY = "alpha_pxmart_soup_v7";
+  var STORAGE_KEY = "alpha_pxmart_soup_v7_13k";
   var TAX = 1.05;
 
   var DEFAULTS = {
     skus: [
-      { name:"老火花膠雞白湯", aliases:"雞湯大叔御膳花膠金湯燉雞、御膳花膠金湯燉雞、花膠金湯燉雞、花膠", qty:18000, broken:200, cost:73.5,  dm:14250 },
-      { name:"北海道干貝雞白湯", aliases:"雞湯大叔雞白湯鍋底、雞白湯鍋底、干貝雞白湯、干貝", qty:18000, broken:200, cost:68.25, dm:40000 }
+      { name:"老火花膠雞白湯", aliases:"雞湯大叔御膳花膠金湯燉雞、御膳花膠金湯燉雞、花膠金湯燉雞、花膠", qty:13000, broken:200, cost:73.5,  dm:14250 },
+      { name:"北海道干貝雞白湯", aliases:"雞湯大叔雞白湯鍋底、雞白湯鍋底、干貝雞白湯、干貝", qty:13000, broken:200, cost:68.25, dm:40000 }
     ],
     priceMode: "direct",
     price: 160,
@@ -808,8 +808,8 @@
     });
     var armed = false, resetBtn = $("btnReset");
     resetBtn.addEventListener("click", function(){
-      if (!armed){ armed = true; resetBtn.textContent = "再按一次確認還原"; setTimeout(function(){ armed = false; resetBtn.textContent = "還原 V7 預設"; }, 3000); return; }
-      armed = false; resetBtn.textContent = "還原 V7 預設";
+      if (!armed){ armed = true; resetBtn.textContent = "再按一次確認還原"; setTimeout(function(){ armed = false; resetBtn.textContent = "還原預設（各 13,000 包）"; }, 3000); return; }
+      armed = false; resetBtn.textContent = "還原預設（各 13,000 包）";
       var keepTax = state.showTax;
       state = clone(DEFAULTS); state.showTax = keepTax;
       syncInputs(); update();
