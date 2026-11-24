@@ -406,7 +406,12 @@
           <div class="field">
             <label for="in-reverse">逆物流費／退貨包（含稅）</label>
             <input type="number" id="in-reverse" step="0.01">
-            <span class="hint">未售出退回的每一包</span>
+            <span class="hint">只對「從門市退回」的那部分計算</span>
+          </div>
+          <div class="field">
+            <label for="in-reverseShare">未售品需退回比例（%）</label>
+            <input type="number" id="in-reverseShare" step="5" min="0" max="100">
+            <span class="hint">貨先放前進倉，沒鋪到門市的不產生逆物流；V7 假設 100%</span>
           </div>
         </div>
       </div>
@@ -550,7 +555,7 @@
   <footer>
     <p>資料來源：《雞湯大叔_兩支18000_常溫_V7》損益表、現金流量表與 13k／18k 對照頁；價格帶（$179／$169／$149）與額外行銷項目參考《全聯三支常溫湯品》簡報與報告。簡報為三支、均價 $155 的較早版本，數字一律以 V7 為準。</p>
     <p>通路費拆解：V7 每包全聯通路費 20.46576（含稅）＝ 物流 售價×4.5%×1.05 ＋ 前進倉／其他 進價×4%×1.05 ＋ 德明服務費 進價×6%×1.05，改售價時三項同步變動。未稅＝含稅÷1.05，與 V7 未稅頁相同；淨營業稅（含稅與未稅淨利的差額）需另繳。德明另撥營業額 1% 的行銷回饋不回流阿爾法，不列入本損益。</p>
-    <p>預設值核對（各 13,000 包，對應 V7 13k 頁）：100% 售罄含稅淨利 458,320、未稅 436,495；損益兩平 85.0%；資金需求峰值 (2,148,320) 於 2026/11/1。把交貨量改回 18,000 即為 V7 18k 頁：742,532／82.46%／(2,888,570)。</p>
+    <p>預設值核對（各 13,000 包，對應 V7 13k 頁）：100% 售罄含稅淨利 458,320、未稅 436,495；資金需求峰值 (2,148,320) 於 2026/11/1。損益兩平預設不計逆物流（貨在前進倉，未售品退回比例 0%），把「未售品需退回比例」設 100% 即為 V7 的 85.0%；交貨量改回 18,000 即為 V7 18k 頁。</p>
   </footer>
 </main>
 
@@ -574,7 +579,7 @@
       { name:"DM 最低價", price:149, share:60 }
     ],
     inRate: 76.82, logi: 4.5, wh: 4.0, svc: 6.0,
-    inbound: 3.15, reverse: 15.12,
+    inbound: 3.15, reverse: 15.12, reverseShare: 0,
     dmCount: 1, marketing: 50000, test: 37800, plate: 107520,
     extras: [],
     pay1: 308700, split: [30, 35, 35],
@@ -599,6 +604,7 @@
         for (var k in DEFAULTS){ if (p[k] !== undefined) s[k] = p[k]; }
       }
     }catch(e){}
+    if (s.reverseShare == null) s.reverseShare = 0;
     s.skus.forEach(function(k, i){
       if (k.aliases == null && DEFAULTS.skus[i] && DEFAULTS.skus[i].name === k.name) k.aliases = DEFAULTS.skus[i].aliases;
       if (k.aliases == null) k.aliases = "";
@@ -633,7 +639,7 @@
       var cogs = sold * k.cost;
       var fees = sold * (feeLogi + feeWh + feeSvc);
       var inbound = qty * st.inbound;
-      var reverse = (qty - sold) * st.reverse;
+      var reverse = (qty - sold) * st.reverse * ((+st.reverseShare || 0) / 100);
       var shrink = prod * k.cost - cogs;
       var dm = (+st.dmCount || 0) * (+k.dm || 0) * TAX;
       return { name:k.name, qty:qty, prod:prod, sold:sold, rev:rev, cogs:cogs, fees:fees,
@@ -706,7 +712,7 @@
   function taxLabel(){ return state.showTax ? "含稅" : "未稅"; }
 
   // ---------- inputs ----------
-  var simple = ["price","inRate","logi","wh","svc","inbound","reverse","dmCount","marketing","test","plate","pay1"];
+  var simple = ["price","inRate","logi","wh","svc","inbound","reverse","reverseShare","dmCount","marketing","test","plate","pay1"];
   function $(id){ return document.getElementById(id); }
 
   function renderSkuInputs(){
@@ -1916,7 +1922,7 @@
     a.now.opex = a.fees + a.now.shrink + a.now.reverse + fixedSum;
     a.now.net = a.gross - a.now.opex;
     // 若現在結案：未售全數退回，成本認列為損耗並付逆物流。
-    a.close = { shrink:a.prodCost - a.cogs, reverse:a.unsold * state.reverse };
+    a.close = { shrink:a.prodCost - a.cogs, reverse:a.unsold * state.reverse * ((+state.reverseShare || 0) / 100) };
     a.close.opex = a.fees + a.close.shrink + a.close.reverse + fixedSum;
     a.close.net = a.gross - a.close.opex;
     a.fixedSum = fixedSum;
@@ -2010,7 +2016,7 @@
       });
       h += "</tbody></table></div>";
     }
-    h += "<p class='spec' style='margin:10px 0 0'>「至今」把還沒賣掉的貨當庫存，不認損耗也不付逆物流；「若現在結案」假設剩下的貨全數退回。檔期全部結束後兩欄會一致，那就是本案最終獲利。V7 欄以同樣的售罄率套用參數設定計算。</p>";
+    h += "<p class='spec' style='margin:10px 0 0'>「至今」把還沒賣掉的貨當庫存，不認損耗也不付逆物流；「若現在結案」假設剩下的貨全數認列損耗，逆物流只算「未售品需退回比例」那部分。檔期全部結束後兩欄會一致，那就是本案最終獲利。V7 欄以同樣的售罄率套用參數設定計算。</p>";
     box.innerHTML = h;
   }
 
