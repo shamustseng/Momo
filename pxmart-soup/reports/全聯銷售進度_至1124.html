@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="report.css">
+<title>全聯銷售進度 至 11/24</title>
+<style>.row2{display:flex;gap:24px}.row2>div{flex:1}</style>
+</head>
+<body>
+  <div class="doc-head">
+    <div class="doc-title">全聯銷售進度：11 月 24 日止售出 5,167 包，21.5%</div>
+    <div class="doc-sub">11 月 16 日起日均拉到 193 包，剛好是 1 月底損益兩平所需的速度；DM 特價 11/27 開跑前就已回升。干貝持續賣贏花膠，26% 對 18%。</div>
+  </div>
+
+  <div class="verify">
+    <div class="v"><div class="lab">累計售出</div><div class="num">5,167 包</div><div class="sub">占交貨 24,000 包的 21.5%</div><div class="ok">花膠 2,118、干貝 3,049</div></div>
+    <div class="v"><div class="lab">11/16–11/24 日均</div><div class="num">193 包</div><div class="sub">前一段（10/22–11/15）為 142</div><div class="ok">+36%</div></div>
+    <div class="v"><div class="lab">到 1/31 所需日均</div><div class="num">192 包</div><div class="sub">損益兩平 18,237 包，剩 68 天</div><div class="ok">售罄需 277 包</div></div>
+    <div class="v"><div class="lab">門市出貨</div><div class="num">23,710 包</div><div class="sub">花膠 11,810、干貝 11,900</div><div class="ok">前進倉只剩 290 包</div></div>
+  </div>
+
+  <div class="row2">
+    <div>
+      <h2 class="sec">月別銷量</h2>
+      <div class="chartbox" id="c1"></div>
+      <div class="cap">包；11 月為 1 日至 24 日。</div>
+    </div>
+    <div>
+      <h2 class="sec">日均：實際與所需</h2>
+      <div class="chartbox" id="c2"></div>
+      <div class="cap">包／日；所需日均以 $175、不計逆物流計算，剩 68 天到 1/31。</div>
+    </div>
+  </div>
+
+  <h2 class="sec">累計對照目標</h2>
+  <div class="chartbox" id="c3"></div>
+  <div class="cap">包；損益兩平 76.0%（18,237 包），交貨 24,000 包。</div>
+
+  <h2 class="sec">月別明細</h2>
+  <div class="tcap">包；銷售率＝累計售出 ÷ 門市出貨</div>
+  <table class="fin">
+    <thead><tr><th>品項</th><th class="num">10 月</th><th class="num">11 月（至 24 日）</th><th class="num">累計</th><th class="num">門市出貨</th><th class="num">銷售率</th><th class="num">11/16–24 日均</th></tr></thead>
+    <tbody>
+      <tr><td>御膳花膠金湯燉雞</td><td class="num">567</td><td class="num">1,551</td><td class="num">2,118</td><td class="num">11,810</td><td class="num">18%</td><td class="num">86</td></tr>
+      <tr><td>雞白湯鍋底（干貝）</td><td class="num">933</td><td class="num">2,116</td><td class="num">3,049</td><td class="num">11,900</td><td class="num">26%</td><td class="num">107</td></tr>
+      <tr class="tot"><td>合計</td><td class="num">1,500</td><td class="num">3,667</td><td class="num">5,167</td><td class="num">23,710</td><td class="num">22%</td><td class="num">193</td></tr>
+    </tbody>
+  </table>
+  <div class="vnote">11/16–24 的 1,734 包由月合計減去 11/15 止的逐日資料推得，沒有逐日明細。11/20 全聯火鍋祭開檔（我方特價 11/27 起），回升可能來自檔期整體人流。門市出貨 23,710 包代表貨幾乎都已鋪到門市，若最後賣不完，退回部分會有逆物流費 15.12／包。</div>
+
+  <div class="foot">來源：全聯每日銷量統計表（115 年度，逐日至 2026/11/15）、全聯月別彙總（至 2026/11/24，含門市出貨）。損益兩平以《雞湯大叔_兩支18000_常溫_V7》費率、各 12,000 包、實際售價 $175 計算。本文件僅供內部管理使用。</div>
+
+<script>
+const GOLD='#C9A227', INK='#111111', GREY='#BFBFBF', FF="'IBM Plex Sans','Noto Sans CJK TC',sans-serif";
+function bars(id, groups, opts){ // groups: [{label, vals:[{v,color,tag}]}]
+  const W=opts.W||460,H=opts.H||260,L=20,R=20,T=34,B=46,pw=W-L-R,ph=H-T-B,base=T+ph,ymax=opts.ymax;
+  const slot=pw/groups.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" font-family="${FF}">`;
+  groups.forEach((g,i)=>{
+    const n=g.vals.length,bw=Math.min(56,slot/(n+1)),x0=L+slot*i+(slot-bw*n-(n-1)*6)/2;
+    g.vals.forEach((b,j)=>{const x=x0+j*(bw+6),h=b.v/ymax*ph,y=base-h;
+      s+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${b.color}"/>`;
+      s+=`<text x="${x+bw/2}" y="${y-7}" text-anchor="middle" font-size="13" font-weight="700" fill="${INK}">${b.v.toLocaleString()}</text>`;
+      if(b.tag) s+=`<text x="${x+bw/2}" y="${base+34}" text-anchor="middle" font-size="10.5" fill="#5A5A5A">${b.tag}</text>`;});
+    s+=`<text x="${L+slot*i+slot/2}" y="${base+20}" text-anchor="middle" font-size="12.5" fill="${INK}">${g.label}</text>`;
+  });
+  s+=`<line x1="${L}" y1="${base}" x2="${L+pw}" y2="${base}" stroke="${INK}" stroke-width="0.8"/></svg>`;
+  document.getElementById(id).innerHTML=s;
+}
+bars('c1',[{label:'10 月',vals:[{v:567,color:GREY,tag:'花膠'},{v:933,color:GOLD,tag:'干貝'}]},{label:'11 月（至 24 日）',vals:[{v:1551,color:GREY,tag:'花膠'},{v:2116,color:GOLD,tag:'干貝'}]}],{ymax:2600});
+bars('c2',[{label:'10/22–11/15',vals:[{v:142,color:GOLD}]},{label:'11/16–11/24',vals:[{v:193,color:GOLD}]},{label:'損益兩平所需',vals:[{v:192,color:GREY}]},{label:'售罄所需',vals:[{v:277,color:GREY}]}],{ymax:330});
+(function(){
+  const W=920,H=90,L=20,R=20,T=30,pw=W-L-R,total=24000,be=18237,sold=5167;
+  const x=v=>L+v/total*pw;
+  let s=`<svg viewBox="0 0 ${W} ${H}" font-family="${FF}">`;
+  s+=`<rect x="${L}" y="${T}" width="${pw}" height="22" fill="#EFEFEF"/>`;
+  s+=`<rect x="${L}" y="${T}" width="${x(sold)-L}" height="22" fill="${GOLD}"/>`;
+  s+=`<line x1="${x(be)}" y1="${T-8}" x2="${x(be)}" y2="${T+30}" stroke="${INK}" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  s+=`<text x="${x(sold)+6}" y="${T+16}" font-size="13" font-weight="700" fill="${INK}">5,167（21.5%）</text>`;
+  s+=`<text x="${x(be)}" y="${T-12}" text-anchor="middle" font-size="12" fill="${INK}">損益兩平 18,237（76.0%）</text>`;
+  s+=`<text x="${L+pw}" y="${T+46}" text-anchor="end" font-size="12" fill="${INK}">交貨 24,000</text>`;
+  s+=`<text x="${L}" y="${T+46}" font-size="12" fill="#5A5A5A">10/22 開賣</text>`;
+  s+=`</svg>`; document.getElementById('c3').innerHTML=s;
+})();
+</script>
+</body>
+</html>
