@@ -210,6 +210,7 @@
       <h1>雞湯大叔　全聯常溫湯包　整體損益測算器</h1>
     </div>
     <nav class="tabs" aria-label="區塊">
+      <a href="#compare">方案比較</a>
       <a href="#actual">實際結算</a>
       <a href="#daily">逐日銷售</a>
       <a href="#inputs">參數</a>
@@ -219,6 +220,10 @@
       <a href="#sens">敏感度</a>
       <a href="#scale">規模比較</a>
     </nav>
+    <div class="seg" role="group" aria-label="生產方案">
+      <button type="button" id="plan13" aria-pressed="true">各 13,000</button>
+      <button type="button" id="plan16" aria-pressed="false">各 16,000</button>
+    </div>
     <div class="seg" role="group" aria-label="金額顯示">
       <button type="button" id="taxEx" aria-pressed="true">未稅</button>
       <button type="button" id="taxIn" aria-pressed="false">含稅</button>
@@ -250,6 +255,33 @@
       <p class="narr" id="vNarr"></p>
     </div>
     <div class="kpi-grid" id="kpis"></div>
+  </section>
+
+  <section class="card" id="compare">
+    <div class="card-head">
+      <div>
+        <h2>方案比較　各 13,000 vs 各 16,000</h2>
+        <p class="sub">同一組參數下兩個方案並排。上表用「全聯售罄率」比較；下表照實際銷售速度推到火鍋季結束，第二批在進倉日才可以賣。右上角切換決定全頁其他區塊用哪個方案。</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="scrollwrap"><table id="tblCompare"></table></div>
+      <div>
+        <p class="group-title">依實際銷售速度推估</p>
+        <div class="field-grid">
+          <div class="field"><label for="pj-asOf">資料截止日</label><input type="date" id="pj-asOf"></div>
+          <div class="field"><label for="pj-sold">截至當日累計售出（全聯）</label><input type="number" id="pj-sold" step="1" min="0"></div>
+          <div class="field"><label for="pj-base">DM 前日均</label><input type="number" id="pj-base" step="5" min="0"><span class="hint">11/16–24 實際 193</span></div>
+          <div class="field"><label for="pj-dmStart">DM 特價期間</label><input type="date" id="pj-dmStart"><input type="date" id="pj-dmEnd"></div>
+          <div class="field"><label for="pj-dm">DM 週日均</label><input type="number" id="pj-dm" step="10" min="0"></div>
+          <div class="field"><label for="pj-post">DM 後日均</label><input type="number" id="pj-post" step="10" min="0"></div>
+          <div class="field"><label for="pj-end">推估到</label><input type="date" id="pj-end"><span class="hint">火鍋季到 2 月底</span></div>
+          <div class="field"><label for="pj-clear">剩貨處理</label><label style="display:flex;gap:6px;align-items:center;font-weight:600;color:var(--ink)"><input type="checkbox" id="pj-clear"> 由電商／團購以上方實收出清</label><span class="hint">不勾則剩貨全數認列損耗</span></div>
+        </div>
+      </div>
+      <div class="scrollwrap"><table id="tblProj"></table></div>
+      <div class="callout" id="compareNote"></div>
+    </div>
   </section>
 
   <section class="card" id="actual">
@@ -455,6 +487,20 @@
       </div>
 
       <div>
+        <p class="group-title">第二批（切到「各 16,000」時才計入）</p>
+        <div class="field-grid">
+          <div class="field"><label for="b2-add">加產量／支</label><input type="number" id="b2-add" step="500" min="0"><span class="hint">13,000 → 16,000 為 3,000</span></div>
+          <div class="field"><label for="b2-broken">第二批破損備量／支</label><input type="number" id="b2-broken" step="50" min="0"></div>
+          <div class="field"><label for="b2-ec">其中走團購／MOMO／支</label><input type="number" id="b2-ec" step="100" min="0"><span class="hint">不進全聯，無通路費與進倉費</span></div>
+          <div class="field"><label for="b2-ecPrice">團購／MOMO 實收／包（含稅）</label><input type="number" id="b2-ecPrice" step="0.5" min="0"><span class="hint">報價約 $100–105</span></div>
+          <div class="field"><label for="b2-order">第二批下單日（付 50%）</label><input type="date" id="b2-order"></div>
+          <div class="field"><label for="b2-arrive">第二批進倉日</label><input type="date" id="b2-arrive"></div>
+          <div class="field"><label for="b2-payDays">尾款：出貨後幾天</label><input type="number" id="b2-payDays" step="5" min="0"><span class="hint">另 50% 於出貨後付清</span></div>
+        </div>
+        <p class="hint" style="margin:8px 0 0">第二批不再付版費、檢驗費；袋子第一批已做足，代工費本就不含袋子，單位成本沿用上方建議成本。</p>
+      </div>
+
+      <div>
         <p class="group-title">付款與回款</p>
         <div class="field-grid">
           <div class="field">
@@ -544,7 +590,7 @@
     <div class="card-head">
       <div>
         <h2>規模比較</h2>
-        <p class="sub">其他條件不變，只改每支交貨量（破損備量維持目前設定）。13,000 與 18,000 兩列可直接對 V7「13000 vs 18000 對照」頁。售罄率同滑桿。</p>
+        <p class="sub">其他條件不變，只改第一批每支交貨量（破損備量維持目前設定）；選「各 16,000」時每列再加上第二批。13,000 與 18,000 兩列（各 13,000 方案下）可直接對 V7「13000 vs 18000 對照」頁。售罄率同滑桿。</p>
       </div>
     </div>
     <div class="card-body">
@@ -584,6 +630,9 @@
     extras: [],
     pay1: 308700, split: [30, 35, 35],
     sell: 90,
+    plan: "13k",
+    b2: { add:3000, broken:100, ec:500, ecPrice:102.5, order:"2026-12-05", arrive:"2027-01-25", payDays:45 },
+    proj: { asOf:"2026-11-24", sold:5167, base:193, dmStart:"2026-11-27", dmEnd:"2026-12-03", dm:400, post:250, end:"2027-02-28", clear:true },
     endDate: "2027-01-31",
     showTax: false
   };
@@ -605,6 +654,8 @@
       }
     }catch(e){}
     if (s.reverseShare == null) s.reverseShare = 0;
+    ["b2","proj"].forEach(function(k){ var d = clone(DEFAULTS[k]); Object.keys(d).forEach(function(f){ if (s[k] && s[k][f] != null) d[f] = s[k][f]; }); s[k] = d; });
+    if (s.plan !== "16k") s.plan = "13k";
     s.skus.forEach(function(k, i){
       if (k.aliases == null && DEFAULTS.skus[i] && DEFAULTS.skus[i].name === k.name) k.aliases = DEFAULTS.skus[i].aliases;
       if (k.aliases == null) k.aliases = "";
@@ -626,25 +677,30 @@
   function model(st, sellPct, opt){
     opt = opt || {};
     var s = sellPct / 100;
+    var plan16 = (opt.plan || st.plan) === "16k";
+    var b2 = st.b2 || DEFAULTS.b2;
     var P = opt.price != null ? opt.price : avgPrice(st);
     var Pin = P * st.inRate / 100;
     var feeLogi = P * st.logi / 100 * TAX;
     var feeWh = Pin * st.wh / 100 * TAX;
     var feeSvc = Pin * st.svc / 100 * TAX;
     var skus = st.skus.map(function(k){
-      var qty = opt.qty != null ? opt.qty : (+k.qty || 0);
-      var prod = qty + (+k.broken || 0);
+      var base = opt.qty != null ? opt.qty : (+k.qty || 0);
+      var add = plan16 ? (+b2.add || 0) : 0, ecQty = plan16 ? Math.min(add, +b2.ec || 0) : 0;
+      var qty = base + add - ecQty;                       // 交全聯的量
+      var prod = base + (+k.broken || 0) + (plan16 ? add + (+b2.broken || 0) : 0);
+      var ecRev = ecQty * (+b2.ecPrice || 0), ecCogs = ecQty * k.cost;
       var sold = qty * s;
       var rev = sold * Pin;
       var cogs = sold * k.cost;
       var fees = sold * (feeLogi + feeWh + feeSvc);
       var inbound = qty * st.inbound;
       var reverse = (qty - sold) * st.reverse * ((+st.reverseShare || 0) / 100);
-      var shrink = prod * k.cost - cogs;
+      var shrink = prod * k.cost - cogs - ecCogs;
       var dm = (+st.dmCount || 0) * (+k.dm || 0) * TAX;
-      return { name:k.name, qty:qty, prod:prod, sold:sold, rev:rev, cogs:cogs, fees:fees,
+      return { name:k.name, qty:qty, prod:prod, sold:sold, rev:rev, cogs:cogs, fees:fees, ecQty:ecQty, ecRev:ecRev, ecCogs:ecCogs,
                inbound:inbound, reverse:reverse, shrink:shrink, dm:dm, prodCost:prod * k.cost,
-               contrib: rev - cogs - fees - inbound - reverse - shrink - dm };
+               contrib: rev + ecRev - cogs - ecCogs - fees - inbound - reverse - shrink - dm };
     });
     function tot(key){ return skus.reduce(function(a, k){ return a + k[key]; }, 0); }
     var D = tot("qty"), sold = tot("sold");
@@ -652,16 +708,17 @@
     var r = {
       price:P, pin:Pin, feeLogi:feeLogi, feeWh:feeWh, feeSvc:feeSvc, skus:skus,
       delivered:D, produced:tot("prod"), sold:sold,
-      rev: tot("rev"), cogs: tot("cogs"),
+      rev: tot("rev"), cogs: tot("cogs"), ecQty: tot("ecQty"), ecRev: tot("ecRev"), ecCogs: tot("ecCogs"), plan16: plan16, sellPct: sellPct, opt: opt,
       logiWh: sold * (feeLogi + feeWh), svc: sold * feeSvc,
       inbound: tot("inbound"), reverse: tot("reverse"), shrink: tot("shrink"),
       marketing: +st.marketing || 0, dm: tot("dm"), test: +st.test || 0, plate: +st.plate || 0,
       extras: extras, prodCost: tot("prodCost")
     };
-    r.gross = r.rev - r.cogs;
+    r.revAll = r.rev + r.ecRev; r.cogsAll = r.cogs + r.ecCogs;
+    r.gross = r.revAll - r.cogsAll;
     r.opex = r.logiWh + r.svc + r.inbound + r.reverse + r.shrink + r.marketing + r.dm + r.test + r.plate + r.extras;
     r.net = r.gross - r.opex;
-    r.margin = r.rev ? r.net / r.rev : 0;
+    r.margin = r.revAll ? r.net / r.revAll : 0;
     r.fixed = r.marketing + r.dm + r.test + r.plate + r.extras;
     return r;
   }
@@ -674,8 +731,9 @@
   }
 
   function cashflow(st, r){
-    var rem = r.prodCost - st.pay1;
-    var receipt = r.rev - r.logiWh - r.svc - r.dm - r.reverse;
+    var r1 = r.plan16 ? model(st, r.sellPct, Object.assign({}, r.opt, { plan:"13k" })) : r;
+    var rem = r1.prodCost - st.pay1;
+    var receipt = r1.rev - r1.logiWh - r1.svc - r1.dm - r1.reverse;
     var sp = st.split.map(function(x){ return +x || 0; });
     var spSum = sp[0] + sp[1] + sp[2] || 1;
     var rows = [
@@ -683,11 +741,22 @@
       { date:"2026/8/31", ev:"貨款第二段（剩餘產品成本 50%）＋印刷版費", out: rem / 2 + r.plate, inn:0 },
       { date:"2026/9", ev:"—", out:0, inn:0 },
       { date:"2026/10", ev:"上架銷售（火鍋季）", out:0, inn:0 },
-      { date:"2026/11/1", ev:"貨款第三段（剩餘產品成本 50%）＋進倉運費＋行銷" + (r.extras ? "＋額外費用" : ""), out: rem / 2 + r.inbound + r.marketing + r.extras, inn:0 },
+      { date:"2026/11/1", ev:"貨款第三段（剩餘產品成本 50%）＋進倉運費＋行銷" + (r.extras ? "＋額外費用" : ""), out: rem / 2 + r1.inbound + r.marketing + r.extras, inn:0 },
       { date:"2026/11 月底", ev:"首筆回款（10 月銷售，淨額）", out:0, inn: receipt * sp[0] / spSum },
       { date:"2026/12", ev:"回款（11 月銷售）", out:0, inn: receipt * sp[1] / spSum },
       { date:"2027/1", ev:"回款（12 月銷售）", out:0, inn: receipt * sp[2] / spSum }
     ];
+    if (r.plan16){
+      var b2 = st.b2, b2Cost = r.prodCost - r1.prodCost;
+      var b2Receipt = (r.rev - r1.rev) - (r.logiWh + r.svc - r1.logiWh - r1.svc) - (r.reverse - r1.reverse);
+      var tail = addDays(b2.arrive, -2 + (+b2.payDays || 0));
+      function md(iso){ return iso.slice(0, 4) + "/" + (+iso.slice(5, 7)) + "/" + (+iso.slice(8, 10)); }
+      rows.splice(6, 0, { date:md(b2.order), ev:"第二批下單付 50%", out:b2Cost / 2, inn:0 });
+      rows.push({ date:md(b2.arrive), ev:"第二批進倉運費", out:r.inbound - r1.inbound, inn:0 });
+      rows.push({ date:"2027/2", ev:"回款（第二批 1 月銷售＋團購／MOMO）", out:0, inn:b2Receipt * 0.4 + r.ecRev });
+      rows.push({ date:md(tail), ev:"第二批尾款 50%（出貨後 " + b2.payDays + " 天）", out:b2Cost / 2, inn:0 });
+      rows.push({ date:"2027/3", ev:"回款（第二批 2 月銷售）", out:0, inn:b2Receipt * 0.6 });
+    }
     var cum = 0, peak = 0, peakAt = rows[0].date;
     rows.forEach(function(x){ cum += x.inn - x.out; x.cum = cum; if (cum < peak){ peak = cum; peakAt = x.date; } });
     var positiveAt = null;
@@ -773,6 +842,9 @@
     simple.forEach(function(k){ $("in-" + k).value = state[k]; });
     $("in-r1").value = state.split[0]; $("in-r2").value = state.split[1]; $("in-r3").value = state.split[2];
     $("in-sell").value = state.sell;
+    ["add","broken","ec","ecPrice","payDays","order","arrive"].forEach(function(k){ $("b2-" + k).value = state.b2[k]; });
+    ["sold","base","dm","post","asOf","dmStart","dmEnd","end"].forEach(function(k){ $("pj-" + k).value = state.proj[k]; });
+    $("pj-clear").checked = !!state.proj.clear;
     renderSkuInputs(); renderMixInputs(); renderExtras(); syncModes();
   }
   function syncModes(){
@@ -781,6 +853,8 @@
     $("pmMix").setAttribute("aria-pressed", String(mix));
     $("mixWrap").hidden = !mix;
     $("in-price").disabled = mix;
+    $("plan13").setAttribute("aria-pressed", String(state.plan !== "16k"));
+    $("plan16").setAttribute("aria-pressed", String(state.plan === "16k"));
     $("taxEx").setAttribute("aria-pressed", String(!state.showTax));
     $("taxIn").setAttribute("aria-pressed", String(state.showTax));
   }
@@ -805,6 +879,21 @@
     $("pmMix").addEventListener("click", function(){ state.priceMode = "mix"; syncModes(); update(); });
     $("taxEx").addEventListener("click", function(){ state.showTax = false; syncModes(); update(); });
     $("taxIn").addEventListener("click", function(){ state.showTax = true; syncModes(); update(); });
+    $("plan13").addEventListener("click", function(){ state.plan = "13k"; syncModes(); update(); });
+    $("plan16").addEventListener("click", function(){ state.plan = "16k"; syncModes(); update(); });
+    ["add","broken","ec","ecPrice","payDays"].forEach(function(k){
+      $("b2-" + k).addEventListener("input", function(e){ state.b2[k] = parseFloat(e.target.value) || 0; update(); });
+    });
+    ["order","arrive"].forEach(function(k){
+      $("b2-" + k).addEventListener("change", function(e){ if (e.target.value){ state.b2[k] = e.target.value; update(); } });
+    });
+    ["sold","base","dm","post"].forEach(function(k){
+      $("pj-" + k).addEventListener("input", function(e){ state.proj[k] = parseFloat(e.target.value) || 0; update(); });
+    });
+    ["asOf","dmStart","dmEnd","end"].forEach(function(k){
+      $("pj-" + k).addEventListener("change", function(e){ if (e.target.value){ state.proj[k] = e.target.value; update(); } });
+    });
+    $("pj-clear").addEventListener("change", function(e){ state.proj.clear = e.target.checked; update(); });
     $("btnAddExtra").addEventListener("click", function(){ state.extras.push({ name:"其他費用", amt:0 }); renderExtras(); update(); });
     $("btnPptExtra").addEventListener("click", function(){
       PPT_EXTRAS.forEach(function(p){
@@ -836,12 +925,12 @@
   // ---------- render ----------
   function renderHero(r, be, cf){
     var net = tx(r.net);
-    $("vLabel").textContent = "整體營業淨利（" + taxLabel() + "）・售罄 " + state.sell + "%";
+    $("vLabel").textContent = "整體營業淨利（" + taxLabel() + "）・" + (r.plan16 ? "各 16,000 包" : "各 13,000 包") + "・全聯售罄 " + state.sell + "%";
     var big = $("vBig");
     big.textContent = (net < 0 ? "−" : "") + "NT$" + nf0.format(Math.abs(Math.round(net)));
     big.className = "big " + (net >= 0 ? "pos" : "neg");
     $("vUnder").textContent = (state.showTax ? "未稅 " + money(r.net / TAX) : "含稅 " + money(r.net)) +
-      "　·　淨利率 " + pct(r.margin) + "　·　售出 " + nf0.format(Math.round(r.sold)) + " 包／交貨 " + nf0.format(r.delivered) + " 包";
+      "　·　淨利率 " + pct(r.margin) + "　·　全聯售出 " + nf0.format(Math.round(r.sold)) + "／交貨 " + nf0.format(r.delivered) + " 包" + (r.ecQty ? "　·　團購／MOMO " + nf0.format(r.ecQty) + " 包" : "");
     $("out-sell").textContent = state.sell + "%";
     document.querySelectorAll("#sellChips [data-sell]").forEach(function(b){
       var v = b.dataset.sell === "be" ? (be != null ? Math.round(be * 100) / 100 : null) : parseFloat(b.dataset.sell);
@@ -896,8 +985,9 @@
     var lines = [
       ["售罄率（占交貨量）", function(m, c){ return c.s.toFixed(c.s % 1 ? 2 : 0) + "%"; }, "raw"],
       ["售出量（包）", function(m){ return nf0.format(Math.round(m.sold)); }, "raw"],
-      ["營業收入", "rev", 1],
-      ["（－）營業成本 COGS", "cogs", -1],
+      ["營業收入（全聯）", "rev", 1],
+      ["營業收入（團購／MOMO）", "ecRev", 1],
+      ["（－）營業成本 COGS", "cogsAll", -1],
       ["＝營業毛利", "gross", 1, "total"],
       ["營業費用", null],
       ["全聯物流／前進倉／其他", "logiWh", -1, "sub-row"],
@@ -962,7 +1052,7 @@
     var common = r.marketing + r.test + r.plate + r.extras;
     var h2 = "<thead><tr><th>整季（" + taxLabel() + "）</th>" + r.skus.map(function(k){ return "<th class='num'>" + esc(k.name) + "</th>"; }).join("") + "<th class='num'>合計</th></tr></thead><tbody>";
     var L = [
-      ["營業收入", "rev", 1], ["產品成本（已售）", "cogs", -1], ["通路費（物流＋前進倉＋德明）", "fees", -1],
+      ["營業收入（全聯）", "rev", 1], ["營業收入（團購／MOMO）", "ecRev", 1], ["產品成本（已售）", null, -1, function(k){ return k.cogs + k.ecCogs; }], ["通路費（物流＋前進倉＋德明）", "fees", -1],
       ["進倉＋逆物流", null, -1, function(k){ return k.inbound + k.reverse; }],
       ["存貨損耗", "shrink", -1], ["DM 檔期費", "dm", -1]
     ];
@@ -1083,6 +1173,69 @@
       html += "</tr>";
     });
     $("tblHeat").innerHTML = html + "</tbody>";
+  }
+
+  function projectPlan(plan){
+    var pj = state.proj, b2 = state.b2;
+    var m100 = model(state, 100, { plan:plan }), m100b1 = model(state, 100, { plan:"13k" });
+    var stock1 = m100b1.delivered, stockAll = m100.delivered;
+    var sold = Math.min(+pj.sold || 0, stock1), avail = stock1 - sold, soldOut = null, gapDays = 0;
+    for (var d = addDays(pj.asOf, 1); d <= pj.end; d = addDays(d, 1)){
+      if (plan === "16k" && d === b2.arrive) avail += stockAll - stock1;
+      var q = d >= pj.dmStart && d <= pj.dmEnd ? +pj.dm : d < pj.dmStart ? +pj.base : +pj.post;
+      var take = Math.min(q, avail);
+      if (take < q) gapDays++;
+      avail -= take; sold += take;
+      if (avail <= 0 && !soldOut) soldOut = d;
+    }
+    if (plan === "16k" && pj.end < b2.arrive) avail += stockAll - stock1;
+    var pctSold = stockAll ? sold / stockAll * 100 : 0;
+    var r = model(state, pctSold, { plan:plan });
+    var left = stockAll - sold;
+    var net = r.net + (pj.clear ? left * (+b2.ecPrice || 0) : 0);
+    return { sold:sold, left:left, soldOut:soldOut, gap:gapDays, pct:pctSold, net:net, stock:stockAll };
+  }
+
+  function renderCompare(){
+    var plans = ["13k", "16k"], lab = { "13k":"各 13,000", "16k":"各 16,000" };
+    var ms = plans.map(function(p){ return model(state, state.sell, { plan:p }); });
+    var bes = plans.map(function(p){ return breakEven(state, { plan:p }); });
+    var m100 = plans.map(function(p){ return model(state, 100, { plan:p }); });
+    var cfs = plans.map(function(p, i){ return cashflow(state, ms[i]); });
+    function row(label, vals, fmt, diff){
+      return "<tr" + (diff === "net" ? " class='net'" : "") + "><td>" + label + "</td>" + vals.map(function(v){ return "<td class='num " + (typeof v === "number" ? cls(v) : "") + "'>" + fmt(v) + "</td>"; }).join("") +
+        "<td class='num " + (typeof vals[0] === "number" && diff && /淨利/.test(label) ? (vals[1] - vals[0] < 0 ? "neg" : "pos") : "") + "'>" + (diff && typeof vals[0] === "number" ? (Math.abs(vals[1] - vals[0]) < 0.5 ? "—" : (vals[1] - vals[0] > 0 ? "+" : "") + fmt(vals[1] - vals[0])) : "") + "</td></tr>";
+    }
+    var A = function(v){ return acct(tx(v)); }, N = function(v){ return nf0.format(Math.round(v)); }, Pc = function(v){ return v == null ? "—" : v.toFixed(1) + "%"; };
+    var h = "<thead><tr><th>項目（" + taxLabel() + "）</th><th class='num" + (state.plan === "13k" ? " cur" : "") + "'>各 13,000</th><th class='num" + (state.plan === "16k" ? " cur" : "") + "'>各 16,000</th><th class='num'>加產差額</th></tr></thead><tbody>";
+    h += row("生產量（含破損備量）", ms.map(function(m){ return m.produced; }), N, true);
+    h += row("交全聯", ms.map(function(m){ return m.delivered; }), N, true);
+    h += row("團購／MOMO", ms.map(function(m){ return m.ecQty; }), N, true);
+    h += row("損益兩平（全聯售罄率）", bes, Pc, false);
+    h += row("損益兩平（全聯包數）", bes.map(function(b, i){ return b == null ? 0 : b / 100 * ms[i].delivered; }), N, true);
+    [70, 80, 90].forEach(function(sp){
+      h += row("全聯售罄 " + sp + "% 淨利", plans.map(function(p){ return model(state, sp, { plan:p }).net; }), A, true);
+    });
+    h += row("全部賣完淨利", m100.map(function(m){ return m.net; }), A, "net");
+    h += row("目前滑桿 " + state.sell + "% 淨利", ms.map(function(m){ return m.net; }), A, true);
+    h += row("資金需求峰值（含稅）", cfs.map(function(c){ return c.peak; }), function(v){ return acct(v); }, true);
+    $("tblCompare").innerHTML = h + "</tbody>";
+
+    var pr = plans.map(projectPlan), pj = state.proj;
+    var t = "<thead><tr><th>推估到 " + pj.end + "</th><th class='num" + (state.plan === "13k" ? " cur" : "") + "'>各 13,000</th><th class='num" + (state.plan === "16k" ? " cur" : "") + "'>各 16,000</th><th class='num'>加產差額</th></tr></thead><tbody>";
+    t += row("全聯累計售出", pr.map(function(x){ return x.sold; }), N, true);
+    t += row("全聯售罄率", pr.map(function(x){ return x.pct; }), Pc, false);
+    t += "<tr><td>全聯售罄日</td>" + pr.map(function(x){ return "<td class='num'>" + (x.soldOut ? x.soldOut.slice(5).replace("-", "/") : "未售完") + "</td>"; }).join("") + "<td></td></tr>";
+    t += row("缺貨天數（需求賣不到）", pr.map(function(x){ return x.gap; }), N, true);
+    t += row("剩貨", pr.map(function(x){ return x.left; }), N, true);
+    t += row("淨利（" + (pj.clear ? "剩貨由電商／團購出清" : "剩貨認列損耗") + "）", pr.map(function(x){ return x.net; }), A, "net");
+    $("tblProj").innerHTML = t + "</tbody>";
+
+    var dAll = m100[1].net - m100[0].net, dProj = pr[1].net - pr[0].net;
+    var inc = m100[1].delivered - m100[0].delivered + m100[1].ecQty;
+    $("compareNote").innerHTML = "全部賣完時，各 16,000 比各 13,000 多賺 <b>" + money(tx(dAll)) + "</b>（加產 " + nf0.format(inc) + " 包，平均每包 " + nf2.format(inc ? tx(dAll) / inc : 0) + " 元）。" +
+      "照目前速度推到 " + pj.end + "，各 13,000 " + (pr[0].soldOut ? "在 <b>" + pr[0].soldOut.slice(5).replace("-", "/") + "</b> 賣完、之後缺貨 " + pr[0].gap + " 天" : "剩 " + nf0.format(pr[0].left) + " 包") +
+      "；各 16,000 " + (pr[1].soldOut ? "在 <b>" + pr[1].soldOut.slice(5).replace("-", "/") + "</b> 賣完" : "剩 <b>" + nf0.format(pr[1].left) + "</b> 包") + "，加產" + (dProj >= 0 ? "多賺 " : "少賺 ") + "<b>" + money(Math.abs(tx(dProj))) + "</b>。";
   }
 
   function renderScale(){
@@ -1938,8 +2091,8 @@
       return;
     }
     var a = computeActual();
-    var plan = model(state, Math.min(100, a.sell * 100));
-    var plan90 = model(state, 90);
+    var plan = model(state, Math.min(100, a.sell * 100), { plan:"13k" });
+    var plan90 = model(state, 90, { plan:"13k" });
     var tiles = [
       { l:"若現在結案淨利（" + taxLabel() + "）", v:money(tx(a.close.net)), n:"未售品全數退回、認列損耗與逆物流", neg:a.close.net < 0 },
       { l:"至今淨利（" + taxLabel() + "）", v:money(tx(a.now.net)), n:"未售 " + nf0.format(Math.round(a.unsold)) + " 包仍當庫存（成本 " + money(tx(a.now.inventory)) + "）", neg:a.now.net < 0 },
@@ -2113,7 +2266,7 @@
     var box = $("dailyBody"), s = dailySeries();
     $("in-endDate").value = state.endDate;
     if (!s){ box.innerHTML = "<div class='empty'>還沒有逐日銷售資料。把全聯的「每日銷量統計表」直接丟進上面的上傳區，日期橫列、品項直列的格式會自動辨識。</div>"; return; }
-    var delivered = state.skus.reduce(function(a, k){ return a + (+k.qty || 0); }, 0);
+    var delivered = model(state, 100).delivered;
     // Actual weighted average price when the daily rows carry one; otherwise the parameter price.
     var pw = 0, pq = 0;
     docOf("daily").rows.forEach(function(r){ if (r.price != null && r.qty){ pw += r.price * r.qty; pq += r.qty; } });
@@ -2397,6 +2550,7 @@
     renderCash(cf);
     renderSens(be);
     renderScale();
+    renderCompare();
     if (typeof renderActualResult === "function"){ renderActualResult(); renderDaily(); }
     save();
   }
